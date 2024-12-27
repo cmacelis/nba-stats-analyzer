@@ -1,0 +1,29 @@
+.player-comparison {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.search-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.player-search {
+  flex: 1;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.loading-spinner {
+  margin-top: 10px;
+  text-align: center;
+  color: #666;
+} 
