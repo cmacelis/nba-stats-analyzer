@@ -1,0 +1,74 @@
+.highlight {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.highlight:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.highlight.better {
+  border-left: 4px solid #2e7d32;
+}
+
+.highlight.worse {
+  border-left: 4px solid #c62828;
+}
+
+.highlight.equal {
+  border-left: 4px solid #666;
+}
+
+.highlight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.highlight-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.highlight-icon {
+  color: inherit;
+  font-size: 1rem;
+}
+
+.highlight-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.highlight-values .value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e3c72;
+}
+
+.highlight-values .vs {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.highlight-diff {
+  font-size: 0.8rem;
+  text-align: right;
+  color: inherit;
+}
+
+.better .highlight-diff {
+  color: #2e7d32;
+}
+
+.worse .highlight-diff {
+  color: #c62828;
+} 

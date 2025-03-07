@@ -1,21 +1,19 @@
 .player-search {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .search-container {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .search-input {
   width: 100%;
-  padding: 1rem;
-  font-size: 1.1rem;
+  padding: 0.8rem;
+  font-size: 1rem;
   border: 2px solid #ddd;
-  border-radius: 8px;
-  transition: border-color 0.3s ease;
+  border-radius: 4px;
+  transition: border-color 0.2s ease;
 }
 
 .search-input:focus {
@@ -28,42 +26,62 @@
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
 }
 
 .search-error {
-  color: #c62828;
+  color: #d32f2f;
   background: #ffebee;
-  padding: 1rem;
+  padding: 0.8rem;
   border-radius: 4px;
   margin-bottom: 1rem;
 }
 
 .search-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .player-card {
-  background: white;
+  background: #f8f9fa;
   padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .player-card:hover {
-  transform: translateY(-2px);
+  background: #e3f2fd;
+  transform: translateX(4px);
 }
 
 .player-card h3 {
   color: #1e3c72;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
 }
 
 .player-card p {
   color: #666;
+  margin: 0;
   font-size: 0.9rem;
+}
+
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.player-card {
+  animation: fadeIn 0.3s ease-in;
 } 

@@ -1,0 +1,87 @@
+.session-warning {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.session-warning-content {
+  padding: 1.5rem;
+}
+
+.session-warning h3 {
+  color: #1e3c72;
+  margin-bottom: 0.5rem;
+}
+
+.session-warning p {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.session-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.refresh-button,
+.signout-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.refresh-button {
+  background: #1e3c72;
+  color: white;
+  border: none;
+}
+
+.refresh-button:hover {
+  background: #2a5298;
+}
+
+.signout-button {
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.signout-button:hover {
+  background: #f8f9fa;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .session-warning {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .session-actions {
+    flex-direction: column;
+  }
+
+  .refresh-button,
+  .signout-button {
+    width: 100%;
+  }
+} 

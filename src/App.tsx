@@ -1,56 +1,38 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import * as React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider } from './contexts/AuthContext';
-import Login from './components/auth/Login';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import Dashboard from './components/Dashboard';
-import PlayerComparison from './components/players/PlayerComparison';
-import NotFound from './components/NotFound';
-import ErrorBoundary from './components/ErrorBoundary';
-import FirebaseTest from './components/FirebaseTest';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
+import AppRoutes from './routes/AppRoutes';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 30 * 60 * 1000, // 30 minutes
+      retry: 2,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 const App: React.FC = () => {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <Navigate to="/dashboard" replace />
-              } 
-            />
-            <Route 
-              path="/login" 
-              element={
-                <Login />
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  {console.log('Rendering Dashboard')}
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/compare" 
-              element={
-                <ProtectedRoute>
-                  {console.log('Rendering PlayerComparison')}
-                  <PlayerComparison />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/test" element={<FirebaseTest />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <AuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AppRoutes />
+            </ToastProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </Router>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 };
 

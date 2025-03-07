@@ -1,0 +1,47 @@
+.trend-analysis {
+  margin: 2rem 0;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.trend-analysis h3 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.trend-analysis ul {
+  list-style: none;
+  padding: 0;
+}
+
+.trend-analysis li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.trend-analysis .factor {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.trend-analysis .impact {
+  font-weight: 600;
+}
+
+.trend-analysis .impact.positive {
+  color: #2e7d32;
+}
+
+.trend-analysis .impact.negative {
+  color: #c62828;
+}
+
+@media (max-width: 768px) {
+  .trend-analysis {
+    padding: 1rem;
+  }
+} 

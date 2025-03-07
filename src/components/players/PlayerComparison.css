@@ -5,109 +5,42 @@
 }
 
 .comparison-header {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
 }
 
-.comparison-header h2 {
-  color: #1e3c72;
-  margin-bottom: 1rem;
-}
-
-.comparison-error {
-  color: #c62828;
-  background: #ffebee;
-  padding: 1rem;
-  border-radius: 4px;
-}
-
-.comparison-container {
+.player-selectors {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   margin-bottom: 2rem;
 }
 
-.player-column {
+.selector-container {
   background: white;
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.player-column h3 {
-  color: #1e3c72;
+.selector-container h3 {
   margin-bottom: 1rem;
-  text-align: center;
+  color: var(--text-primary);
 }
 
-.player-info {
-  text-align: center;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
+@media (max-width: 768px) {
+  .player-comparison {
+    padding: 1rem;
+  }
 
-.player-info h4 {
-  color: #1e3c72;
-  margin-bottom: 0.5rem;
-}
+  .comparison-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
 
-.player-info p {
-  color: #666;
-  margin-bottom: 1rem;
-}
-
-.change-player-btn {
-  background: #1e3c72;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.change-player-btn:hover {
-  background: #2a5298;
-}
-
-.stats-comparison {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-}
-
-.stats-section {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stats-section h3 {
-  color: #1e3c72;
-  margin-bottom: 1rem;
-  text-align: center;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #eee;
-}
-
-.visualization-section {
-  grid-column: 1 / -1;
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.radar-chart {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-@media (max-width: 1024px) {
-  .stats-comparison {
+  .player-selectors {
     grid-template-columns: 1fr;
   }
 } 

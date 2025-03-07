@@ -1,0 +1,59 @@
+.stat-preferences {
+  display: grid;
+  gap: 2rem;
+}
+
+.stat-preferences h3 {
+  color: #1e3c72;
+  margin-bottom: 0.5rem;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.preferences-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.preference-item {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.toggle-label input {
+  width: 20px;
+  height: 20px;
+}
+
+.toggle-text {
+  color: #1e3c72;
+  font-weight: 500;
+}
+
+.save-button {
+  padding: 1rem;
+  background: #1e3c72;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 1rem;
+}
+
+.save-button:hover {
+  background: #2a5298;
+} 

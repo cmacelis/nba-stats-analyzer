@@ -11,5 +11,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    }
   },
+  define: {
+    'process.env': {}
+  }
 }); 

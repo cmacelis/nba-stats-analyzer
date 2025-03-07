@@ -4,7 +4,6 @@
   align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-  padding: 2rem;
 }
 
 .login-card {
@@ -12,47 +11,140 @@
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  max-width: 400px;
   width: 100%;
+  max-width: 400px;
+  position: relative;
 }
 
-.login-card h1 {
+.login-card h2 {
   color: #1e3c72;
+  text-align: center;
   margin-bottom: 0.5rem;
-  font-size: 2.5rem;
 }
 
-.login-card p {
+.subtitle {
   color: #666;
+  text-align: center;
   margin-bottom: 2rem;
 }
 
-.google-sign-in {
-  background: white;
-  color: #666;
-  border: 1px solid #ddd;
-  padding: 0.8rem 1.5rem;
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #eee;
   border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #1e3c72;
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.75rem;
+  background: #1e3c72;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.login-button:hover {
+  background: #2a5298;
+}
+
+.login-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.divider {
+  text-align: center;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: #eee;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.google-button,
+.apple-button {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #eee;
+  border-radius: 4px;
+  background: white;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  width: 100%;
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
-.google-sign-in:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
+.google-button:hover {
+  background: #f8f9fa;
+}
+
+.apple-button:hover {
+  background: #f8f9fa;
 }
 
 .error-message {
-  color: #d32f2f;
   background: #ffebee;
-  padding: 1rem;
+  color: #c62828;
+  padding: 0.75rem;
   border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.loading-overlay p {
   margin-top: 1rem;
+  color: #1e3c72;
 } 

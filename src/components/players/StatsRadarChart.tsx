@@ -9,7 +9,7 @@ import {
   Legend
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
-import { PlayerStats } from '../../services/nbaApi';
+import { Player } from '../../types/nba';
 
 ChartJS.register(
   RadialLinearScale,
@@ -21,23 +21,21 @@ ChartJS.register(
 );
 
 interface StatsRadarChartProps {
-  player1: { fullName: string; stats: PlayerStats };
-  player2: { fullName: string; stats: PlayerStats };
+  player1: Player;
+  player2: Player;
 }
 
-export const StatsRadarChart: React.FC<StatsRadarChartProps> = ({ player1, player2 }) => {
+const StatsRadarChart: React.FC<StatsRadarChartProps> = ({ player1, player2 }) => {
   const normalizeValue = (value: number, max: number) => (value / max) * 100;
 
-  const getMaxValues = () => ({
+  const maxValues = {
     points: 35,
     assists: 12,
     rebounds: 15,
     steals: 3,
     blocks: 3,
-    fieldGoalPercentage: 100,
-  });
-
-  const maxValues = getMaxValues();
+    fieldGoalPercentage: 100
+  };
 
   const data = {
     labels: ['Points', 'Assists', 'Rebounds', 'Steals', 'Blocks', 'FG%'],
@@ -45,12 +43,12 @@ export const StatsRadarChart: React.FC<StatsRadarChartProps> = ({ player1, playe
       {
         label: player1.fullName,
         data: [
-          normalizeValue(player1.stats.points, maxValues.points),
-          normalizeValue(player1.stats.assists, maxValues.assists),
-          normalizeValue(player1.stats.rebounds, maxValues.rebounds),
-          normalizeValue(player1.stats.steals, maxValues.steals),
-          normalizeValue(player1.stats.blocks, maxValues.blocks),
-          player1.stats.fieldGoalPercentage,
+          normalizeValue(player1.stats?.points || 0, maxValues.points),
+          normalizeValue(player1.stats?.assists || 0, maxValues.assists),
+          normalizeValue(player1.stats?.rebounds || 0, maxValues.rebounds),
+          normalizeValue(player1.stats?.steals || 0, maxValues.steals),
+          normalizeValue(player1.stats?.blocks || 0, maxValues.blocks),
+          player1.stats?.fieldGoalPercentage || 0,
         ],
         backgroundColor: 'rgba(30, 60, 114, 0.2)',
         borderColor: 'rgba(30, 60, 114, 1)',
@@ -59,12 +57,12 @@ export const StatsRadarChart: React.FC<StatsRadarChartProps> = ({ player1, playe
       {
         label: player2.fullName,
         data: [
-          normalizeValue(player2.stats.points, maxValues.points),
-          normalizeValue(player2.stats.assists, maxValues.assists),
-          normalizeValue(player2.stats.rebounds, maxValues.rebounds),
-          normalizeValue(player2.stats.steals, maxValues.steals),
-          normalizeValue(player2.stats.blocks, maxValues.blocks),
-          player2.stats.fieldGoalPercentage,
+          normalizeValue(player2.stats?.points || 0, maxValues.points),
+          normalizeValue(player2.stats?.assists || 0, maxValues.assists),
+          normalizeValue(player2.stats?.rebounds || 0, maxValues.rebounds),
+          normalizeValue(player2.stats?.steals || 0, maxValues.steals),
+          normalizeValue(player2.stats?.blocks || 0, maxValues.blocks),
+          player2.stats?.fieldGoalPercentage || 0,
         ],
         backgroundColor: 'rgba(46, 125, 50, 0.2)',
         borderColor: 'rgba(46, 125, 50, 1)',
@@ -95,4 +93,6 @@ export const StatsRadarChart: React.FC<StatsRadarChartProps> = ({ player1, playe
       <Radar data={data} options={options} />
     </div>
   );
-}; 
+};
+
+export default StatsRadarChart; 

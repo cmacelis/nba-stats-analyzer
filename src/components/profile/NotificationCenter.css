@@ -1,0 +1,70 @@
+.notification-center {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notification-item {
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.notification-item.unread {
+  background-color: #f0f7ff;
+  border-left: 3px solid var(--primary-color);
+}
+
+.notification-content h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.notification-content p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.notification-time {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.mark-read-button {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mark-read-button:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+} 

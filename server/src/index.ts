@@ -1,48 +1,81 @@
 import express from 'express';
 import cors from 'cors';
-import axios from 'axios';
 import rateLimit from 'express-rate-limit';
+import nbaRouter from './routes/nba';
+import nbaNewsRouter from './routes/nba_news';
+import userRouter from './routes/user';
+
+// Error handling middleware
+import { errorHandler } from './middleware/errorHandler';
+import { requestLogger } from './middleware/requestLogger';
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Configure CORS
+// Configure CORS with more specific options
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000'
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CLIENT_URL 
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
+
+// Add body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Request logging
+app.use(requestLogger);
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
 });
 
 app.use(limiter);
 
-// NBA Stats API proxy
-app.get('/api/*', async (req, res) => {
-  try {
-    const nbaUrl = `https://stats.nba.com/stats${req.path.replace('/api', '')}`;
-    const response = await axios.get(nbaUrl, {
-      headers: {
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Host': 'stats.nba.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://www.nba.com/',
-        'x-nba-stats-origin': 'stats',
-        'x-nba-stats-token': 'true'
-      },
-      params: req.query
-    });
-
-    res.json(response.data);
-  } catch (error) {
-    console.error('Proxy Error:', error);
-    res.status(500).json({ error: 'Failed to fetch data from NBA API' });
-  }
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Proxy server running on port ${port}`);
+// API routes
+app.use('/api/nba', nbaRouter);
+app.use('/api/nba', nbaNewsRouter);
+app.use('/api/user', userRouter);
+
+// Error handling
+app.use(errorHandler);
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 }); 

@@ -1,0 +1,79 @@
+.performance-heatmap {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.performance-heatmap h3 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: 1px;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.heatmap-header {
+  display: grid;
+  grid-template-columns: 100px repeat(6, 1fr);
+  background: #f8f9fa;
+}
+
+.header-cell {
+  padding: 1rem;
+  font-weight: 500;
+  color: #1e3c72;
+  text-align: center;
+}
+
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 100px repeat(6, 1fr);
+  background: white;
+}
+
+.season-cell {
+  padding: 1rem;
+  background: #f8f9fa;
+  font-weight: 500;
+  color: #666;
+}
+
+.heatmap-cell {
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.05);
+  z-index: 1;
+}
+
+.level-1 { background: #fee5d9; }
+.level-2 { background: #fcbba1; }
+.level-3 { background: #fc9272; }
+.level-4 { background: #fb6a4a; }
+.level-5 { background: #de2d26; color: white; }
+
+@media (max-width: 768px) {
+  .performance-heatmap {
+    padding: 1rem;
+  }
+
+  .heatmap-grid {
+    font-size: 0.9rem;
+  }
+
+  .header-cell,
+  .season-cell,
+  .heatmap-cell {
+    padding: 0.5rem;
+  }
+} 

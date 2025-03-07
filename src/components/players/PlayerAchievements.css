@@ -1,0 +1,91 @@
+.player-achievements {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+}
+
+.player-achievements h3 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.achievement-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.achievement-category {
+  color: #1e3c72;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+}
+
+.achievement-card h4 {
+  color: #1e3c72;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.achievement-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e3c72;
+  margin-bottom: 1rem;
+}
+
+.achievement-percentile,
+.achievement-rank {
+  font-size: 0.9rem;
+  color: #666;
+  padding: 0.25rem 0.75rem;
+  background: rgba(30, 60, 114, 0.1);
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.achievement-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+}
+
+@media (max-width: 768px) {
+  .player-achievements {
+    padding: 1rem;
+  }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-value {
+    font-size: 1.75rem;
+  }
+} 

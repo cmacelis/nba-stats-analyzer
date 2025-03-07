@@ -1,0 +1,150 @@
+.ai-prediction {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ai-prediction h2 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.prediction-subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.search-section {
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.prediction-results {
+  display: grid;
+  gap: 2rem;
+}
+
+.player-info {
+  text-align: center;
+}
+
+.player-info h3 {
+  color: #1e3c72;
+  margin-bottom: 0.5rem;
+}
+
+.player-info .team {
+  color: #666;
+}
+
+.prediction-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-card h4 {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.prediction-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1e3c72;
+}
+
+.confidence-meter {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.confidence-meter h4 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.confidence-bar {
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2e7d32 0%, #1e3c72 100%);
+  transition: width 0.3s ease;
+}
+
+.confidence-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.prediction-factors {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.prediction-factors h4 {
+  color: #1e3c72;
+  margin-bottom: 1rem;
+}
+
+.prediction-factors ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.prediction-factors li {
+  padding: 0.5rem 0;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prediction-factors li::before {
+  content: '•';
+  color: #1e3c72;
+}
+
+.prediction-chart {
+  margin-top: 2rem;
+  height: 400px;
+}
+
+@media (max-width: 768px) {
+  .ai-prediction {
+    padding: 1rem;
+  }
+
+  .prediction-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .prediction-chart {
+    height: 300px;
+  }
+} 

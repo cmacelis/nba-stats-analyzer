@@ -1,0 +1,31 @@
+.historical-data-view {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.historical-data-view .content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.historical-data-view header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.historical-data-view h1 {
+  color: #1e3c72;
+  margin-bottom: 0.5rem;
+}
+
+.historical-data-view header p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .historical-data-view .content {
+    padding: 1rem;
+  }
+} 

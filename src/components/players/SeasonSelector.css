@@ -1,0 +1,30 @@
+.season-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.season-select {
+  padding: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.season-select:hover {
+  border-color: #1e3c72;
+}
+
+.season-select:focus {
+  outline: none;
+  border-color: #1e3c72;
+}
+
+label {
+  color: #666;
+  font-weight: 500;
+} 

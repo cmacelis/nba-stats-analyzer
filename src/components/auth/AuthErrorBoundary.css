@@ -1,0 +1,71 @@
+.auth-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  text-align: center;
+}
+
+.auth-error h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.auth-error p {
+  margin-bottom: 2rem;
+  max-width: 500px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.retry-button,
+.signout-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button {
+  background: white;
+  color: #1e3c72;
+  border: none;
+}
+
+.retry-button:hover {
+  background: #f8f9fa;
+}
+
+.signout-button {
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+}
+
+.signout-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 480px) {
+  .auth-error h2 {
+    font-size: 1.5rem;
+  }
+
+  .error-actions {
+    flex-direction: column;
+  }
+
+  .retry-button,
+  .signout-button {
+    width: 100%;
+  }
+} 

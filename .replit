@@ -1,6 +1,6 @@
 run = "cowsay Configure me!"
 entrypoint = "README.md"
-modules = ["nodejs-20", "python-3.11"]
+modules = [ "python-3.11", "nodejs-18"]
 
 [nix]
 channel = "stable-24_05"
@@ -8,3 +8,4 @@ channel = "stable-24_05"
 [[ports]]
 localPort = 3000
 externalPort = 80
+exposeLocalhost = true

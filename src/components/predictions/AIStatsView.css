@@ -1,0 +1,23 @@
+.ai-stats-view {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.stats-content {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .ai-stats-view {
+    padding: 1rem;
+  }
+} 

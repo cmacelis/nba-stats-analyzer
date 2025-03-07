@@ -1,0 +1,48 @@
+.stat-tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.stat-tooltip {
+  visibility: hidden;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.8rem;
+  background: #1e3c72;
+  color: white;
+  border-radius: 4px;
+  width: 200px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.stat-tooltip h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.stat-tooltip p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.stat-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e3c72 transparent transparent transparent;
+}
+
+.stat-tooltip-container:hover .stat-tooltip {
+  visibility: visible;
+  opacity: 1;
+} 

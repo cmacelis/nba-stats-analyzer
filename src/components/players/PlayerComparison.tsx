@@ -1,143 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import { nbaApi, PlayerStats } from '../../services/nbaApi';
-import PlayerSearch from './PlayerSearch';
+import * as React from 'react';
+import { Player, PlayerStats } from '../../types/nba';
+import { useComparisonData } from '../../hooks/useComparisonData';
+import PlayerSelector from './PlayerSelector';
+import SeasonSelector from './SeasonSelector';
+import StatsTable from './StatsTable';
+import SeasonalComparison from './SeasonalComparison';
+import AdvancedMetrics from './AdvancedMetrics';
+import HeadToHeadComparison from './HeadToHeadComparison';
 import { LoadingSpinner } from '../LoadingSpinner';
+import ErrorMessage from '../shared/ErrorMessage';
 import './PlayerComparison.css';
-import { StatsRadarChart } from './StatsRadarChart';
 
-interface Player {
-  id: string;
-  fullName: string;
-  team: string;
-  position: string;
-  jersey: string;
-  stats?: PlayerStats;
+interface PlayerComparisonProps {
+  player1: Player;
+  player2: Player;
+  seasonStats1: PlayerStats[];
+  seasonStats2: PlayerStats[];
 }
 
-const PlayerComparison: React.FC = () => {
-  const [player1, setPlayer1] = useState<Player | null>(null);
-  const [player2, setPlayer2] = useState<Player | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+const PlayerComparison: React.FC<PlayerComparisonProps> = ({
+  player1,
+  player2,
+  seasonStats1,
+  seasonStats2
+}) => {
+  const [season, setSeason] = React.useState(getCurrentSeason());
+  const { data, loading, error, fetchPlayerData } = useComparisonData();
 
-  const fetchPlayerStats = async (player: Player, setPlayerFn: (player: Player) => void) => {
-    try {
-      setLoading(true);
-      const stats = await nbaApi.getPlayerStats(player.id);
-      setPlayerFn({ ...player, stats });
-    } catch (err) {
-      setError(`Failed to fetch stats for ${player.fullName}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
+  React.useEffect(() => {
+    if (player1 && player2) {
+      fetchPlayerData(player1.id, player2.id, season);
     }
-  };
+  }, [player1, player2, season]);
 
-  const handlePlayerSelect = (player: Player, isPlayer1: boolean) => {
-    const setPlayerFn = isPlayer1 ? setPlayer1 : setPlayer2;
-    setPlayerFn(player);
-    fetchPlayerStats(player, setPlayerFn);
-  };
-
-  const StatComparison = ({ label, stat1, stat2 }: { label: string; stat1: number; stat2: number }) => {
-    const diff = stat1 - stat2;
-    const winner = diff > 0 ? 'left' : diff < 0 ? 'right' : '';
-
-    return (
-      <div className="stat-row">
-        <div className={`stat-value ${winner === 'left' ? 'winner' : ''}`}>{stat1.toFixed(1)}</div>
-        <div className="stat-label">{label}</div>
-        <div className={`stat-value ${winner === 'right' ? 'winner' : ''}`}>{stat2.toFixed(1)}</div>
-      </div>
-    );
-  };
+  if (error) {
+    return <ErrorMessage message={error.message} />;
+  }
 
   return (
     <div className="player-comparison">
       <div className="comparison-header">
         <h2>Player Comparison</h2>
-        {error && <div className="comparison-error">{error}</div>}
+        <SeasonSelector 
+          selectedSeason={season}
+          onSeasonChange={setSeason}
+        />
       </div>
 
-      <div className="comparison-container">
-        <div className="player-column">
-          <h3>Player 1</h3>
-          {!player1 ? (
-            <PlayerSearch onPlayerSelect={(p) => handlePlayerSelect(p, true)} />
-          ) : (
-            <div className="player-info">
-              <h4>{player1.fullName}</h4>
-              <p>{player1.team} | #{player1.jersey} | {player1.position}</p>
-              <button 
-                className="change-player-btn"
-                onClick={() => setPlayer1(null)}
-              >
-                Change Player
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="player-column">
-          <h3>Player 2</h3>
-          {!player2 ? (
-            <PlayerSearch onPlayerSelect={(p) => handlePlayerSelect(p, false)} />
-          ) : (
-            <div className="player-info">
-              <h4>{player2.fullName}</h4>
-              <p>{player2.team} | #{player2.jersey} | {player2.position}</p>
-              <button 
-                className="change-player-btn"
-                onClick={() => setPlayer2(null)}
-              >
-                Change Player
-              </button>
-            </div>
-          )}
-        </div>
+      <div className="player-selectors">
+        <PlayerSelector
+          label="Player 1"
+          onPlayerSelect={setPlayer1}
+          selected={player1}
+        />
+        <PlayerSelector
+          label="Player 2"
+          onPlayerSelect={setPlayer2}
+          selected={player2}
+        />
       </div>
 
-      {loading && <LoadingSpinner />}
-
-      {player1?.stats && player2?.stats && (
+      {loading ? (
+        <LoadingSpinner text="Loading comparison data..." />
+      ) : data && player1 && player2 ? (
         <>
-          <div className="stats-comparison">
-            <div className="stats-section">
-              <h3>Basic Stats</h3>
-              <StatComparison label="Points" stat1={player1.stats.points} stat2={player2.stats.points} />
-              <StatComparison label="Assists" stat1={player1.stats.assists} stat2={player2.stats.assists} />
-              <StatComparison label="Rebounds" stat1={player1.stats.rebounds} stat2={player2.stats.rebounds} />
-              <StatComparison label="Steals" stat1={player1.stats.steals} stat2={player2.stats.steals} />
-              <StatComparison label="Blocks" stat1={player1.stats.blocks} stat2={player2.stats.blocks} />
-            </div>
+          <StatsTable
+            player1={player1}
+            player2={player2}
+            stats1={data.stats1}
+            stats2={data.stats2}
+          />
+          
+          <AdvancedMetrics
+            player1={player1}
+            player2={player2}
+            stats1={data.stats1}
+            stats2={data.stats2}
+          />
 
-            <div className="stats-section">
-              <h3>Shooting</h3>
-              <StatComparison label="FG%" stat1={player1.stats.fieldGoalPercentage} stat2={player2.stats.fieldGoalPercentage} />
-              <StatComparison label="3P%" stat1={player1.stats.threePointPercentage} stat2={player2.stats.threePointPercentage} />
-              <StatComparison label="FT%" stat1={player1.stats.freeThrowPercentage} stat2={player2.stats.freeThrowPercentage} />
-              <StatComparison label="TS%" stat1={player1.stats.trueShootingPercentage} stat2={player2.stats.trueShootingPercentage} />
-              <StatComparison label="eFG%" stat1={player1.stats.effectiveFieldGoalPercentage} stat2={player2.stats.effectiveFieldGoalPercentage} />
-            </div>
+          <SeasonalComparison
+            player1={player1}
+            player2={player2}
+            seasonStats1={data.seasonStats1}
+            seasonStats2={data.seasonStats2}
+          />
 
-            <div className="stats-section">
-              <h3>Advanced</h3>
-              <StatComparison label="Usage%" stat1={player1.stats.usagePercentage} stat2={player2.stats.usagePercentage} />
-              <StatComparison label="+/-" stat1={player1.stats.plusMinus} stat2={player2.stats.plusMinus} />
-              <StatComparison label="Games" stat1={player1.stats.gamesPlayed} stat2={player2.stats.gamesPlayed} />
-              <StatComparison label="Minutes" stat1={player1.stats.minutesPerGame} stat2={player2.stats.minutesPerGame} />
-            </div>
-
-            <div className="visualization-section">
-              <h3>Visual Comparison</h3>
-              <StatsRadarChart 
-                player1={{ fullName: player1.fullName, stats: player1.stats }}
-                player2={{ fullName: player2.fullName, stats: player2.stats }}
-              />
-            </div>
-          </div>
+          <HeadToHeadComparison
+            player1={player1}
+            player2={player2}
+            matchups={data.matchups}
+          />
         </>
-      )}
+      ) : null}
     </div>
   );
 };

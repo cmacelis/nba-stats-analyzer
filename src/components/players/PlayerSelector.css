@@ -1,0 +1,58 @@
+.player-selector {
+  position: relative;
+  width: 100%;
+}
+
+.player-search {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.player-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.player-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.player-list li:hover {
+  background-color: var(--bg-hover);
+}
+
+.player-list li.selected {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.player-name {
+  font-weight: 500;
+}
+
+.player-team {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.loading {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+} 

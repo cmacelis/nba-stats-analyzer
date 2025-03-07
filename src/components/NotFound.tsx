@@ -7,7 +7,7 @@ const NotFound: React.FC = () => {
     <div className="not-found-container">
       <h1>404</h1>
       <h2>Page Not Found</h2>
-      <p>The page you're looking for doesn't exist or has been moved.</p>
+      <p>The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
       <Link to="/" className="home-link">Go to Home</Link>
     </div>
   );

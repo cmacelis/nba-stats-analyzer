@@ -1,0 +1,106 @@
+.interactive-stats {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stats-configuration {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stat-list {
+  min-height: 200px;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.stat-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: white;
+  border-radius: 4px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.stat-item:hover {
+  border-color: #1e3c72;
+}
+
+.stat-item.selected {
+  background: #e3f2fd;
+  border-color: #1e3c72;
+}
+
+.custom-combinations {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+}
+
+.combo-creator {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.combo-creator input {
+  padding: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.combo-creator button {
+  background: #1e3c72;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.combo-creator button:hover {
+  background: #2a5298;
+}
+
+.custom-combos-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.combo-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.combo-name {
+  font-weight: 500;
+  color: #1e3c72;
+}
+
+.combo-formula {
+  color: #666;
+  font-family: monospace;
+}
+
+@media (max-width: 768px) {
+  .stats-configuration {
+    grid-template-columns: 1fr;
+  }
+
+  .combo-creator {
+    grid-template-columns: 1fr;
+  }
+} 

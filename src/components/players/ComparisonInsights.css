@@ -1,0 +1,113 @@
+.comparison-insights {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+}
+
+.comparison-insights h3 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.insight-card {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.insight-card.player1::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+}
+
+.insight-card.player2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #ff6384 0%, #ff8c94 100%);
+}
+
+.insight-header {
+  margin-bottom: 1rem;
+}
+
+.insight-header .category {
+  color: #666;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.insight-header h4 {
+  color: #1e3c72;
+  margin: 0.5rem 0 0 0;
+  font-size: 1.2rem;
+}
+
+.player-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.player {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.player.winner {
+  color: #1e3c72;
+  font-weight: 600;
+}
+
+.vs {
+  color: #999;
+  font-size: 0.8rem;
+  margin: 0 0.5rem;
+}
+
+.difference {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #1e3c72;
+  font-weight: 500;
+  padding: 0.5rem;
+  background: rgba(30, 60, 114, 0.1);
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .comparison-insights {
+    padding: 1rem;
+  }
+
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+} 

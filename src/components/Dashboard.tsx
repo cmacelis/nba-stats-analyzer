@@ -1,160 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { auth } from '../config/firebase';
+import Navigation from './shared/Navigation';
 import { LoadingSpinner } from './LoadingSpinner';
-import { FaChartBar, FaUsers, FaBasketballBall, FaHistory, FaStar } from 'react-icons/fa';
+import { useQuery } from '@tanstack/react-query';
+import { nbaApi } from '../services/nbaApi';
+import type { Player } from '../types/nba';
 import './Dashboard.css';
 
-interface RecentComparison {
-  id: string;
-  player1: string;
-  player2: string;
-  date: Date;
-}
-
 const Dashboard: React.FC = () => {
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [recentComparisons, setRecentComparisons] = useState<RecentComparison[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setInitialLoading(true);
-        // Mock data for testing
-        setRecentComparisons([
-          {
-            id: '1',
-            player1: 'LeBron James',
-            player2: 'Kevin Durant',
-            date: new Date()
-          },
-          {
-            id: '2',
-            player1: 'Stephen Curry',
-            player2: 'Damian Lillard',
-            date: new Date()
-          }
-        ]);
-        
-        setFavorites(['LeBron James', 'Stephen Curry', 'Luka Doncic']);
-      } catch (error) {
-        console.error('Error loading dashboard:', error);
-        setError('Failed to load dashboard data');
-      } finally {
-        setInitialLoading(false);
-      }
-    };
+  const { data: recentPlayers, isLoading } = useQuery<Player[]>(
+    ['recentPlayers'],
+    () => nbaApi.getRecentPlayers(),
+    { staleTime: 5 * 60 * 1000 } // 5 minutes
+  );
 
-    loadDashboardData();
-  }, [currentUser]);
-
-  const handleSignOut = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      await auth.signOut();
-      navigate('/login');
-    } catch (error) {
-      setError('Failed to sign out');
-      console.error('Error signing out:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleCompareClick = () => {
+    navigate('/compare');
   };
 
-  if (initialLoading) {
-    return <LoadingSpinner overlay text="Loading dashboard..." />;
-  }
+  const handlePlayerClick = (playerId: string) => {
+    navigate(`/predictions/${playerId}`);
+  };
 
   return (
-    <div className="dashboard-container">
-      <nav className="dashboard-nav">
-        <div className="nav-brand">CourtVision</div>
-        <div className="nav-user">
-          <span>{currentUser?.email}</span>
-          <button onClick={handleSignOut} className="sign-out-btn">
-            Sign Out
-          </button>
-        </div>
-      </nav>
-
+    <div className="dashboard-page">
+      <Navigation />
       <div className="dashboard-content">
-        <header className="welcome-section">
-          <h1>Welcome to CourtVision</h1>
-          <p>Your NBA Statistics Analysis Platform</p>
+        <header className="dashboard-header">
+          <h1>Welcome back, {user?.displayName || 'User'}</h1>
         </header>
 
-        {error && <div className="error-alert">{error}</div>}
-
-        <div className="quick-stats">
-          <div className="stat-card">
-            <h3>Comparisons Made</h3>
-            <p className="stat-number">{recentComparisons.length}</p>
-          </div>
-          <div className="stat-card">
-            <h3>Favorite Players</h3>
-            <p className="stat-number">{favorites.length}</p>
-          </div>
-        </div>
-
         <div className="features-grid">
-          <div className="feature-card" onClick={() => navigate('/compare')}>
-            <FaUsers className="feature-icon" />
-            <h3>Player Comparisons</h3>
-            <p>Compare stats between players</p>
-          </div>
-
-          <div className="feature-card" onClick={() => navigate('/teams')}>
-            <FaBasketballBall className="feature-icon" />
-            <h3>Team Analysis</h3>
-            <p>View detailed team statistics</p>
-          </div>
-
-          <div className="feature-card" onClick={() => navigate('/predictions')}>
-            <FaChartBar className="feature-icon" />
-            <h3>Game Predictions</h3>
-            <p>AI-powered game predictions</p>
-          </div>
-
-          <div className="feature-card" onClick={() => navigate('/history')}>
-            <FaHistory className="feature-icon" />
-            <h3>Historical Data</h3>
-            <p>Access historical NBA statistics</p>
-          </div>
-        </div>
-
-        <div className="dashboard-sections">
-          <section className="recent-activity">
-            <h2>Recent Comparisons</h2>
-            <div className="activity-list">
-              {recentComparisons.map(comparison => (
-                <div key={comparison.id} className="activity-item">
-                  <span>{comparison.player1} vs {comparison.player2}</span>
-                  <span className="activity-date">
-                    {comparison.date.toLocaleDateString()}
-                  </span>
-                </div>
-              ))}
+          <div className="main-features">
+            <div className="feature-card" onClick={handleCompareClick}>
+              <h2>Player Comparison</h2>
+              <p>Compare stats between any two NBA players</p>
             </div>
-          </section>
 
-          <section className="favorites">
-            <h2>Favorite Players</h2>
-            <div className="favorites-list">
-              {favorites.map(player => (
-                <div key={player} className="favorite-item">
-                  <FaStar className="star-icon" />
-                  <span>{player}</span>
-                </div>
-              ))}
+            <div className="feature-card" onClick={() => navigate('/historical')}>
+              <h2>Historical Analysis</h2>
+              <p>Deep dive into player career statistics</p>
             </div>
-          </section>
+
+            <div className="feature-card" onClick={() => navigate('/news')}>
+              <h2>NBA News</h2>
+              <p>Latest updates and analysis</p>
+            </div>
+          </div>
+
+          <div className="recent-activity">
+            <h2>Recent Players</h2>
+            {isLoading ? (
+              <LoadingSpinner size="small" />
+            ) : (
+              <div className="recent-players">
+                {recentPlayers?.map(player => (
+                  <div 
+                    key={player.id}
+                    className="player-card"
+                    onClick={() => handlePlayerClick(player.id)}
+                  >
+                    <h3>{player.fullName}</h3>
+                    <p>{player.team}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,57 @@
+.historical-stats {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+}
+
+.historical-stats h3 {
+  color: #1e3c72;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.milestones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.milestone-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.milestone-item:hover {
+  transform: translateY(-2px);
+}
+
+.milestone-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #1e3c72;
+}
+
+.milestone-label {
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.trend-chart {
+  margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+  .historical-stats {
+    padding: 1rem;
+  }
+} 

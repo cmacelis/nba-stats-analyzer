@@ -1,0 +1,121 @@
+# Move out of any subdirectories to the workspace root
+cd ~/workspace
+
+# Remove everything
+rm -rf *
+
+# Create fresh project structure
+mkdir nba-stats-analyzer
+cd nba-stats-analyzer
+mkdir frontend backend docs
+
+# Initialize frontend
+cd frontend
+rm -rf node_modules package-lock.json
+npm init -y
+
+# Install dependencies
+npm install @mui/material @mui/icons-material @emotion/react @emotion/styled
+npm install @tanstack/react-query react-router-dom
+npm install react react-dom
+npm install chart.js react-chartjs-2
+npm install axios
+
+# Install dev dependencies
+npm install --save-dev typescript @types/react @types/react-dom @types/node
+npm install --save-dev @vitejs/plugin-react @emotion/babel-plugin
+npm install --save-dev vite
+
+mkdir -p src/{components,pages,utils}
+rm -rf src/*
+mkdir src/components src/pages src/utils
+npm run dev
+npm install --save-dev @types/react @types/react-dom @types/node
+npm install --save-dev @types/react @types/react-dom
+npm install --save-dev @types/node 
+find . -name "AIPredictionView.tsx" 
+rm src/components/predictions/AIPredictionView.tsx 
+git clone https://github.com/cmacelis/nba-stats-analyzer.git
+cd nba-stats-analyzer 
+
+# Backend dependencies (if you have them)
+cd ../backend
+pip install -r requirements.txt  # if you have a requirements.txt file 
+
+npm install --save-dev @emotion/babel-plugin 
+
+find . -name "*Prediction*.tsx" -delete
+find . -name "*Match*.tsx" -delete 
+
+npm run dev
+
+cd frontend
+find . -type f -exec grep -l "MatchupComparison\|AIPredictionView" {} \; 
+
+# Clean src directory
+rm -rf src/*
+
+# Recreate directory structure
+mkdir -p src/{components,pages,utils}
+
+# Create index.css
+echo ':root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}' > src/index.css 
+
+# Install all dependencies at once
+npm install @mui/material @mui/icons-material @emotion/react @emotion/styled @tanstack/react-query react-router-dom react react-dom chart.js react-chartjs-2 axios
+npm install --save-dev @types/react @types/react-dom @types/node @vitejs/plugin-react @emotion/babel-plugin typescript vite 
+
+# Create the files (we'll add content to them next)
+touch src/main.tsx src/App.tsx src/index.css
+touch src/utils/theme.ts
+touch src/components/Layout.tsx
+touch src/pages/Home.tsx 
+
+# Stage all changes
+git add .
+
+# Commit the changes
+git commit -m "Update project setup"
+
+# Push to GitHub
+git push origin main 
+
+npm install
+npm run dev
+
+git status
+
+git remote -v 
+
+git remote add origin https://github.com/cmacelis/nba-stats-analyzer.git 
+
+git branch
+git checkout main  # if not already on main
+
+git pull origin main
+
+git add .
+git commit -m "Update project setup"
+git push origin main
+
+cd frontend
+npm install --save-dev @emotion/babel-plugin
+npm install @emotion/react @emotion/styled @emotion/babel-plugin --save-dev
+
+npm run dev
+
+npm install react-chartjs-2 chart.js @mui/icons-material @mui/material
+npm install @mui/material-next
+
+git config --global user.email "your.email@example.com"
+git config --global user.name "Your Name"
