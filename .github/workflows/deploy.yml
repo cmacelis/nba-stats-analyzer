@@ -74,7 +74,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Deploy to Heroku
-      uses: akhileshns/heroku-deploy@v3.12.12
+      uses: akhileshns/heroku-deploy@v3.14.15
       with:
         heroku_api_key: ${{ env.HEROKU_API_KEY }}
         heroku_app_name: ${{ env.HEROKU_APP_NAME }}
