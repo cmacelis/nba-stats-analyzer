@@ -1,66 +1,58 @@
-import { useQuery, UseQueryOptions } from '@tanstack/react-query';
-import { 
-  getAllPlayers, 
-  getPlayerById, 
-  getPlayerStats, 
-  getPlayerSeasonStats,
-  searchPlayers,
-  BallDontLiePlayer,
-  BallDontLieStats,
-  BallDontLieResponse
-} from '../services/nbaApiService';
-import { mapApiPlayerToPlayer, mapApiStatsToPlayerStats } from '../utils/dataMappers';
-import { Player, PlayerStats } from '../types/player';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
-export function useAllPlayers(page = 1, perPage = 100) {
-  return useQuery({
-    queryKey: ['allPlayers', page, perPage],
-    queryFn: () => getAllPlayers(page, perPage),
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-  });
-}
+// We use an empty string because the Vite proxy handles the /api prefix
+const API_BASE_URL = '';
 
-export function usePlayerById(playerId: number | undefined) {
-  return useQuery({
-    queryKey: ['player', playerId],
-    queryFn: () => getPlayerById(playerId!).then(mapApiPlayerToPlayer),
-    enabled: !!playerId,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-  });
-}
+const api = axios.create({
+  baseURL: API_BASE_URL,
+});
 
-export function usePlayerStats(playerId: number | undefined, season?: string) {
+/**
+ * Hook for searching players
+ */
+export const useSearchPlayers = (searchTerm: string, page: number = 1, perPage: number = 25) => {
   return useQuery({
-    queryKey: ['playerStats', playerId, season],
+    queryKey: ['players', 'search', searchTerm, page],
     queryFn: async () => {
-      const response = await getPlayerStats(playerId!, season);
-      if (response.data.length === 0) {
-        throw new Error('No stats found for this player and season');
-      }
-      return mapApiStatsToPlayerStats(response.data[0]);
+      // If the search term is too short, don't waste an API call
+      if (searchTerm.length < 2) return { data: [], meta: { total_pages: 0 } };
+      
+      const response = await api.get('/api/players', {
+        params: { search: searchTerm, page, per_page: perPage }
+      });
+      return response.data;
+    },
+    enabled: searchTerm.length >= 2, // Only run when there's a real search
+  });
+};
+
+/**
+ * Hook for player comparison (Head-to-Head)
+ */
+export const usePlayerComparison = (id1: string, id2: string) => {
+  return useQuery({
+    queryKey: ['players', 'compare', id1, id2],
+    queryFn: async () => {
+      const response = await api.get(`/api/players/compare/${id1}/${id2}`);
+      // Returns { player1: {}, player2: {}, head_to_head: [] }
+      return response.data;
+    },
+    // Only fetch if BOTH IDs are present to prevent 404/400 errors
+    enabled: !!id1 && !!id2,
+  });
+};
+
+/**
+ * Hook for individual player stats
+ */
+export const usePlayerStats = (playerId: string) => {
+  return useQuery({
+    queryKey: ['players', 'stats', playerId],
+    queryFn: async () => {
+      const response = await api.get(`/api/players/${playerId}/stats`);
+      return response.data;
     },
     enabled: !!playerId,
-    staleTime: 6 * 60 * 60 * 1000, // 6 hours
   });
-}
-
-export function usePlayerSeasonStats(playerId: number | undefined) {
-  return useQuery({
-    queryKey: ['playerSeasonStats', playerId],
-    queryFn: async () => {
-      const stats = await getPlayerSeasonStats(playerId!);
-      return stats.map(mapApiStatsToPlayerStats);
-    },
-    enabled: !!playerId,
-    staleTime: 6 * 60 * 60 * 1000, // 6 hours
-  });
-}
-
-export function useSearchPlayers(query: string, page = 1, perPage = 25) {
-  return useQuery({
-    queryKey: ['searchPlayers', query, page, perPage],
-    queryFn: () => searchPlayers(query, page, perPage),
-    enabled: query.length >= 2, // Only search if query is at least 2 characters
-    staleTime: 1 * 60 * 60 * 1000, // 1 hour
-  });
-} 
+};
