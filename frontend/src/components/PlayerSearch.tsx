@@ -46,8 +46,10 @@ const PlayerSearch: React.FC<PlayerSearchProps> = ({
     setPage(value);
   };
   
-  const mappedPlayers = searchResults?.data.map(mapApiPlayerToPlayer) || [];
-
+// Using optional chaining (?.) on both 'searchResults' and 'data' 
+// ensures that if either is missing, it simply returns an empty array 
+// instead of crashing the whole app.
+const mappedPlayers = searchResults?.data?.map(mapApiPlayerToPlayer) || [];
   return (
     <Box>
       <Autocomplete
@@ -96,7 +98,8 @@ const PlayerSearch: React.FC<PlayerSearchProps> = ({
         }
       />
       
-      {searchResults && searchResults.meta.total_pages > 1 && (
+      
+{searchResults && searchResults.meta?.total_pages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Pagination
             count={searchResults.meta.total_pages}

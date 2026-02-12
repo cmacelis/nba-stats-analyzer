@@ -1,13 +1,13 @@
 import axios from 'axios';
 import { config } from '../utils/config';
-
-const API_BASE_URL = config.nbaApiBaseUrl || 'https://www.balldontlie.io/api/v1';
+// Change line 4 from '/api' to just an empty string
+const API_BASE_URL = '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': config.nbaApiKey ? `Bearer ${config.nbaApiKey}` : undefined
+    'Content-Type': 'application/json'
+    // We will let the individual functions handle the key to be sure it's fresh
   }
 });
 
@@ -81,19 +81,16 @@ export interface BallDontLieResponse<T> {
 }
 
 export async function getAllPlayers(page = 1, perPage = 100): Promise<BallDontLieResponse<BallDontLiePlayer>> {
-  const response = await fetch(`${API_BASE_URL}/players?page=${page}&per_page=${perPage}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch players: ${response.statusText}`);
-  }
-  return await response.json();
+  // Use 'api.get' instead of 'fetch' to bypass CORS via your Vite proxy
+  const response = await api.get('/players', {
+    params: { page, per_page: perPage }
+  });
+  return response.data;
 }
 
 export async function getPlayerById(id: number): Promise<BallDontLiePlayer> {
-  const response = await fetch(`${API_BASE_URL}/players/${id}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch player: ${response.statusText}`);
-  }
-  return await response.json();
+  const response = await api.get(`/players/${id}`);
+  return response.data;
 }
 
 export async function getPlayerStats(playerId: number, season: string = '2023-24') {
@@ -142,18 +139,40 @@ export async function getPlayerSeasonStats(playerId: number) {
 }
 
 export async function searchPlayers(query: string, page = 1, perPage = 25) {
+  // 1. Pre-flight check: Is the key actually loaded?
+  if (!config.nbaApiKey || config.nbaApiKey === 'your_api_key_here') {
+    const errorMsg = "❌ API Key Missing: Please check your .env file for VITE_NBA_API_KEY.";
+    console.error(errorMsg);
+    alert(errorMsg); // This gives you an immediate popup for debugging
+    return { data: [], meta: {} };
+  }
+
   try {
-    const response = await api.get('/players', {
-      params: {
-        search: query,
-        page,
-        per_page: perPage
+    const response = await api.get('/api/players', {
+      params: { 
+        search: query, 
+        page, 
+        per_page: perPage 
+      },
+      headers: {
+        // Passing it directly here is the most reliable way in Vite
+        'Authorization': config.nbaApiKey 
       }
     });
+    
     return response.data;
-  } catch (error) {
-    console.error('Error searching players:', error);
-    throw error;
+
+  } catch (error: any) {
+    // 2. Handle specific status codes
+    if (error.response?.status === 401) {
+      console.error("🔒 Unauthorized: Your API key was rejected by balldontlie.");
+    } else if (error.response?.status === 429) {
+      console.error("⏳ Rate Limited: Too many requests. Wait a moment.");
+    } else {
+      console.error("🌐 Network Error:", error.message);
+    }
+    
+    throw error; // Re-throw so the UI can also show an error state
   }
 }
 
