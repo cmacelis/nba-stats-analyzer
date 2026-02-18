@@ -8,7 +8,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const NBA_API_KEY = process.env.VITE_NBA_API_KEY;
+const NBA_API_KEY = process.env.XRapidAPIKey;
+const RAPIDAPI_HOST = 'balldontlie.p.rapidapi.com';
+const RAPIDAPI_HEADERS = { 'X-RapidAPI-Key': NBA_API_KEY, 'X-RapidAPI-Host': RAPIDAPI_HOST };
+const BDL_BASE = `https://${RAPIDAPI_HOST}/v1`;
 
 // Health
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -19,9 +22,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.get('/api/players', async (req: Request, res: Response) => {
   const searchTerm = req.query.search as string;
   try {
-    const response = await axios.get('https://api.balldontlie.io/v1/players', {
+    const response = await axios.get(`${BDL_BASE}/players`, {
       params: { search: searchTerm },
-      headers: { Authorization: NBA_API_KEY },
+      headers: RAPIDAPI_HEADERS,
     });
     res.json(response.data);
   } catch (error: unknown) {
@@ -35,13 +38,13 @@ app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) =>
   const { id1, id2 } = req.params;
   try {
     const [stats1, stats2] = await Promise.all([
-      axios.get('https://api.balldontlie.io/v1/season_averages', {
+      axios.get(`${BDL_BASE}/season_averages`, {
         params: { player_ids: [id1], season: 2024 },
-        headers: { Authorization: NBA_API_KEY },
+        headers: RAPIDAPI_HEADERS,
       }),
-      axios.get('https://api.balldontlie.io/v1/season_averages', {
+      axios.get(`${BDL_BASE}/season_averages`, {
         params: { player_ids: [id2], season: 2024 },
-        headers: { Authorization: NBA_API_KEY },
+        headers: RAPIDAPI_HEADERS,
       }),
     ]);
     res.json({
@@ -57,9 +60,9 @@ app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) =>
 // Individual player stats
 app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
   try {
-    const response = await axios.get('https://api.balldontlie.io/v1/season_averages', {
+    const response = await axios.get(`${BDL_BASE}/season_averages`, {
       params: { player_ids: [req.params.id], season: 2024 },
-      headers: { Authorization: NBA_API_KEY },
+      headers: RAPIDAPI_HEADERS,
     });
     const stats = response.data.data[0] ?? {};
     res.json(stats);
