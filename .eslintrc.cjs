@@ -46,8 +46,7 @@ module.exports = {
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
     '@typescript-eslint/no-explicit-any': ['warn', {
-      ignoreRestArgs: true,
-      allowExplicitAny: false
+      ignoreRestArgs: true
     }],
     'react/no-unescaped-entities': ['error', {
       forbid: [
