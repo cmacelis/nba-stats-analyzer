@@ -29,15 +29,47 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 /**
- * 2. Individual Player Stats Route
+ * 2. Comparison Route — defined before /:id/stats to prevent route shadowing
+ * Path: GET /api/players/compare/:id1/:id2
+ */
+router.get('/compare/:id1/:id2', async (req: Request, res: Response) => {
+  const { id1, id2 } = req.params;
+
+  try {
+    // Fetch both players' stats at the same time for performance
+    const [stats1, stats2] = await Promise.all([
+      axios.get('https://api.balldontlie.io/v1/season_averages', {
+        params: { player_ids: [id1], season: 2024 },
+        headers: { 'Authorization': NBA_API_KEY }
+      }),
+      axios.get('https://api.balldontlie.io/v1/season_averages', {
+        params: { player_ids: [id2], season: 2024 },
+        headers: { 'Authorization': NBA_API_KEY }
+      })
+    ]);
+
+    // Construct the object exactly as the frontend expects it
+    res.json({
+      player1: stats1.data.data[0] || null,
+      player2: stats2.data.data[0] || null,
+      head_to_head: []
+    });
+  } catch (error: any) {
+    console.error('Comparison fetch error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch comparison data' });
+  }
+});
+
+/**
+ * 3. Individual Player Stats Route
  * Path: GET /api/players/:id/stats
  */
 router.get('/:id/stats', async (req: Request, res: Response) => {
   try {
     const response = await axios.get('https://api.balldontlie.io/v1/season_averages', {
-      params: { 
+      params: {
         player_ids: [req.params.id],
-        season: 2023 
+        season: 2024
       },
       headers: { 'Authorization': NBA_API_KEY }
     });
@@ -48,38 +80,6 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Stats fetch error:', error.message);
     res.status(500).json({ error: 'Failed to fetch player stats' });
-  }
-});
-
-/**
- * 3. Comparison Route
- * Path: GET /api/players/compare/:id1/:id2
- */
-router.get('/compare/:id1/:id2', async (req: Request, res: Response) => {
-  const { id1, id2 } = req.params;
-  
-  try {
-    // Fetch both players' stats at the same time for performance
-    const [stats1, stats2] = await Promise.all([
-      axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_ids: [id1], season: 2023 },
-        headers: { 'Authorization': NBA_API_KEY }
-      }),
-      axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_ids: [id2], season: 2023 },
-        headers: { 'Authorization': NBA_API_KEY }
-      })
-    ]);
-
-    // Construct the object exactly as the frontend expects it
-    res.json({
-      player1: stats1.data.data[0] || {},
-      player2: stats2.data.data[0] || {},
-      head_to_head: [] 
-    });
-  } catch (error: any) {
-    console.error('Comparison fetch error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch comparison data' });
   }
 });
 

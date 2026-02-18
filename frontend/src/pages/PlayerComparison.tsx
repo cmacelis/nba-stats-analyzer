@@ -45,30 +45,33 @@ const PlayerComparison: React.FC = () => {
       {/* Error State */}
       {error && <Alert severity="error">Error loading comparison data.</Alert>}
 
-      {/* Comparison Results - Adding Optional Chaining (?.) to prevent crashes */}
-      {player1 && player2 && data && (
+      {/* Comparison Results */}
+      {player1 && player2 && data && data.player1 && data.player2 && (
         <Paper sx={{ p: 2 }}>
           <Grid container spacing={2}>
             <Grid item xs={4}><Typography fontWeight="bold">Metric</Typography></Grid>
             <Grid item xs={4}><Typography fontWeight="bold">{player1.name}</Typography></Grid>
             <Grid item xs={4}><Typography fontWeight="bold">{player2.name}</Typography></Grid>
-            
+
             <Grid item xs={12}><hr /></Grid>
 
-            {/* Using ?. ensures that if data.player1 is missing, it returns 0 instead of crashing */}
             <Grid item xs={4}>Points</Grid>
-            <Grid item xs={4}>{data.player1?.pts || 0}</Grid>
-            <Grid item xs={4}>{data.player2?.pts || 0}</Grid>
+            <Grid item xs={4}>{data.player1.pts ?? 0}</Grid>
+            <Grid item xs={4}>{data.player2.pts ?? 0}</Grid>
 
             <Grid item xs={4}>Rebounds</Grid>
-            <Grid item xs={4}>{data.player1?.reb || 0}</Grid>
-            <Grid item xs={4}>{data.player2?.reb || 0}</Grid>
+            <Grid item xs={4}>{data.player1.reb ?? 0}</Grid>
+            <Grid item xs={4}>{data.player2.reb ?? 0}</Grid>
 
             <Grid item xs={4}>Assists</Grid>
-            <Grid item xs={4}>{data.player1?.ast || 0}</Grid>
-            <Grid item xs={4}>{data.player2?.ast || 0}</Grid>
+            <Grid item xs={4}>{data.player1.ast ?? 0}</Grid>
+            <Grid item xs={4}>{data.player2.ast ?? 0}</Grid>
           </Grid>
         </Paper>
+      )}
+
+      {player1 && player2 && data && (!data.player1 || !data.player2) && (
+        <Alert severity="warning">No stats available for the 2024 season for one or both players.</Alert>
       )}
 
       {!player1 || !player2 ? (
