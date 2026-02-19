@@ -65,8 +65,10 @@ app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
     });
     const stats = response.data.data[0] ?? {};
     res.json(stats);
-  } catch {
-    res.status(500).json({ error: 'Failed to fetch player stats' });
+  } catch (error: unknown) {
+    const e = error as { response?: { status: number; data: unknown } };
+    const status = e.response?.status ?? 500;
+    res.status(status).json({ error: 'Failed to fetch player stats', detail: e.response?.data });
   }
 });
 
