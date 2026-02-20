@@ -74,9 +74,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               Home
             </Button>
-            <Button 
-              color="inherit" 
-              component={RouterLink} 
+            <Button
+              color="inherit"
+              component={RouterLink}
               to="/compare"
               onMouseEnter={handleButtonHover}
               onClick={handleButtonClick}
@@ -88,6 +88,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               }}
             >
               Compare Players
+            </Button>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/predict"
+              onMouseEnter={handleButtonHover}
+              onClick={handleButtonClick}
+              sx={{
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.05)'
+                }
+              }}
+            >
+              Game Predictor
             </Button>
             <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
               <IconButton 
