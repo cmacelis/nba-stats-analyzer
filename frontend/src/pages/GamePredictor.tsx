@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Alert,
   Box,
@@ -6,10 +6,12 @@ import {
   CircularProgress,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -18,9 +20,11 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowBack, ArrowForward, Remove } from '@mui/icons-material';
+import { ArrowBack, ArrowForward, ContentCopy, Remove } from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
 import { usePlayerStats } from '../hooks/useNbaData';
@@ -48,10 +52,38 @@ const SEASONS = [
 ];
 
 const GamePredictor: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [homeCourtValue, setHomeCourtValue] = useState<string | null>(null);
   const [season, setSeason] = useState(2024);
+  const [copied, setCopied] = useState(false);
+
+  // On mount, restore state from URL params
+  useEffect(() => {
+    const p1id = searchParams.get('p1');
+    const p1name = searchParams.get('p1n');
+    const p1team = searchParams.get('p1t');
+    const p2id = searchParams.get('p2');
+    const p2name = searchParams.get('p2n');
+    const p2team = searchParams.get('p2t');
+    const s = searchParams.get('s');
+    const hc = searchParams.get('hc');
+    if (p1id && p1name) setPlayer1({ id: parseInt(p1id), name: p1name, team: p1team || '', position: '' });
+    if (p2id && p2name) setPlayer2({ id: parseInt(p2id), name: p2name, team: p2team || '', position: '' });
+    if (s) setSeason(parseInt(s));
+    if (hc) setHomeCourtValue(hc);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep URL in sync with state
+  useEffect(() => {
+    const params: Record<string, string> = { s: season.toString() };
+    if (player1) { params.p1 = player1.id.toString(); params.p1n = player1.name; params.p1t = player1.team; }
+    if (player2) { params.p2 = player2.id.toString(); params.p2n = player2.name; params.p2t = player2.team; }
+    if (homeCourtValue) params.hc = homeCourtValue;
+    setSearchParams(params, { replace: true });
+  }, [player1, player2, season, homeCourtValue, setSearchParams]);
 
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
@@ -86,9 +118,16 @@ const GamePredictor: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Game Predictor
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+        <Typography variant="h4">
+          Game Predictor
+        </Typography>
+        <Tooltip title="Copy shareable link">
+          <IconButton size="small" onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}>
+            <ContentCopy fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         Select each team's star player to predict the game outcome.
       </Typography>
@@ -141,12 +180,12 @@ const GamePredictor: React.FC = () => {
       {/* No-stats warnings */}
       {player1 && !loading1 && rawStats1 !== undefined && !hasStats1 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          No 2024 season stats available for {player1.name}.
+          No {SEASONS.find(s => s.value === season)?.label} stats available for {player1.name}. Try a different season.
         </Alert>
       )}
       {player2 && !loading2 && rawStats2 !== undefined && !hasStats2 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          No 2024 season stats available for {player2.name}.
+          No {SEASONS.find(s => s.value === season)?.label} stats available for {player2.name}. Try a different season.
         </Alert>
       )}
 
@@ -315,6 +354,13 @@ const GamePredictor: React.FC = () => {
       >
         Note: Predictions are based on {SEASONS.find(s => s.value === season)?.label} season averages and are for entertainment purposes only.
       </Typography>
+
+      <Snackbar
+        open={copied}
+        autoHideDuration={2000}
+        onClose={() => setCopied(false)}
+        message="Link copied to clipboard"
+      />
     </Box>
   );
 };
