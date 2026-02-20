@@ -51,8 +51,13 @@ app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) =>
       player2: stats2.data.data[0] ?? null,
       head_to_head: [],
     });
-  } catch {
-    res.status(500).json({ error: 'Failed to fetch comparison data' });
+  } catch (error: unknown) {
+    const e = error as { response?: { status: number } };
+    if (e.response?.status === 401) {
+      res.status(402).json({ error: 'plan_required', message: 'Season stats require a BallDontLie Starter plan.' });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch comparison data' });
+    }
   }
 });
 
@@ -68,8 +73,11 @@ app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
     res.json(stats);
   } catch (error: unknown) {
     const e = error as { response?: { status: number; data: unknown } };
-    const status = e.response?.status ?? 500;
-    res.status(status).json({ error: 'Failed to fetch player stats', detail: e.response?.data });
+    if (e.response?.status === 401) {
+      res.status(402).json({ error: 'plan_required', message: 'Season stats require a BallDontLie Starter plan.' });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch player stats', detail: e.response?.data });
+    }
   }
 });
 

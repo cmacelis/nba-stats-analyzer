@@ -55,8 +55,12 @@ router.get('/compare/:id1/:id2', async (req: Request, res: Response) => {
       head_to_head: []
     });
   } catch (error: any) {
-    console.error('Comparison fetch error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch comparison data' });
+    if (error.response?.status === 401) {
+      res.status(402).json({ error: 'plan_required', message: 'Season stats require a BallDontLie Starter plan.' });
+    } else {
+      console.error('Comparison fetch error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch comparison data' });
+    }
   }
 });
 
@@ -78,8 +82,12 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
     const stats = response.data.data[0] || {};
     res.json(stats);
   } catch (error: any) {
-    console.error('Stats fetch error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch player stats' });
+    if (error.response?.status === 401) {
+      res.status(402).json({ error: 'plan_required', message: 'Season stats require a BallDontLie Starter plan.' });
+    } else {
+      console.error('Stats fetch error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch player stats' });
+    }
   }
 });
 

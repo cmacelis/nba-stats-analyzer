@@ -43,10 +43,10 @@ const GamePredictor: React.FC = () => {
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
 
-  const { data: rawStats1, isLoading: loading1 } = usePlayerStats(
+  const { data: rawStats1, isLoading: loading1, error: error1 } = usePlayerStats(
     player1?.id.toString() ?? '',
   );
-  const { data: rawStats2, isLoading: loading2 } = usePlayerStats(
+  const { data: rawStats2, isLoading: loading2, error: error2 } = usePlayerStats(
     player2?.id.toString() ?? '',
   );
 
@@ -105,13 +105,26 @@ const GamePredictor: React.FC = () => {
         </ToggleButtonGroup>
       </Box>
 
-      {/* No-stats warnings */}
-      {player1 && !loading1 && rawStats1 !== undefined && !hasStats1 && (
+      {/* API plan notice */}
+      {(error1 || error2) && (
+        <Alert severity="warning" icon={false} sx={{ mb: 2 }}>
+          <strong>Stats unavailable on the current API plan.</strong>
+          <br />
+          Season stats require a{' '}
+          <a href="https://www.balldontlie.io" target="_blank" rel="noreferrer">
+            BallDontLie Starter plan
+          </a>{' '}
+          ($9.99/mo). Player search still works above.
+        </Alert>
+      )}
+
+      {/* No-stats warnings (player found but no data for season) */}
+      {!error1 && player1 && !loading1 && rawStats1 !== undefined && !hasStats1 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           No 2024 season stats available for {player1.name}.
         </Alert>
       )}
-      {player2 && !loading2 && rawStats2 !== undefined && !hasStats2 && (
+      {!error2 && player2 && !loading2 && rawStats2 !== undefined && !hasStats2 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           No 2024 season stats available for {player2.name}.
         </Alert>

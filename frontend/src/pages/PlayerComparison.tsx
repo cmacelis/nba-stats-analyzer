@@ -97,7 +97,15 @@ const PlayerComparison: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Alert severity="error">Failed to load comparison data. Please try again.</Alert>
+        <Alert severity="warning" icon={false}>
+          <strong>Stats unavailable on the current API plan.</strong>
+          <br />
+          Season averages require a{' '}
+          <a href="https://www.balldontlie.io" target="_blank" rel="noreferrer">
+            BallDontLie Starter plan
+          </a>{' '}
+          ($9.99/mo). Player search still works above.
+        </Alert>
       ) : !hasData ? (
         <Alert severity="warning">
           No 2024–25 season stats found for one or both players.
