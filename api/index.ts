@@ -38,11 +38,11 @@ app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) =>
   try {
     const [stats1, stats2] = await Promise.all([
       axios.get(`${BDL_BASE}/season_averages`, {
-        params: { player_ids: [id1], season: 2024 },
+        params: { player_id: parseInt(id1), season: 2024 },
         headers: BDL_HEADERS,
       }),
       axios.get(`${BDL_BASE}/season_averages`, {
-        params: { player_ids: [id2], season: 2024 },
+        params: { player_id: parseInt(id2), season: 2024 },
         headers: BDL_HEADERS,
       }),
     ]);
@@ -66,7 +66,7 @@ app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
   const season = parseInt(req.query.season as string) || 2024;
   try {
     const response = await axios.get(`${BDL_BASE}/season_averages`, {
-      params: { player_ids: [req.params.id], season },
+      params: { player_id: parseInt(req.params.id), season },
       headers: BDL_HEADERS,
     });
     const stats = response.data.data[0] ?? {};

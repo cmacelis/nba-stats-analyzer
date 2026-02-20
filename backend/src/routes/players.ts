@@ -39,11 +39,11 @@ router.get('/compare/:id1/:id2', async (req: Request, res: Response) => {
     // Fetch both players' stats at the same time for performance
     const [stats1, stats2] = await Promise.all([
       axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_ids: [id1], season: 2024 },
+        params: { player_id: parseInt(id1), season: 2024 },
         headers: { 'Authorization': NBA_API_KEY }
       }),
       axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_ids: [id2], season: 2024 },
+        params: { player_id: parseInt(id2), season: 2024 },
         headers: { 'Authorization': NBA_API_KEY }
       })
     ]);
@@ -73,7 +73,7 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
   try {
     const response = await axios.get('https://api.balldontlie.io/v1/season_averages', {
       params: {
-        player_ids: [req.params.id],
+        player_id: parseInt(req.params.id),
         season
       },
       headers: { 'Authorization': NBA_API_KEY }
