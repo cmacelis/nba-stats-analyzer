@@ -16,7 +16,7 @@ export interface StatisticalValidation extends BaseValidationRule {
   calculateZScore: (value: number, mean: number, stdDev: number) => number;
 }
 
-export interface PlayStyleValidation extends StatisticalValidation {
+export interface PlayStyleValidation extends Omit<StatisticalValidation, 'type'> {
   type: 'playStyle';
   style: 'scorer' | 'playmaker' | 'defender' | 'allRounder';
   requiredMetrics: {
@@ -27,7 +27,7 @@ export interface PlayStyleValidation extends StatisticalValidation {
   styleScore: (stats: PlayerStats) => number;
 }
 
-export interface AdvancedPlayStyleValidation extends PlayStyleValidation {
+export interface AdvancedPlayStyleValidation extends Omit<PlayStyleValidation, 'type'> {
   type: 'advancedPlayStyle';
   playstyleMetrics: {
     primary: {
@@ -44,11 +44,11 @@ export interface AdvancedPlayStyleValidation extends PlayStyleValidation {
   roleSpecificBenchmarks: {
     role: 'scorer' | 'playmaker' | 'defender' | 'allRounder';
     minimumScore: number;
-    idealRatios: Record<keyof PlayerStats, number>;
+    idealRatios: Partial<Record<keyof PlayerStats, number>>;
   };
 }
 
-export interface HistoricalComparisonValidation extends StatisticalValidation {
+export interface HistoricalComparisonValidation extends Omit<StatisticalValidation, 'type'> {
   type: 'historicalComparison';
   era: 'modern' | 'post2000' | 'pre2000';
   similarityThreshold: number;
@@ -63,7 +63,7 @@ export interface HistoricalComparisonValidation extends StatisticalValidation {
   }[];
 }
 
-export interface ContextualPerformanceValidation extends StatisticalValidation {
+export interface ContextualPerformanceValidation extends Omit<StatisticalValidation, 'type'> {
   type: 'contextualPerformance';
   contexts: {
     type: 'home' | 'away' | 'backToBack' | 'playoffs';

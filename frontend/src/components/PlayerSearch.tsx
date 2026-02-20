@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Autocomplete, 
-  TextField, 
+import React, { useState } from 'react';
+import {
+  Autocomplete,
+  TextField,
   CircularProgress,
   Box,
   Typography,
   Pagination,
-  Paper,
-  List,
   ListItem,
   ListItemText,
-  Divider
 } from '@mui/material';
 import { useSearchPlayers } from '../hooks/useNbaData';
 import { useDebounce } from '../hooks/useDebounce';

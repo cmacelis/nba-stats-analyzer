@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 interface FetchOptions {
   maxRetries?: number;
   retryDelay?: number;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: unknown) => void;
   onError?: (error: Error) => void;
 }
 

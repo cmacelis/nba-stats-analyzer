@@ -1,6 +1,4 @@
-import { apiClient } from '../utils/apiClient';
 import { Player, PlayerStats, ComparisonData } from '../types/player';
-import { cacheService } from './cacheService';
 import { mockPlayers, mockPlayerStats, mockHeadToHead } from './mockData';
 import { validatePlayerStats } from '../utils/statsValidator';
 

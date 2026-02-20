@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { PlayerStats } from '../types/player';
-import { ValidationResult } from '../types/validation';
 import { validateStats } from '../utils/validationUtils';
 import { statValidations } from '../validations/statValidations';
 

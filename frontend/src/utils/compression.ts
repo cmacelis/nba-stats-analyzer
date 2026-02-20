@@ -1,8 +1,5 @@
 export class CompressionUtil {
-  private static textEncoder = new TextEncoder();
-  private static textDecoder = new TextDecoder();
-
-  static compress(data: any): string {
+  static compress(data: unknown): string {
     try {
       const jsonString = JSON.stringify(data);
       // Use base64 encoding for basic compression
@@ -13,7 +10,7 @@ export class CompressionUtil {
     }
   }
 
-  static decompress(compressedString: string): any {
+  static decompress(compressedString: string): unknown {
     try {
       // Decode base64 and URI components
       const jsonString = decodeURIComponent(atob(compressedString));
@@ -40,7 +37,7 @@ export class CompressionUtil {
   }
 
   // Helper method to estimate the size of data in bytes
-  static getSize(data: any): number {
+  static getSize(data: unknown): number {
     const str = typeof data === 'string' ? data : JSON.stringify(data);
     return new Blob([str]).size;
   }

@@ -1,16 +1,13 @@
 import React from 'react';
-import { Box, Paper, Typography, Tabs, Tab, useTheme, Tooltip, IconButton, Skeleton, Alert, Divider, Grid, List, ListItem, ListItemText, ToggleButtonGroup, ToggleButton, Pagination, Menu, MenuItem, ListItemIcon } from '@mui/material';
+import { Box, Paper, Typography, Tabs, Tab, useTheme, Tooltip, IconButton, Skeleton, Alert, Divider, Grid, List, ListItem, ListItemText, ToggleButtonGroup, ToggleButton, Pagination, Menu, MenuItem, ListItemIcon, Fade } from '@mui/material';
 import { Line } from 'react-chartjs-2';
-import { Player, SeasonStats } from '../types/player';
+import { Player } from '../types/player';
 import { mockPlayerHistory } from '../services/mockData';
 import { AnimatedElement } from './common/AnimatedElement';
-import { Info, Refresh, EmojiEvents, CompareArrows, FilterList, Sort, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Info, Refresh, EmojiEvents, CompareArrows, Sort, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { TransitionGroup } from 'react-transition-group';
-import { Collapse, Grow } from '@mui/material';
-import styled from '@emotion/styled';
-import { alpha } from '@mui/material/styles';
-import { Fade } from '@mui/material';
-import { Theme } from '@mui/material/styles';
+import { Collapse } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { keyframes } from '@emotion/react';
 import { ChartOptions } from 'chart.js';
 
@@ -19,21 +16,6 @@ interface SeasonStatsProps {
   player2: Player;
   isLoading: boolean;
   onRefresh?: () => void;
-}
-
-// First, let's update the type definition to include the missing properties
-interface SeasonStatsData {
-  season: string;
-  seasons: Array<{
-    season: string;
-    points: number;
-    assists: number;
-    rebounds: number;
-    steals: number;
-    blocks: number;
-    // Add other stats as needed
-    awards?: string[]; // Make awards optional
-  }>;
 }
 
 // Add stat configuration
@@ -68,9 +50,9 @@ export const fadeIn = keyframes`
 `;
 
 // Add styled component for animated list items
-const AnimatedListItem = styled(ListItem)((props: { theme: Theme }) => ({
-  transition: props.theme.transitions?.create(['transform', 'opacity'], {
-    duration: props.theme.transitions?.duration?.standard,
+const AnimatedListItem = styled(ListItem)(({ theme }) => ({
+  transition: theme.transitions?.create(['transform', 'opacity'], {
+    duration: theme.transitions?.duration?.standard,
   }),
   '&.entering': {
     opacity: 0,
@@ -84,21 +66,6 @@ const AnimatedListItem = styled(ListItem)((props: { theme: Theme }) => ({
     opacity: 0,
     transform: 'translateY(-20px)',
   },
-}));
-
-// Add styled component for the sort indicator
-const SortIndicator = styled(Box)((props: { theme: Theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: props.theme.spacing?.(0.5),
-  padding: props.theme.spacing?.(0.5, 1),
-  borderRadius: props.theme.shape?.borderRadius,
-  backgroundColor: alpha(props.theme.palette?.primary?.main || '#000', 0.1),
-  color: props.theme.palette?.primary?.main,
-  transition: props.theme.transitions?.create(['opacity', 'transform']),
-  '&:hover': {
-    backgroundColor: alpha(props.theme.palette?.primary?.main || '#000', 0.15),
-  }
 }));
 
 // Add interface for matchup data
@@ -130,27 +97,27 @@ export const SeasonStatsComponent: React.FC<SeasonStatsProps> = ({
   const history2 = mockPlayerHistory[player2.id];
 
   const chartData = {
-    labels: history1?.season.map(s => s.season).reverse(),
+    labels: history1?.seasons.map(s => s.season).reverse(),
     datasets: [
       {
         label: player1.name,
-        data: history1?.season.map(s => s[selectedStat as keyof SeasonStats]).reverse(),
+        data: history1?.seasons.map(s => s[selectedStat as keyof typeof s]).reverse(),
         borderColor: theme.palette.primary.main,
         backgroundColor: theme.palette.primary.main,
         fill: false,
         tension: 0.1,
-        pointStyle: history1?.season.map(s => s.awards?.length ? 'star' : 'circle'),
-        pointRadius: history1?.season.map(s => s.awards?.length ? 8 : 3)
+        pointStyle: history1?.seasons.map(s => s.awards?.length ? 'star' : 'circle'),
+        pointRadius: history1?.seasons.map(s => s.awards?.length ? 8 : 3)
       },
       {
         label: player2.name,
-        data: history2?.season.map(s => s[selectedStat as keyof SeasonStats]).reverse(),
+        data: history2?.seasons.map(s => s[selectedStat as keyof typeof s]).reverse(),
         borderColor: theme.palette.secondary.main,
         backgroundColor: theme.palette.secondary.main,
         fill: false,
         tension: 0.1,
-        pointStyle: history2?.season.map(s => s.awards?.length ? 'star' : 'circle'),
-        pointRadius: history2?.season.map(s => s.awards?.length ? 8 : 3)
+        pointStyle: history2?.seasons.map(s => s.awards?.length ? 'star' : 'circle'),
+        pointRadius: history2?.seasons.map(s => s.awards?.length ? 8 : 3)
       }
     ]
   };
@@ -169,12 +136,12 @@ export const SeasonStatsComponent: React.FC<SeasonStatsProps> = ({
             const datasetIndex = context.datasetIndex;
             const index = context.dataIndex;
             const value = context.raw as number;
-            const playerName = data.datasets[datasetIndex].label;
-            
+            const playerName = chartData.datasets[datasetIndex].label;
+
             // Get the season data for this point
-            const season = datasetIndex === 0 
-              ? history1?.season[history1.season.length - 1 - index]
-              : history2?.season[history2.season.length - 1 - index];
+            const season = datasetIndex === 0
+              ? history1?.seasons[history1.seasons.length - 1 - index]
+              : history2?.seasons[history2.seasons.length - 1 - index];
             
             let label = `${playerName}: ${value.toFixed(1)}`;
             if (season?.awards?.length) {
@@ -195,16 +162,6 @@ export const SeasonStatsComponent: React.FC<SeasonStatsProps> = ({
           callback: (value) => (value as number).toFixed(1)
         }
       }
-    }
-  };
-
-  // Add filter handler
-  const handleFilterChange = (
-    _event: React.MouseEvent<HTMLElement>,
-    newFilter: MatchupFilter | null
-  ) => {
-    if (newFilter !== null) {
-      setMatchupFilter(newFilter);
     }
   };
 

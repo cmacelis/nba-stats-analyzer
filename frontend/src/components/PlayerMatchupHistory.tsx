@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Theme } from '@mui/material/styles';
 import {
   Box,
   Paper,
@@ -8,11 +9,9 @@ import {
   IconButton,
   ToggleButtonGroup,
   ToggleButton,
-  Skeleton,
   Button,
   CircularProgress,
   Collapse,
-  Fade,
 } from '@mui/material';
 import {
   Line,
@@ -29,8 +28,6 @@ import { Info, EmojiEvents, Refresh, ExpandMore, ExpandLess, Timeline, CompareAr
 import { Season } from './SeasonSelector';
 import { PlayerStats } from '../types/player';
 import { keyframes as muiKeyframes } from '@mui/system';
-import { alpha, styled } from '@mui/material/styles';
-import { StatTrend as PlayerStatTrend } from '../types/player';
 
 interface MatchupGame {
   date: string;
@@ -56,8 +53,6 @@ const INITIAL_LOAD_COUNT = 5;
 const LOAD_MORE_COUNT = 5;
 const TRANSITION_DURATION = 300;
 const STAGGER_DELAY = 200;
-const CACHE_VERSION = 1;
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
 // Add advanced metrics calculation helpers
 const calculateBPM = (stats: PlayerStats) => {
@@ -220,7 +215,7 @@ const calculatePerformanceProjection = (stats: Record<Season, PlayerStats> | und
     };
   }
 
-  const values = seasons.map(season => stats[season as Season][stat]);
+  const values = seasons.map(season => stats[season as Season][stat]).filter((v): v is number => v !== undefined);
   const { nextValue, trend, confidence } = calculateTrendline(values);
   
   // Add age-based adjustment
@@ -243,33 +238,33 @@ const predictiveStats = [
     color: 'primary',
     format: '0.1',
     category: 'predictive',
-    calculate: (stats: PlayerStats, allStats: Record<Season, PlayerStats>) => {
+    calculate: (_stats: PlayerStats, allStats?: Record<Season, PlayerStats>) => {
       const projection = calculatePerformanceProjection(allStats, 'playerEfficiencyRating');
       return projection.projectedValue;
     },
     description: 'Projected Player Efficiency Rating for next season'
   },
-  { 
+  {
     key: 'projectedPoints',
     label: 'Proj. PTS',
     color: 'secondary',
     format: '0.1',
     category: 'predictive',
-    calculate: (stats: PlayerStats, allStats: Record<Season, PlayerStats>) => {
+    calculate: (_stats: PlayerStats, allStats?: Record<Season, PlayerStats>) => {
       const projection = calculatePerformanceProjection(allStats, 'points');
       return projection.projectedValue;
     },
     description: 'Projected Points per Game for next season'
   },
-  { 
+  {
     key: 'improvementPotential',
     label: 'Potential',
     color: 'success',
     format: '0.1',
     suffix: '%',
     category: 'predictive',
-    calculate: (stats: PlayerStats, allStats: Record<Season, PlayerStats>) => {
-      const recentStats = Object.values(allStats).slice(-3);
+    calculate: (_stats: PlayerStats, allStats?: Record<Season, PlayerStats>) => {
+      const recentStats = Object.values(allStats ?? {}).slice(-3);
       const trends = [
         calculateTrendline(recentStats.map(s => s.points)),
         calculateTrendline(recentStats.map(s => s.assists)),
@@ -493,15 +488,15 @@ const trendStats: TrendStat[] = [
     label: 'Impact',
     category: 'advanced',
     calculate: (stats: PlayerStats) => {
-      const usage = stats.usageRate;
-      const efficiency = stats.trueShootingPercentage;
+      const usage = stats.usageRate ?? 0;
+      const efficiency = stats.trueShootingPercentage ?? 0;
       const playmaking = (stats.assists * 2 - stats.turnovers) / stats.minutesPerGame;
       const defense = (stats.steals + stats.blocks - stats.personalFouls) / stats.minutesPerGame;
-      
+
       return (
-        (usage * 0.3) + 
-        (efficiency * 0.3) + 
-        (playmaking * 0.2) + 
+        (usage * 0.3) +
+        (efficiency * 0.3) +
+        (playmaking * 0.2) +
         (defense * 0.2)
       );
     },
@@ -536,211 +531,12 @@ const statCategories: StatCategory[] = [
   { id: 'scoring', label: 'Scoring', color: 'success' }
 ];
 
-// Add type-safe trend stats
-const advancedTrendStats: TrendStat[] = [
-  { 
-    key: 'playerEfficiencyRating',
-    label: 'PER',
-    description: 'Player Efficiency Rating - A measure of per-minute production',
-    category: 'advanced',
-    calculate: (stats: PlayerStats) => stats.playerEfficiencyRating || 0
-  },
-  // ... other trend stats
-];
 
-// Add type-safe error handling
-class StatsError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = 'StatsError';
-  }
-}
 
-// Add validation function with proper types
-const validateStats = (stats: Record<Season, PlayerStats>): void => {
-  if (!stats) {
-    throw new StatsError('Stats data is missing', 'MISSING_DATA');
-  }
 
-  Object.entries(stats).forEach(([season, seasonStats]) => {
-    if (!seasonStats) {
-      throw new StatsError(
-        `Missing data for season ${season}`,
-        'INVALID_SEASON',
-        { season }
-      );
-    }
 
-    // Validate required fields
-    const requiredFields: (keyof PlayerStats)[] = [
-      'points',
-      'assists',
-      'rebounds',
-      'playerEfficiencyRating'
-    ];
 
-    requiredFields.forEach(field => {
-      if (typeof seasonStats[field] !== 'number') {
-        throw new StatsError(
-          `Invalid ${field} value for season ${season}`,
-          'INVALID_FIELD',
-          { season, field }
-        );
-      }
-    });
-  });
-};
 
-// Add cache helpers at the top
-const cacheKey = (player1: string, player2: string, stat: string) => 
-  `player-comparison-${player1}-${player2}-${stat}-v${CACHE_VERSION}`;
-
-const getCache = <T,>(key: string): T | null => {
-  try {
-    const cached = localStorage.getItem(key);
-    if (!cached) return null;
-
-    const entry: CacheEntry<T> = JSON.parse(cached);
-    if (entry.version !== CACHE_VERSION) return null;
-    if (Date.now() - entry.timestamp > CACHE_EXPIRY) return null;
-
-    return entry.data;
-  } catch {
-    return null;
-  }
-};
-
-const setCache = <T,>(key: string, data: T) => {
-  try {
-    const entry: CacheEntry<T> = {
-      version: CACHE_VERSION,
-      timestamp: Date.now(),
-      data
-    };
-    localStorage.setItem(key, JSON.stringify(entry));
-  } catch {
-    // Ignore cache errors
-  }
-};
-
-// Add prefetch and cache helpers
-const PREFETCH_THRESHOLD = 3; // Prefetch when within 3 seasons of current view
-const CACHE_BATCH_SIZE = 10;
-
-interface PrefetchCache {
-  [key: string]: {
-    promise: Promise<any[]>;
-    data: any[] | null;
-  };
-}
-
-const prefetchCache: PrefetchCache = {};
-
-const prefetchData = async (
-  player1: string, 
-  player2: string, 
-  stat: string, 
-  startSeason: number, 
-  endSeason: number
-) => {
-  const cacheId = `${player1}-${player2}-${stat}-${startSeason}-${endSeason}`;
-  
-  if (prefetchCache[cacheId]) {
-    return prefetchCache[cacheId].data || prefetchCache[cacheId].promise;
-  }
-
-  const promise = new Promise<any[]>(async (resolve) => {
-    // Simulate network request
-    await new Promise(r => setTimeout(r, 100));
-    const data = await processSeasonBatch(startSeason, endSeason);
-    prefetchCache[cacheId].data = data;
-    resolve(data);
-  });
-
-  prefetchCache[cacheId] = { promise, data: null };
-  return promise;
-};
-
-const processSeasonBatch = async (startSeason: number, endSeason: number) => {
-  // Process a batch of seasons
-  return []; // Placeholder
-};
-
-// Add these type definitions at the top
-interface AdvancedMetrics {
-  bpm: number;
-  vorp: number;
-  gameScore: number;
-  pie: number;
-  netRating: number;
-  scoreCreation: number;
-  pipm: number;
-  lineupAdjustedPlusMinus: number;
-  scaledEfficiency: number;
-}
-
-interface StatTrend {
-  trend: 'improving' | 'declining' | 'stable';
-  confidence: number;
-  nextValue: number;
-}
-
-interface StatAnalysis {
-  currentValue: number;
-  historicalAverage: number;
-  trend: StatTrend;
-  percentile: number;
-  isCareerHigh: boolean;
-}
-
-// Add type-safe stat calculation functions
-const calculateAdvancedMetrics = (stats: PlayerStats): AdvancedMetrics => {
-  try {
-    return {
-      bpm: calculateBPM(stats),
-      vorp: calculateVORP(stats),
-      gameScore: calculateGameScore(stats),
-      pie: calculatePIE(stats),
-      netRating: calculateNetRating(stats),
-      scoreCreation: calculateScoreCreation(stats),
-      pipm: calculatePIPM(stats),
-      lineupAdjustedPlusMinus: calculateLineupAdjustedPlusMinus(stats),
-      scaledEfficiency: calculateScaledEfficiency(stats)
-    };
-  } catch (error) {
-    console.error('Error calculating advanced metrics:', error);
-    throw new Error('Failed to calculate advanced metrics');
-  }
-};
-
-// Add type-safe trend analysis
-const analyzeStatTrend = (
-  statHistory: number[],
-  currentValue: number
-): StatAnalysis => {
-  try {
-    const historicalAverage = statHistory.reduce((a, b) => a + b, 0) / statHistory.length;
-    const trend = calculateTrendline(statHistory);
-    const sortedStats = [...statHistory].sort((a, b) => a - b);
-    const percentile = sortedStats.findIndex(v => v >= currentValue) / sortedStats.length * 100;
-    const isCareerHigh = currentValue === Math.max(...statHistory);
-
-    return {
-      currentValue,
-      historicalAverage,
-      trend,
-      percentile,
-      isCareerHigh
-    };
-  } catch (error) {
-    console.error('Error analyzing stat trend:', error);
-    throw new Error('Failed to analyze stat trend');
-  }
-};
 
 // Add type-safe error boundary
 class PlayerStatsErrorBoundary extends React.Component<
@@ -834,7 +630,7 @@ const RippleEffect = () => (
   />
 );
 
-// Update TransitionBox component
+// TransitionBox with explicit display name
 const TransitionBox = React.forwardRef<
   HTMLDivElement,
   { 
@@ -870,6 +666,8 @@ const TransitionBox = React.forwardRef<
     {props.hover && <RippleEffect />}
   </Box>
 ));
+
+TransitionBox.displayName = 'TransitionBox';
 
 // Update ChartLoadingOverlay component
 const ChartLoadingOverlay: React.FC<ChartLoadingOverlayProps> = ({ isLoading }) => (
@@ -989,30 +787,20 @@ const useScrollAnimation = (threshold = 0.2) => {
 // Add type for the selected stat
 type SelectedStat = keyof PlayerStats;
 
-// Add chart component types
-interface OptimizedChartProps {
-  data: any[];
-  player1Name: string;
-  player2Name: string;
-  selectedStat: SelectedStat;
-  theme: any;
-}
-
 // Add optimized chart component
 const OptimizedChart: React.FC<{
   data: TrendDataPoint[];
   player1Name: string;
   player2Name: string;
   selectedStat: string;
-  theme: any;
-}> = ({ data, player1Name, player2Name, selectedStat, theme }) => {
+  theme: Theme;
+}> = ({ data, player1Name, player2Name, theme }) => {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
         <YAxis />
-        <Tooltip />
         <Legend />
         <Line
           type="monotone"
@@ -1054,7 +842,7 @@ const OptimizedChart: React.FC<{
 OptimizedChart.displayName = 'OptimizedChart';
 
 // Update section container with scroll animation
-const AnimatedSectionContainer = ({ children, ...props }: any) => {
+const AnimatedSectionContainer: React.FC<SectionContainerProps> = ({ children, ...props }) => {
   const [ref, isVisible] = useScrollAnimation();
 
   return (
@@ -1073,54 +861,8 @@ const AnimatedSectionContainer = ({ children, ...props }: any) => {
   );
 };
 
-// Define the CustomTooltip component
-const CustomTooltip: React.FC<{
-  player1Name: string;
-  player2Name: string;
-  selectedStat: string;
-  selectedCategory: string;
-  stats1: Record<Season, PlayerStats>;
-  stats2: Record<Season, PlayerStats>;
-}> = ({ player1Name, player2Name, selectedStat, selectedCategory, stats1, stats2 }) => {
-  return (
-    <Box sx={{ p: 1 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        {selectedStat} Comparison
-      </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            borderRadius: '50%',
-            bgcolor: 'primary.main',
-            mr: 1,
-          }}
-        />
-        <Typography variant="body2">{player1Name}</Typography>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            borderRadius: '50%',
-            bgcolor: 'secondary.main',
-            mr: 1,
-          }}
-        />
-        <Typography variant="body2">{player2Name}</Typography>
-      </Box>
-    </Box>
-  );
-};
 
 // Add these interfaces at the top of the file
-interface CacheEntry<T> {
-  version: number;
-  timestamp: number;
-  data: T;
-}
 
 interface ChartLoadingOverlayProps {
   isLoading: boolean;
@@ -1139,17 +881,6 @@ interface SectionContainerProps {
   isActive?: boolean;
 }
 
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-  player1Name: string;
-  player2Name: string;
-  stats1: Record<Season, PlayerStats>;
-  stats2: Record<Season, PlayerStats>;
-  selectedStat: SelectedStat;
-  selectedCategory: string;
-}
 
 // Add SectionContainer component
 const SectionContainer: React.FC<SectionContainerProps> = ({
@@ -1264,9 +995,6 @@ interface TrendDataPoint {
   [key: string]: number | Season;
 }
 
-interface LoadMoreRef {
-  current: HTMLDivElement | null;
-}
 
 // Add error types
 interface DataError extends Error {
@@ -1306,302 +1034,34 @@ const useDataLoader = (callback: () => Promise<void>): LoadingState => {
   return { isLoading, error, retry };
 };
 
-// Add these validation types
-interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
 
-// Add these validation types at the top
-interface ValidationOptions {
-  requiredFields?: (keyof PlayerStats)[];
-  minGamesPlayed?: number;
-  validateTrends?: boolean;
-}
 
-// Add validation types
-interface StatValidationRule {
-  min?: number;
-  max?: number;
-  required?: boolean;
-  validator?: (value: number) => boolean;
-  message: string;
-}
 
-type StatValidationRules = {
-  [key in keyof PlayerStats]?: StatValidationRule;
-};
 
-// Add validation rules
-const statValidationRules: StatValidationRules = {
-  points: {
-    min: 0,
-    max: 100,
-    required: true,
-    validator: (value: number) => !isNaN(value) && isFinite(value),
-    message: 'Points must be between 0 and 100'
-  },
-  fieldGoalPercentage: {
-    min: 0,
-    max: 100,
-    required: true,
-    validator: (value: number) => !isNaN(value) && isFinite(value),
-    message: 'Field goal percentage must be between 0 and 100'
-  },
-  playerEfficiencyRating: {
-    min: -30,
-    max: 40,
-    required: true,
-    validator: (value: number) => !isNaN(value) && isFinite(value),
-    message: 'PER must be a valid number between -30 and 40'
-  },
-  minutesPerGame: {
-    min: 0,
-    max: 48,
-    required: true,
-    validator: (value: number) => !isNaN(value) && isFinite(value),
-    message: 'Minutes per game must be between 0 and 48'
-  },
-  gamesPlayed: {
-    min: 0,
-    max: 82,
-    required: true,
-    validator: (value: number) => !isNaN(value) && isFinite(value),
-    message: 'Games played must be between 0 and 82'
-  }
-};
 
-// Add validation helper
-const validateStatValue = (
-  stat: keyof PlayerStats,
-  value: number,
-  rules?: StatValidationRule
-): { isValid: boolean; error?: string } => {
-  if (!rules) return { isValid: true };
 
-  if (rules.required && (value === undefined || value === null)) {
-    return { isValid: false, error: `${stat} is required` };
-  }
 
-  if (rules.min !== undefined && value < rules.min) {
-    return { isValid: false, error: rules.message };
-  }
 
-  if (rules.max !== undefined && value > rules.max) {
-    return { isValid: false, error: rules.message };
-  }
-
-  if (rules.validator && !rules.validator(value)) {
-    return { isValid: false, error: rules.message };
-  }
-
-  return { isValid: true };
-};
-
-// Add type-safe validation function
-const validatePlayerStats = (
-  stats: Record<Season, PlayerStats>
-): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  Object.entries(stats).forEach(([season, seasonStats]) => {
-    Object.entries(statValidationRules).forEach(([stat, rules]) => {
-      const value = seasonStats[stat as keyof PlayerStats];
-      const validation = validateStatValue(stat as keyof PlayerStats, value, rules);
-      
-      if (!validation.isValid && validation.error) {
-        errors.push(`${season} - ${validation.error}`);
-      }
-    });
-  });
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-// Add more specific validation types
-interface RangeValidation {
-  min: number;
-  max: number;
-  message: string;
-}
-
-interface PercentageValidation extends RangeValidation {
-  type: 'percentage';
-}
-
-interface CountValidation extends RangeValidation {
-  type: 'count';
-}
-
-interface RatioValidation extends RangeValidation {
-  type: 'ratio';
-  allowZeroDenominator?: boolean;
-}
-
-type StatValidationType = 
-  | { type: 'percentage' } 
-  | { type: 'count' } 
-  | { type: 'ratio' }
-  | { type: 'advanced' };
-
-// Enhance validation rules
-const enhancedValidationRules: StatValidationRules = {
-  ...statValidationRules,
-  assistToTurnover: {
-    min: 0,
-    max: 20,
-    required: true,
-    validator: (value: number) => value >= 0 && isFinite(value),
-    message: 'Assist to turnover ratio must be a positive number'
-  },
-  reboundPercentage: {
-    min: 0,
-    max: 100,
-    required: true,
-    validator: (value: number) => value >= 0 && value <= 100,
-    message: 'Rebound percentage must be between 0 and 100'
-  },
-  usageRate: {
-    min: 0,
-    max: 100,
-    required: true,
-    validator: (value: number) => value >= 0 && value <= 100,
-    message: 'Usage rate must be between 0 and 100'
-  },
-  defensiveRating: {
-    min: 50,
-    max: 150,
-    required: true,
-    validator: (value: number) => value >= 50 && value <= 150,
-    message: 'Defensive rating must be between 50 and 150'
-  },
-  plusMinus: {
-    min: -50,
-    max: 50,
-    required: true,
-    validator: (value: number) => value >= -50 && value <= 50,
-    message: 'Plus/minus must be between -50 and 50'
-  }
-};
-
-// Add validation for derived stats
-const validateDerivedStats = (stats: PlayerStats): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  // Validate field goal percentage calculation
-  const calculatedFGP = (stats.fieldGoalsMade / stats.fieldGoalsAttempted) * 100;
-  if (Math.abs(calculatedFGP - stats.fieldGoalPercentage) > 0.1) {
-    errors.push('Field goal percentage does not match attempts and makes');
-  }
-
-  // Validate three point percentage calculation
-  const calculated3PP = (stats.threePointersMade / stats.threePointersAttempted) * 100;
-  if (Math.abs(calculated3PP - stats.threePointPercentage) > 0.1) {
-    errors.push('Three point percentage does not match attempts and makes');
-  }
-
-  // Validate minutes played
-  if (stats.minutesPerGame * stats.gamesPlayed > 3936) { // 82 games * 48 minutes
-    errors.push('Total minutes played exceeds maximum possible');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-// Add the missing calculateStatCorrelation function
-const calculateStatCorrelation = (values1: number[], values2: number[]): number => {
-  if (values1.length !== values2.length || values1.length < 2) {
-    return 0;
-  }
-
-  // Calculate means
-  const mean1 = values1.reduce((sum, val) => sum + val, 0) / values1.length;
-  const mean2 = values2.reduce((sum, val) => sum + val, 0) / values2.length;
-
-  // Calculate covariance and variances
-  let covariance = 0;
-  let variance1 = 0;
-  let variance2 = 0;
-
-  for (let i = 0; i < values1.length; i++) {
-    const diff1 = values1[i] - mean1;
-    const diff2 = values2[i] - mean2;
-    covariance += diff1 * diff2;
-    variance1 += diff1 * diff1;
-    variance2 += diff2 * diff2;
-  }
-
-  // Avoid division by zero
-  if (variance1 === 0 || variance2 === 0) {
-    return 0;
-  }
-
-  return covariance / Math.sqrt(variance1 * variance2);
-};
-
-// Create a helper function to create a default stats object
-const createDefaultStatsRecord = (): Record<string, PlayerStats> => {
-  const defaultStats: PlayerStats = {
-    points: 0,
-    assists: 0,
-    rebounds: 0,
-    steals: 0,
-    blocks: 0,
-    turnovers: 0,
-    fieldGoalPercentage: 0,
-    threePointPercentage: 0,
-    freeThrowPercentage: 0,
-    gamesPlayed: 0,
-    minutesPerGame: 0,
-    plusMinus: 0,
-    playerEfficiencyRating: 0,
-    fieldGoalsMade: 0,
-    fieldGoalsAttempted: 0,
-    freeThrowsMade: 0,
-    freeThrowsAttempted: 0,
-    offensiveRebounds: 0,
-    defensiveRebounds: 0,
-    personalFouls: 0,
-    defensiveRating: 0
-  };
-  
-  return {
-    "2023-24": defaultStats,
-    "2022-23": defaultStats,
-    "2021-22": defaultStats,
-    "2020-21": defaultStats,
-    "2019-20": defaultStats,
-    "2018-19": defaultStats
-  };
-};
 
 // Main component with proper initialization
 const PlayerMatchupHistory: React.FC<PlayerMatchupHistoryProps> = ({
   player1Name,
   player2Name,
   matchupHistory,
-  stats1,
-  stats2,
 }) => {
   // All hooks at the top level
   const theme = useTheme();
   const [selectedStat, setSelectedStat] = useState<SelectedStat>('playerEfficiencyRating');
   const [selectedCategory, setSelectedCategory] = useState('basic');
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible] = useState(false);
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [isMatchupsLoading, setIsMatchupsLoading] = useState(true);
   const [visibleSeasons, setVisibleSeasons] = useState(INITIAL_LOAD_COUNT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [trendData] = useState<TrendDataPoint[]>([]);
 
   // Consolidate loading and error states
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Rename the destructured error to dataError to avoid conflict
@@ -1631,21 +1091,6 @@ const PlayerMatchupHistory: React.FC<PlayerMatchupHistoryProps> = ({
       );
     }
   }, [trendData, player1Name, player2Name, selectedStat, theme, retry]);
-
-  const trendStats: TrendStat[] = [
-    { 
-      key: 'playerEfficiencyRating',
-      label: 'PER',
-      calculate: (stats: ExtendedPlayerStats) => {
-        const usage = stats.usageRate;
-        const efficiency = stats.trueShootingPercentage;
-        const playmaking = (stats.assists * 2 - stats.turnovers) / stats.minutesPerGame;
-        const defense = (stats.steals + stats.blocks - stats.personalFouls) / stats.minutesPerGame;
-        return (usage * efficiency * 0.4 + playmaking * 0.3 + defense * 0.3) * 100;
-      }
-    },
-    // ... other trend stats
-  ];
 
   // Add the handleLoadMore function
   const handleLoadMore = () => {
@@ -1853,8 +1298,8 @@ export default withErrorHandling(PlayerMatchupHistoryWithErrorBoundary, (error) 
 interface TrendStat {
   key: string;
   label: string;
-  category: string;
-  format: string;
+  category?: string;
+  format?: string;
   color?: string;
   suffix?: string;
   description?: string;
@@ -1867,25 +1312,22 @@ interface StatCategory {
   color: string;
 }
 
-// Define the ExtendedPlayerStats interface
-interface ExtendedPlayerStats extends PlayerStats {
-  usageRate: number;
-  trueShootingPercentage: number;
-}
 
 // Fix the withErrorHandling HOC
-const withErrorHandling = (Component: React.ComponentType<any>, errorHandler: (error: Error) => void) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function withErrorHandling(Component: React.ComponentType<any>, errorHandler: (error: Error) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (props: any) => {
     try {
       return <Component {...props} />;
     } catch (error) {
       errorHandler(error as Error);
       return (
-        <ErrorMessage 
-          error="An unexpected error occurred" 
-          onRetry={() => window.location.reload()} 
+        <ErrorMessage
+          error="An unexpected error occurred"
+          onRetry={() => window.location.reload()}
         />
       );
     }
   };
-}; 
+}

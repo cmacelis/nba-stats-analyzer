@@ -10,13 +10,12 @@ interface StatsFormatterProps {
 }
 
 export const StatsFormatter: React.FC<StatsFormatterProps> = ({
-  stat,
   value,
   isPercentage = false,
   precision = 1
 }) => {
-  const formattedValue = isPercentage 
-    ? formatPercentage(value)
+  const formattedValue = isPercentage
+    ? formatPercentage(value ?? 0)
     : formatStat(value, precision);
 
   return (

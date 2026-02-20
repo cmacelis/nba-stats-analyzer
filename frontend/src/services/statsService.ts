@@ -1,10 +1,5 @@
 import { apiClient } from '../utils/apiClient';
-import { Player, PlayerStats, ComparisonData } from '../types/player';
-
-interface StatsResponse {
-  stats: PlayerStats;
-  lastUpdated: string;
-}
+import { PlayerStats, ComparisonData } from '../types/player';
 
 export async function getPlayerStats(playerId: number): Promise<PlayerStats> {
   const { data } = await apiClient.get(`/api/players/${playerId}/stats`);

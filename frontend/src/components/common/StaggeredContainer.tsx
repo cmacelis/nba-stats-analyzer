@@ -16,7 +16,7 @@ export const StaggeredContainer: React.FC<StaggeredContainerProps> = ({
     <Box {...props}>
       {Children.map(children, (child, index) => {
         if (isValidElement(child)) {
-          return cloneElement(child as ReactElement<any>, {
+          return cloneElement(child as ReactElement<Record<string, unknown>>, {
             sx: {
               ...child.props.sx,
               animationDelay: getStaggerDelay(index, staggerDelay)

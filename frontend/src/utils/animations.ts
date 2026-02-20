@@ -157,3 +157,7 @@ export const shimmer = keyframes`
     background-position: 1000px 0;
   }
 `;
+
+export const getStaggerDelay = (index: number, baseDelay: number = 100): string => {
+  return `${index * baseDelay}ms`;
+};

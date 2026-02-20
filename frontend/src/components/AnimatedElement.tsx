@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, BoxProps } from '@mui/material';
 import { optimizedAnimations } from '../utils/animations';
-import { useInView } from 'react-intersection-observer';
 
 interface AnimatedElementProps extends BoxProps {
   children: React.ReactNode;
@@ -23,26 +22,35 @@ export const AnimatedElement: React.FC<AnimatedElementProps> = ({
   disabled = false,
   ...boxProps
 }) => {
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const { ref, inView } = useInView({
-    threshold,
-    triggerOnce: once,
-  });
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (inView && !hasAnimated) {
-      setHasAnimated(true);
+    if (disabled) {
+      setIsVisible(true);
+      return;
     }
-  }, [inView, hasAnimated]);
 
-  const shouldAnimate = !disabled && (inView || hasAnimated);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          if (once) observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [disabled, once, threshold]);
 
   return (
     <Box
       ref={ref}
       sx={{
-        opacity: shouldAnimate ? 1 : 0,
-        animation: shouldAnimate
+        opacity: isVisible ? 1 : 0,
+        animation: isVisible
           ? `${optimizedAnimations[animation]} ${duration}ms ${delay}ms forwards ease-out`
           : 'none',
         ...boxProps.sx,
@@ -52,4 +60,4 @@ export const AnimatedElement: React.FC<AnimatedElementProps> = ({
       {children}
     </Box>
   );
-}; 
+};

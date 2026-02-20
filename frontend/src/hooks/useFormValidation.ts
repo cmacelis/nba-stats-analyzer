@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 type ValidationRule<T> = (value: T) => string | null;
 
-export function useFormValidation<T extends Record<string, any>>(
+export function useFormValidation<T extends Record<string, unknown>>(
   initialValues: T,
   validationRules: {
     [K in keyof T]?: ValidationRule<T[K]>;
@@ -12,7 +12,7 @@ export function useFormValidation<T extends Record<string, any>>(
   const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});
   const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({});
 
-  const handleChange = useCallback((field: keyof T, value: any) => {
+  const handleChange = useCallback((field: keyof T, value: T[keyof T]) => {
     setValues(prev => ({ ...prev, [field]: value }));
     
     // Validate field if it's been touched

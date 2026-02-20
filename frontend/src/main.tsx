@@ -48,7 +48,6 @@ const router = createBrowserRouter([
   }
 ], {
   future: {
-    v7_startTransition: true,
     v7_relativeSplatPath: true
   }
 });
@@ -71,7 +70,7 @@ register({
   onSuccess: (registration) => {
     console.log('Service Worker registered successfully:', registration);
   },
-  onUpdate: (registration) => {
+  onUpdate: (_registration) => {
     console.log('New version available. Please refresh the page.');
     // You could show a notification to the user here
   },

@@ -38,7 +38,7 @@ export function VirtualizedList<T>({
   return (
     <Box sx={{ height, width: '100%' }}>
       <AutoSizer>
-        {({ width, height: autoHeight }: AutoSizerProps) => (
+        {({ width }: AutoSizerProps) => (
           <FixedSizeList
             height={height}
             width={width}

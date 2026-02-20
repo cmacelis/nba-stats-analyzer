@@ -1,5 +1,5 @@
 interface ExtendableEvent extends Event {
-  waitUntil(fn: Promise<any>): void;
+  waitUntil(fn: Promise<unknown>): void;
 }
 
 interface FetchEvent extends ExtendableEvent {
@@ -18,4 +18,4 @@ interface ServiceWorkerGlobalScope {
   addEventListener(type: 'sync', listener: (event: SyncEvent) => void): void;
 }
 
-declare var self: ServiceWorkerGlobalScope; 
+declare const self: ServiceWorkerGlobalScope;

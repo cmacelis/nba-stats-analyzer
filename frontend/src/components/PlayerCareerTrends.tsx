@@ -17,7 +17,8 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TooltipItem
 } from 'chart.js';
 
 // Register ChartJS components
@@ -100,8 +101,8 @@ const PlayerCareerTrends: React.FC<PlayerCareerTrendsProps> = ({
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
-            const value = context.raw;
+          label: function(context: TooltipItem<'line'>) {
+            const value = context.raw as number;
             const statName = selectedStat;
             
             if (statName === 'fieldGoalPercentage' || statName === 'threePointPercentage') {

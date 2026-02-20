@@ -49,17 +49,15 @@ export const AnimatedElement: React.FC<AnimatedElementProps> = ({
     return () => observer.disconnect();
   }, [threshold, shouldAnimate]);
 
-  const { initial, animate, transition } = optimizedAnimations[animation];
+  const keyframe = optimizedAnimations[animation];
 
   return (
     <Box
       ref={elementRef}
       sx={{
         ...(shouldAnimate ? {
-          ...initial,
-          ...(isVisible && animate),
-          transition,
-          transitionDelay: `${delay}ms`,
+          opacity: isVisible ? 1 : 0,
+          animation: isVisible ? `${keyframe} 0.3s ease-out ${delay}ms forwards` : 'none',
           willChange: 'transform, opacity',
         } : {}),
         ...sx

@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Box,
   Paper,
   Typography,
   List,
@@ -10,7 +9,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { Delete, CompareArrows } from '@mui/icons-material';
+import { Delete } from '@mui/icons-material';
 import { useFavorites } from '../hooks/useFavorites';
 import { useSound } from '../contexts/SoundContext';
 import { TransitionComponent } from './common/TransitionComponent';

@@ -3,7 +3,7 @@ import { Player } from '../types/player';
 import { searchPlayers } from '../services/playerService';
 import { createCacheManager } from '../utils/cacheManager';
 import { useOfflineDetection } from './useOfflineDetection';
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 
 interface UsePlayerSearchCache {
   searchQuery: string;
@@ -56,23 +56,13 @@ export function usePlayerSearchCache({
     },
   });
 
-  const fetchPlayers = useCallback(async () => {
-    if (isOffline) {
-      // Use cached data when offline
-      const cachedData = queryClient.getQueryData<Player[]>(['playerSearch', searchQuery]);
-      if (!cachedData) {
-        throw new Error('No cached data available offline');
-      }
-      return cachedData;
-    }
-    return searchPlayers(searchQuery);
-  }, [isOffline, searchQuery, queryClient]);
-
   // Restore cache on mount
   useEffect(() => {
     if (persistCache) {
       cacheManager.restoreCache();
     }
+    // cacheManager is recreated each render; intentionally run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist cache on unmount
@@ -82,6 +72,8 @@ export function usePlayerSearchCache({
         cacheManager.persistCache();
       };
     }
+    // cacheManager is recreated each render; intentionally run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Clear stale data periodically
@@ -91,6 +83,8 @@ export function usePlayerSearchCache({
     }, 1000 * 60 * 15); // Every 15 minutes
 
     return () => clearInterval(interval);
+    // cacheManager is recreated each render; intentionally run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return useQuery({
@@ -112,13 +106,12 @@ export function usePlayerSearchCache({
           data.forEach((player: Player) => {
             queryClient.setQueryData(
               ['player', player.id],
-              player,
-              { staleTime }
+              player
             );
           });
         }
       },
-      onError: (error: Error) => {
+      onError: (_error: Error) => {
         if (!isOffline && invalidateOnError) {
           cacheManager.invalidateQueries(['playerSearch', searchQuery]);
         }

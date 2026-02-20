@@ -35,7 +35,7 @@ export const StatTooltip: React.FC<StatTooltipProps> = ({
         </Box>
       }
     >
-      {children}
+      <span>{children}</span>
     </Tooltip>
   );
 }; 

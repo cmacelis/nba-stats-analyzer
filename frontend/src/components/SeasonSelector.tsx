@@ -7,6 +7,8 @@ import {
   SelectChangeEvent 
 } from '@mui/material';
 
+export type Season = string;
+
 interface SeasonSelectorProps {
   value: string;
   onChange: (season: string) => void;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Skeleton, Paper, Grid } from '@mui/material';
+import { Skeleton, Paper, Grid } from '@mui/material';
 import { TransitionComponent } from '../common/TransitionComponent';
 
 export const ComparisonSkeleton: React.FC = () => {

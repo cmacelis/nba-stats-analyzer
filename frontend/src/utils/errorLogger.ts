@@ -1,9 +1,5 @@
 type ErrorSeverity = 'low' | 'medium' | 'high';
 
-interface ErrorContext {
-  [key: string]: unknown;
-}
-
 class ErrorLoggerClass {
   static log(error: Error, severity: ErrorSeverity = 'medium') {
     // In production, this would send to a logging service
@@ -14,7 +10,7 @@ class ErrorLoggerClass {
     }
   }
 
-  static logApiError(error: Error, endpoint: string) {
+  static logApiError(error: Error, _endpoint: string) {
     this.log(error, 'high');
     // Additional API-specific logging
   }

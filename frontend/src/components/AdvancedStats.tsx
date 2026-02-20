@@ -1,7 +1,6 @@
 import React from 'react';
-import { 
-  Box, 
-  Paper, 
+import {
+  Paper,
   Typography, 
   Table,
   TableBody,

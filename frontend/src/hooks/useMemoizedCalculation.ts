@@ -7,7 +7,7 @@ interface CacheEntry<T> {
 
 export function useMemoizedCalculation<T>(
   calculation: () => T,
-  dependencies: any[],
+  dependencies: readonly unknown[],
   options: {
     cacheTime?: number;
     onError?: (error: Error) => void;
@@ -37,5 +37,7 @@ export function useMemoizedCalculation<T>(
     }
   }, [calculation, cacheTime, onError]);
 
+  // dependencies is intentionally a variable — callers control when recomputation occurs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => execute(), dependencies);
 } 

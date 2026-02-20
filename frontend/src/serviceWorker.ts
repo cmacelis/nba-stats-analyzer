@@ -1,4 +1,3 @@
-/// <reference path="./types/serviceWorker.d.ts" />
 /// <reference lib="webworker" />
 
 declare const self: ServiceWorkerGlobalScope;
@@ -15,7 +14,6 @@ const STATIC_ASSETS = [
 ];
 
 const API_CACHE_NAME = 'nba-stats-api-v1';
-const API_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

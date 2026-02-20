@@ -1,6 +1,6 @@
 import { Player, PlayerStats, SeasonStatsData, Matchup } from '../types/player';
-import { BallDontLiePlayer, BallDontLieStats } from '../services/nbaApiService';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapApiPlayerToPlayer(apiPlayer: any): Player {
   return {
     id: apiPlayer.id,
@@ -10,6 +10,7 @@ export function mapApiPlayerToPlayer(apiPlayer: any): Player {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapApiStatsToPlayerStats(apiStats: any): PlayerStats {
   if (!apiStats) {
     return createEmptyPlayerStats();
@@ -42,6 +43,7 @@ export function mapApiStatsToPlayerStats(apiStats: any): PlayerStats {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapApiSeasonStatsToSeasonStatsData(apiStats: any): SeasonStatsData {
   const playerStats = mapApiStatsToPlayerStats(apiStats);
   
@@ -55,7 +57,8 @@ export function mapApiSeasonStatsToSeasonStatsData(apiStats: any): SeasonStatsDa
   };
 }
 
-export function mapApiMatchupToMatchup(apiMatchup: any, player1Id: number, player2Id: number): Matchup {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapApiMatchupToMatchup(apiMatchup: any, player1Id: number, _player2Id: number): Matchup {
   const isPlayer1Home = apiMatchup.home_team_id === player1Id;
   const player1Score = isPlayer1Home ? apiMatchup.home_team_score : apiMatchup.visitor_team_score;
   const player2Score = isPlayer1Home ? apiMatchup.visitor_team_score : apiMatchup.home_team_score;
@@ -106,6 +109,7 @@ function createEmptyPlayerStats(): PlayerStats {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function calculatePER(apiStats: any): number {
   // Simplified PER calculation
   if (!apiStats) return 0;
@@ -125,6 +129,7 @@ function calculatePER(apiStats: any): number {
   ) / minutes * 10;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function calculateUsageRate(apiStats: any): number {
   if (!apiStats) return 0;
   
@@ -134,6 +139,7 @@ function calculateUsageRate(apiStats: any): number {
   return ((apiStats.fga + 0.44 * apiStats.fta + apiStats.turnover) / minutes) * 100;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function calculateTrueShootingPercentage(apiStats: any): number {
   if (!apiStats) return 0;
   

@@ -3,7 +3,6 @@ class SoundManager {
   private context: AudioContext | null = null;
   private sounds: Map<string, AudioBuffer> = new Map();
   private enabled: boolean;
-  private initialized: boolean = false;
 
   private constructor() {
     this.enabled = true;
@@ -14,7 +13,6 @@ class SoundManager {
     const initFunction = async () => {
       await this.initializeContext();
       await this.initSounds();
-      this.initialized = true;
       
       ['click', 'touchstart', 'keydown'].forEach(event => {
         document.removeEventListener(event, initFunction);
@@ -55,6 +53,7 @@ class SoundManager {
 
   private async initializeContext() {
     if (!this.context) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
       if (this.context.state === 'suspended') {
         const resumeOnInteraction = () => {
@@ -72,15 +71,16 @@ class SoundManager {
   }
 
   private playBuffer(buffer: AudioBuffer) {
-    const source = this.context?.createBufferSource() || new AudioBufferSourceNode(this.context);
+    if (!this.context) return;
+    const source = this.context.createBufferSource();
     source.buffer = buffer;
-    
-    const gainNode = this.context?.createGain() || new GainNode(this.context);
+
+    const gainNode = this.context.createGain();
     gainNode.gain.value = 0.1; // Low volume
-    
+
     source.connect(gainNode);
-    gainNode.connect(this.context?.destination || new AudioDestinationNode());
-    
+    gainNode.connect(this.context.destination);
+
     source.start(0);
   }
 

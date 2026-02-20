@@ -30,6 +30,8 @@ export function ProgressiveList<T>({
 
   React.useEffect(() => {
     handleLoadMore(loadMore);
+    // Intentionally run once on mount to load initial data
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (items.length === 0 && !isLoading) {

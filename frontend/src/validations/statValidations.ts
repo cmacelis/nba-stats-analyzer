@@ -58,7 +58,7 @@ export const historicalComparisonValidations: Record<string, HistoricalCompariso
     comparablePlayers: [],
     adjustmentFactors: [
       { stat: 'threePointPercentage', factor: 1.1 },
-      { stat: 'pace', factor: 0.95 }
+      { stat: 'fieldGoalPercentage', factor: 0.95 }
     ]
   }
 };

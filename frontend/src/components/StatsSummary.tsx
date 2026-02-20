@@ -6,7 +6,6 @@ import {
   Box,
   Tooltip,
   Chip,
-  useTheme,
   Skeleton,
   Alert
 } from '@mui/material';
@@ -68,8 +67,6 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({
   isLoading = false,
   error = null
 }) => {
-  const theme = useTheme();
-
   const getComparisonIcon = (threshold: number, value1?: number, value2?: number) => {
     if (!value1 || !value2) return <Remove />;
     const diff = value1 - value2;
@@ -167,13 +164,13 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({
 
                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 1 }}>
                   <Chip
-                    label={stats1 ? format(stats1[stat]) : '-'}
+                    label={stats1 ? format(stats1[stat] ?? 0) : '-'}
                     color={getComparisonColor(stats1?.[stat], stats2?.[stat])}
                     variant="outlined"
                   />
                   {getComparisonIcon(threshold, stats1?.[stat], stats2?.[stat])}
                   <Chip
-                    label={stats2 ? format(stats2[stat]) : '-'}
+                    label={stats2 ? format(stats2[stat] ?? 0) : '-'}
                     color={getComparisonColor(stats2?.[stat], stats1?.[stat])}
                     variant="outlined"
                   />

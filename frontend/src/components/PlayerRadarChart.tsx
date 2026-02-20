@@ -6,10 +6,11 @@ import {
   LineElement,
   Filler,
   Tooltip,
-  Legend
+  Legend,
+  TooltipItem
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
-import { Box, Paper, Typography, useTheme, Fade, Skeleton } from '@mui/material';
+import { Box, Paper, Typography, useTheme, Fade } from '@mui/material';
 import { Player, PlayerStats } from '../types/player';
 import { useSound } from '../contexts/SoundContext';
 import { TransitionComponent } from './common/TransitionComponent';
@@ -60,27 +61,9 @@ export const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
     playSound('switch');
   }, [player1.id, player2.id, playSound]);
 
-  if (isLoading || !stats1 || !stats2) {
-    return (
-      <Paper sx={{ p: 3, mb: 3, position: 'relative', minHeight: 400 }}>
-        <Typography variant="h6" gutterBottom>
-          Performance Comparison
-        </Typography>
-        {isLoading ? (
-          <LoadingOverlay message="Loading player stats..." />
-        ) : (
-          <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography color="text.secondary">
-              Stats not available
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-    );
-  }
-
   const calculateChartData = useMemoizedCalculation(
     () => {
+      if (!stats1 || !stats2) return null;
       const endCalculation = recordOperation('calculateChartData');
       const result = {
         labels: statsToShow.map(stat => stat.label),
@@ -116,10 +99,29 @@ export const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
       endCalculation();
       return result;
     },
-    [player1, player2, stats1, stats2, theme.palette]
+    [player1, player2, stats1, stats2, theme.palette, recordOperation]
   );
 
-  const data = calculateChartData;
+  if (isLoading || !stats1 || !stats2) {
+    return (
+      <Paper sx={{ p: 3, mb: 3, position: 'relative', minHeight: 400 }}>
+        <Typography variant="h6" gutterBottom>
+          Performance Comparison
+        </Typography>
+        {isLoading ? (
+          <LoadingOverlay message="Loading player stats..." />
+        ) : (
+          <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography color="text.secondary">
+              Stats not available
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+    );
+  }
+
+  const data = calculateChartData!;
 
   const options = {
     scales: {
@@ -162,8 +164,8 @@ export const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: (context: any) => {
-            const value = context.raw;
+          label: (context: TooltipItem<'radar'>) => {
+            const value = context.raw as number;
             return `${context.dataset.label}: ${value.toFixed(1)}`;
           },
         },
@@ -185,7 +187,8 @@ export const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
         </Typography>
         <Fade in={isVisible} timeout={1000}>
           <Box sx={{ height: 400 }}>
-            <Radar data={data} options={options} />
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <Radar data={data} options={options as any} />
           </Box>
         </Fade>
       </Paper>

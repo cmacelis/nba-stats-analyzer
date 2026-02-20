@@ -22,7 +22,7 @@ export function useFavoritePlayer() {
       // Return a context object with the snapshot
       return { previousFavorites };
     },
-    onError: (err, player, context) => {
+    onError: (_err, _player, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       queryClient.setQueryData(['favorites'], context?.previousFavorites);
     },
@@ -45,7 +45,7 @@ export function useFavoritePlayer() {
       
       return { previousFavorites };
     },
-    onError: (err, playerId, context) => {
+    onError: (_err, _playerId, context) => {
       queryClient.setQueryData(['favorites'], context?.previousFavorites);
     },
     onSettled: () => {

@@ -17,8 +17,6 @@ export const StatComparison: React.FC<StatComparisonProps> = ({
   player2,
   stats1,
   stats2,
-  comparisonData,
-  isLoading = false
 }) => {
   return (
     <AnimatedElement animation="fadeIn">

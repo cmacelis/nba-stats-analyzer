@@ -27,14 +27,14 @@ class CacheManager {
     return new Blob([data]).size > (this.config.compressionThreshold || 0);
   }
 
-  private logDebug(...args: any[]) {
+  private logDebug(...args: unknown[]) {
     if (this.config.debug) {
       console.debug('[CacheManager]', ...args);
     }
   }
 
   // Invalidate specific queries
-  invalidateQueries(queryKey: any[]) {
+  invalidateQueries(queryKey: readonly unknown[]) {
     this.queryClient.invalidateQueries({ queryKey });
   }
 
@@ -48,7 +48,7 @@ class CacheManager {
   clearStaleData() {
     const now = Date.now();
     const queries = this.queryClient.getQueryCache().getAll();
-    queries.forEach((query: Query) => {
+    queries.forEach((query) => {
       const data = query.state.data;
       const updatedAt = query.state.dataUpdatedAt;
       
@@ -92,21 +92,21 @@ class CacheManager {
       const storedData = localStorage.getItem(this.CACHE_KEY);
       if (!storedData) return;
 
-      let cache: any[];
+      let cache: Array<{ queryKey: unknown[]; data: unknown; dataUpdatedAt: number; version: string }>;
+      type CacheItems = typeof cache;
       try {
         // Try to parse as compressed data first
-        cache = CompressionUtil.decompress(storedData);
+        cache = CompressionUtil.decompress(storedData) as CacheItems;
       } catch {
         // If decompression fails, try parsing as regular JSON
-        cache = JSON.parse(storedData);
+        cache = JSON.parse(storedData) as CacheItems;
       }
 
       cache.forEach(item => {
         if (item.version === this.VERSION) {
           this.queryClient.setQueryData(
             item.queryKey,
-            item.data,
-            { updatedAt: item.dataUpdatedAt }
+            item.data
           );
         }
       });
@@ -117,8 +117,8 @@ class CacheManager {
     }
   }
 
-  setQueryData(queryKey: any[], data: any, options?: { staleTime?: number }) {
-    this.queryClient.setQueryData(queryKey, data, options);
+  setQueryData(queryKey: readonly unknown[], data: unknown) {
+    this.queryClient.setQueryData(queryKey, data);
   }
 }
 

@@ -162,16 +162,18 @@ export async function searchPlayers(query: string, page = 1, perPage = 25) {
     
     return response.data;
 
-  } catch (error: any) {
+  } catch (error) {
     // 2. Handle specific status codes
-    if (error.response?.status === 401) {
-      console.error("🔒 Unauthorized: Your API key was rejected by balldontlie.");
-    } else if (error.response?.status === 429) {
-      console.error("⏳ Rate Limited: Too many requests. Wait a moment.");
-    } else {
-      console.error("🌐 Network Error:", error.message);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        console.error("🔒 Unauthorized: Your API key was rejected by balldontlie.");
+      } else if (error.response?.status === 429) {
+        console.error("⏳ Rate Limited: Too many requests. Wait a moment.");
+      } else {
+        console.error("🌐 Network Error:", error.message);
+      }
     }
-    
+
     throw error; // Re-throw so the UI can also show an error state
   }
 }
