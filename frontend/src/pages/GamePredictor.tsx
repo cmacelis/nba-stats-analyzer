@@ -4,8 +4,12 @@ import {
   Box,
   Chip,
   CircularProgress,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -35,19 +39,30 @@ function lastName(name: string): string {
   return parts[parts.length - 1];
 }
 
+const SEASONS = [
+  { value: 2024, label: '2024-25' },
+  { value: 2023, label: '2023-24' },
+  { value: 2022, label: '2022-23' },
+  { value: 2021, label: '2021-22' },
+  { value: 2020, label: '2020-21' },
+];
+
 const GamePredictor: React.FC = () => {
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [homeCourtValue, setHomeCourtValue] = useState<string | null>(null);
+  const [season, setSeason] = useState(2024);
 
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
 
   const { data: rawStats1, isLoading: loading1 } = usePlayerStats(
     player1?.id.toString() ?? '',
+    season,
   );
   const { data: rawStats2, isLoading: loading2 } = usePlayerStats(
     player2?.id.toString() ?? '',
+    season,
   );
 
   const hasStats1 = !!rawStats1?.pts;
@@ -87,6 +102,24 @@ const GamePredictor: React.FC = () => {
           <PlayerSearch label="Team 2 Star Player" value={player2} onChange={setPlayer2} />
         </Grid>
       </Grid>
+
+      {/* Season Selector */}
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography variant="body1" fontWeight="medium">Season:</Typography>
+        <FormControl size="small">
+          <InputLabel id="season-label">Season</InputLabel>
+          <Select
+            labelId="season-label"
+            value={season}
+            label="Season"
+            onChange={(e) => setSeason(e.target.value as number)}
+          >
+            {SEASONS.map((s) => (
+              <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       {/* Home Court Toggle */}
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -280,7 +313,7 @@ const GamePredictor: React.FC = () => {
         color="text.secondary"
         sx={{ mt: 2, display: 'block', textAlign: 'center' }}
       >
-        Note: Predictions are based on 2024 season averages and are for entertainment purposes only.
+        Note: Predictions are based on {SEASONS.find(s => s.value === season)?.label} season averages and are for entertainment purposes only.
       </Typography>
     </Box>
   );

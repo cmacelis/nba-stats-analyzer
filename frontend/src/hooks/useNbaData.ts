@@ -30,11 +30,13 @@ export const useSearchPlayers = (searchTerm: string, page: number = 1, perPage: 
 /**
  * Hook for player comparison (Head-to-Head)
  */
-export const usePlayerComparison = (id1: string, id2: string) => {
+export const usePlayerComparison = (id1: string, id2: string, season: number = 2024) => {
   return useQuery({
-    queryKey: ['players', 'compare', id1, id2],
+    queryKey: ['players', 'compare', id1, id2, season],
     queryFn: async () => {
-      const response = await api.get(`/api/players/compare/${id1}/${id2}`);
+      const response = await api.get(`/api/players/compare/${id1}/${id2}`, {
+        params: { season },
+      });
       // Returns { player1: {}, player2: {}, head_to_head: [] }
       return response.data;
     },
@@ -46,11 +48,13 @@ export const usePlayerComparison = (id1: string, id2: string) => {
 /**
  * Hook for individual player stats
  */
-export const usePlayerStats = (playerId: string) => {
+export const usePlayerStats = (playerId: string, season: number = 2024) => {
   return useQuery({
-    queryKey: ['players', 'stats', playerId],
+    queryKey: ['players', 'stats', playerId, season],
     queryFn: async () => {
-      const response = await api.get(`/api/players/${playerId}/stats`);
+      const response = await api.get(`/api/players/${playerId}/stats`, {
+        params: { season },
+      });
       return response.data;
     },
     enabled: !!playerId,

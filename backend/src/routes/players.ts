@@ -34,16 +34,17 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/compare/:id1/:id2', async (req: Request, res: Response) => {
   const { id1, id2 } = req.params;
+  const season = parseInt(req.query.season as string) || 2024;
 
   try {
     // Fetch both players' stats at the same time for performance
     const [stats1, stats2] = await Promise.all([
       axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_id: parseInt(id1), season: 2024 },
+        params: { player_id: parseInt(id1), season },
         headers: { 'Authorization': NBA_API_KEY }
       }),
       axios.get('https://api.balldontlie.io/v1/season_averages', {
-        params: { player_id: parseInt(id2), season: 2024 },
+        params: { player_id: parseInt(id2), season },
         headers: { 'Authorization': NBA_API_KEY }
       })
     ]);

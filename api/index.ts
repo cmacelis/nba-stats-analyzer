@@ -35,14 +35,15 @@ app.get('/api/players', async (req: Request, res: Response) => {
 // Compare players — must come before /:id/stats to avoid route shadowing
 app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) => {
   const { id1, id2 } = req.params;
+  const season = parseInt(req.query.season as string) || 2024;
   try {
     const [stats1, stats2] = await Promise.all([
       axios.get(`${BDL_BASE}/season_averages`, {
-        params: { player_id: parseInt(id1), season: 2024 },
+        params: { player_id: parseInt(id1), season },
         headers: BDL_HEADERS,
       }),
       axios.get(`${BDL_BASE}/season_averages`, {
-        params: { player_id: parseInt(id2), season: 2024 },
+        params: { player_id: parseInt(id2), season },
         headers: BDL_HEADERS,
       }),
     ]);

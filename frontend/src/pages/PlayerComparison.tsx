@@ -5,8 +5,12 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -52,14 +56,24 @@ function fmt(val: number, format?: (v: number) => string): string {
   return val.toFixed(1);
 }
 
+const SEASONS = [
+  { value: 2024, label: '2024-25' },
+  { value: 2023, label: '2023-24' },
+  { value: 2022, label: '2022-23' },
+  { value: 2021, label: '2021-22' },
+  { value: 2020, label: '2020-21' },
+];
+
 const PlayerComparison: React.FC = () => {
   const theme = useTheme();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
+  const [season, setSeason] = useState(2024);
 
   const { data, isLoading, error } = usePlayerComparison(
     player1?.id?.toString() || '',
-    player2?.id?.toString() || ''
+    player2?.id?.toString() || '',
+    season,
   );
 
   const hasData = player1 && player2 && data?.player1 && data?.player2;
@@ -69,9 +83,24 @@ const PlayerComparison: React.FC = () => {
       <Typography variant="h4" gutterBottom fontWeight={700}>
         Player Comparison
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        2024–25 season averages
-      </Typography>
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Season averages for
+        </Typography>
+        <FormControl size="small">
+          <InputLabel id="season-label">Season</InputLabel>
+          <Select
+            labelId="season-label"
+            value={season}
+            label="Season"
+            onChange={(e) => setSeason(e.target.value as number)}
+          >
+            {SEASONS.map((s) => (
+              <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={6}>
