@@ -58,9 +58,10 @@ app.get('/api/players/compare/:id1/:id2', async (req: Request, res: Response) =>
 
 // Individual player stats
 app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
+  const season = parseInt(req.query.season as string) || 2024;
   try {
     const response = await axios.get(`${BDL_BASE}/season_averages`, {
-      params: { player_ids: [req.params.id], season: 2024 },
+      params: { player_ids: [req.params.id], season },
       headers: BDL_HEADERS,
     });
     const stats = response.data.data[0] ?? {};

@@ -1,17 +1,15 @@
 import axios from 'axios';
-import { config } from '../utils/config';
-// Change line 4 from '/api' to just an empty string
-const API_BASE_URL = '';
 
+// All requests go through /api/* which Vite proxies to the backend in dev,
+// and Vercel routes to the serverless function in production.
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json'
-    // We will let the individual functions handle the key to be sure it's fresh
   }
 });
 
-// Add response interceptor for rate limiting
+// Retry once after a 30-second back-off on rate limit responses
 api.interceptors.response.use(
   response => response,
   error => {
@@ -81,31 +79,25 @@ export interface BallDontLieResponse<T> {
 }
 
 export async function getAllPlayers(page = 1, perPage = 100): Promise<BallDontLieResponse<BallDontLiePlayer>> {
-  // Use 'api.get' instead of 'fetch' to bypass CORS via your Vite proxy
-  const response = await api.get('/players', {
+  const response = await api.get('/api/players', {
     params: { page, per_page: perPage }
   });
   return response.data;
 }
 
 export async function getPlayerById(id: number): Promise<BallDontLiePlayer> {
-  const response = await api.get(`/players/${id}`);
+  const response = await api.get(`/api/players/${id}`);
   return response.data;
 }
 
-export async function getPlayerStats(playerId: number, season: string = '2023-24') {
+export async function getPlayerStats(playerId: number, season: string = '2024-25') {
   try {
-    // Convert season format from "2023-24" to "2023"
+    // BallDontLie uses the start year of the season (e.g. "2024" for 2024-25)
     const seasonYear = season.split('-')[0];
-    
-    const response = await api.get('/season_averages', {
-      params: {
-        player_ids: [playerId],
-        season: seasonYear
-      }
+    const response = await api.get(`/api/players/${playerId}/stats`, {
+      params: { season: seasonYear }
     });
-    
-    return response.data.data[0] || null;
+    return response.data || null;
   } catch (error) {
     console.error(`Error fetching stats for player ${playerId}:`, error);
     throw error;
@@ -114,15 +106,14 @@ export async function getPlayerStats(playerId: number, season: string = '2023-24
 
 export async function getPlayerSeasonStats(playerId: number) {
   try {
-    // Get the last 5 seasons
     const currentYear = new Date().getFullYear();
     const seasons = [];
-    
+
     for (let i = 0; i < 5; i++) {
       const year = currentYear - i;
       const seasonYear = `${year - 1}-${year.toString().slice(-2)}`;
       const seasonData = await getPlayerStats(playerId, seasonYear);
-      
+
       if (seasonData) {
         seasons.push({
           ...seasonData,
@@ -130,7 +121,7 @@ export async function getPlayerSeasonStats(playerId: number) {
         });
       }
     }
-    
+
     return seasons;
   } catch (error) {
     console.error(`Error fetching season stats for player ${playerId}:`, error);
@@ -138,135 +129,83 @@ export async function getPlayerSeasonStats(playerId: number) {
   }
 }
 
-export async function searchPlayers(query: string, page = 1, perPage = 25) {
-  // 1. Pre-flight check: Is the key actually loaded?
-  if (!config.nbaApiKey || config.nbaApiKey === 'your_api_key_here') {
-    const errorMsg = "❌ API Key Missing: Please check your .env file for VITE_NBA_API_KEY.";
-    console.error(errorMsg);
-    alert(errorMsg); // This gives you an immediate popup for debugging
-    return { data: [], meta: {} };
-  }
-
+export async function searchPlayers(query: string, page = 1, perPage = 25): Promise<BallDontLieResponse<BallDontLiePlayer>> {
   try {
     const response = await api.get('/api/players', {
-      params: { 
-        search: query, 
-        page, 
-        per_page: perPage 
-      },
-      headers: {
-        // Passing it directly here is the most reliable way in Vite
-        'Authorization': config.nbaApiKey 
-      }
+      params: { search: query, page, per_page: perPage }
     });
-    
     return response.data;
-
   } catch (error) {
-    // 2. Handle specific status codes
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
-        console.error("🔒 Unauthorized: Your API key was rejected by balldontlie.");
+        console.error('🔒 Unauthorized: API key rejected by balldontlie.');
       } else if (error.response?.status === 429) {
-        console.error("⏳ Rate Limited: Too many requests. Wait a moment.");
+        console.error('⏳ Rate Limited: Too many requests. Wait a moment.');
       } else {
-        console.error("🌐 Network Error:", error.message);
+        console.error('🌐 Network Error:', error.message);
       }
     }
-
-    throw error; // Re-throw so the UI can also show an error state
-  }
-}
-
-export async function getHeadToHeadMatchups(player1Id: number, player2Id: number) {
-  try {
-    // This endpoint doesn't exist in balldontlie API, so we'll simulate it
-    // In a real app, you would need to fetch games where both players participated
-    
-    // For now, return mock data
-    return [
-      {
-        id: 1,
-        date: '2023-12-25T20:00:00Z',
-        home_team_id: 1,
-        home_team_score: 110,
-        visitor_team_id: 2,
-        visitor_team_score: 105,
-        player1_stats: {
-          points: 28,
-          assists: 7,
-          rebounds: 8
-        },
-        player2_stats: {
-          points: 22,
-          assists: 5,
-          rebounds: 4
-        },
-        season: '2023-24',
-        status: 'Final',
-        period: 4,
-        time: '',
-        postseason: false
-      },
-      {
-        id: 2,
-        date: '2023-11-15T19:30:00Z',
-        home_team_id: 2,
-        home_team_score: 118,
-        visitor_team_id: 1,
-        visitor_team_score: 112,
-        player1_stats: {
-          points: 32,
-          assists: 5,
-          rebounds: 6
-        },
-        player2_stats: {
-          points: 25,
-          assists: 8,
-          rebounds: 5
-        },
-        season: '2023-24',
-        status: 'Final',
-        period: 4,
-        time: '',
-        postseason: false
-      },
-      {
-        id: 3,
-        date: '2023-10-24T18:00:00Z',
-        home_team_id: 1,
-        home_team_score: 102,
-        visitor_team_id: 2,
-        visitor_team_score: 108,
-        player1_stats: {
-          points: 24,
-          assists: 6,
-          rebounds: 9
-        },
-        player2_stats: {
-          points: 30,
-          assists: 4,
-          rebounds: 7
-        },
-        season: '2023-24',
-        status: 'Final',
-        period: 4,
-        time: '',
-        postseason: false
-      }
-    ];
-  } catch (error) {
-    console.error(`Error fetching head-to-head matchups for players ${player1Id} and ${player2Id}:`, error);
     throw error;
   }
 }
 
+export async function getHeadToHeadMatchups(_player1Id: number, _player2Id: number) {
+  // BallDontLie doesn't have a head-to-head endpoint; return mock data
+  return [
+    {
+      id: 1,
+      date: '2023-12-25T20:00:00Z',
+      home_team_id: 1,
+      home_team_score: 110,
+      visitor_team_id: 2,
+      visitor_team_score: 105,
+      player1_stats: { points: 28, assists: 7, rebounds: 8 },
+      player2_stats: { points: 22, assists: 5, rebounds: 4 },
+      season: '2023-24',
+      status: 'Final',
+      period: 4,
+      time: '',
+      postseason: false
+    },
+    {
+      id: 2,
+      date: '2023-11-15T19:30:00Z',
+      home_team_id: 2,
+      home_team_score: 118,
+      visitor_team_id: 1,
+      visitor_team_score: 112,
+      player1_stats: { points: 32, assists: 5, rebounds: 6 },
+      player2_stats: { points: 25, assists: 8, rebounds: 5 },
+      season: '2023-24',
+      status: 'Final',
+      period: 4,
+      time: '',
+      postseason: false
+    },
+    {
+      id: 3,
+      date: '2023-10-24T18:00:00Z',
+      home_team_id: 1,
+      home_team_score: 102,
+      visitor_team_id: 2,
+      visitor_team_score: 108,
+      player1_stats: { points: 24, assists: 6, rebounds: 9 },
+      player2_stats: { points: 30, assists: 4, rebounds: 7 },
+      season: '2023-24',
+      status: 'Final',
+      period: 4,
+      time: '',
+      postseason: false
+    }
+  ];
+}
+
 export async function getPlayerDetails(playerId: number) {
   try {
-    const response = await api.get(`/players/${playerId}`);
+    const response = await api.get(`/api/players/${playerId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching details for player ${playerId}:`, error);
     throw error;
   }
-} 
+}

@@ -1,17 +1,13 @@
 import { Player, PlayerStats, ComparisonData } from '../types/player';
-import { mockPlayers, mockPlayerStats, mockHeadToHead } from './mockData';
+import { mockPlayerStats, mockHeadToHead } from './mockData';
 import { validatePlayerStats } from '../utils/statsValidator';
+import { searchPlayers as nbaSearchPlayers, BallDontLiePlayer } from './nbaApiService';
+import { mapApiPlayerToPlayer } from '../utils/dataMappers';
 
 export const searchPlayers = async (query: string): Promise<Player[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  const normalizedQuery = query.toLowerCase();
-  return mockPlayers.filter(
-    player => 
-      player.name.toLowerCase().includes(normalizedQuery) ||
-      player.team.toLowerCase().includes(normalizedQuery)
-  );
+  if (query.length < 2) return [];
+  const result = await nbaSearchPlayers(query);
+  return (result.data || []).map((p: BallDontLiePlayer) => mapApiPlayerToPlayer(p));
 };
 
 export const getPlayerById = async (id: number): Promise<Player> => {
