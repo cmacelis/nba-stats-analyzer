@@ -1,4 +1,4 @@
-import { Player, PlayerStats, SeasonStatsData, Matchup } from '../types/player';
+import { Player, PlayerStats } from '../types/player';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapApiPlayerToPlayer(apiPlayer: any): Player {
@@ -40,44 +40,6 @@ export function mapApiStatsToPlayerStats(apiStats: any): PlayerStats {
     defensiveRating: 0, // Not provided by API
     usageRate: calculateUsageRate(apiStats),
     trueShootingPercentage: calculateTrueShootingPercentage(apiStats)
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapApiSeasonStatsToSeasonStatsData(apiStats: any): SeasonStatsData {
-  const playerStats = mapApiStatsToPlayerStats(apiStats);
-  
-  return {
-    ...playerStats,
-    season: apiStats.season || '',
-    team: apiStats.team?.full_name || '',
-    winPercentage: 0, // Not provided by API
-    playoffAppearance: false, // Not provided by API
-    gamesStarted: apiStats.games_started || 0
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapApiMatchupToMatchup(apiMatchup: any, player1Id: number, _player2Id: number): Matchup {
-  const isPlayer1Home = apiMatchup.home_team_id === player1Id;
-  const player1Score = isPlayer1Home ? apiMatchup.home_team_score : apiMatchup.visitor_team_score;
-  const player2Score = isPlayer1Home ? apiMatchup.visitor_team_score : apiMatchup.home_team_score;
-  
-  let result = '';
-  if (player1Score > player2Score) {
-    result = 'Player 1 Win';
-  } else if (player2Score > player1Score) {
-    result = 'Player 2 Win';
-  } else {
-    result = 'Tie';
-  }
-  
-  return {
-    date: apiMatchup.date,
-    type: apiMatchup.postseason ? 'playoffs' : 'regular',
-    player1Score: apiMatchup.player1_stats.points,
-    player2Score: apiMatchup.player2_stats.points,
-    result
   };
 }
 

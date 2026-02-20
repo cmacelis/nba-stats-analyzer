@@ -1,0 +1,214 @@
+﻿src/App.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/AdvancedStats.tsx(3,3): error TS6133: 'Box' is declared but its value is never read.
+src/components/AnimatedElement.tsx(4,27): error TS2307: Cannot find module 'react-intersection-observer' or its corresponding type declarations.
+src/components/common/AnimatedElement.tsx(52,11): error TS2339: Property 'initial' does not exist on type '{ name: string; styles: string; anim: 1; toString: () => string; } & String'.
+src/components/common/AnimatedElement.tsx(52,20): error TS2339: Property 'animate' does not exist on type '{ name: string; styles: string; anim: 1; toString: () => string; } & String'.
+src/components/common/AnimatedElement.tsx(52,29): error TS2339: Property 'transition' does not exist on type '{ name: string; styles: string; anim: 1; toString: () => string; } & String'.
+src/components/common/ErrorBoundary.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/common/StaggeredContainer.tsx(3,10): error TS2305: Module '"../../utils/animations"' has no exported member 'getStaggerDelay'.
+src/components/ComparisonTable.tsx(10,3): error TS6133: 'Box' is declared but its value is never read.
+src/components/ErrorBoundary.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/ErrorBoundary.tsx(2,10): error TS6133: 'Box' is declared but its value is never read.
+src/components/FavoriteComparisons.tsx(3,3): error TS6133: 'Box' is declared but its value is never read.
+src/components/FavoriteComparisons.tsx(13,18): error TS6133: 'CompareArrows' is declared but its value is never read.
+src/components/HeadToHeadComparison.tsx(3,3): error TS6133: 'Box' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1,59): error TS6133: 'useMemo' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(11,3): error TS6133: 'Skeleton' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(15,3): error TS6133: 'Fade' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(29,10): error TS2614: Module '"./SeasonSelector"' has no exported member 'Season'. Did you mean to use 'import Season from "./SeasonSelector"' instead?
+src/components/PlayerMatchupHistory.tsx(32,1): error TS6192: All imports in import declaration are unused.
+src/components/PlayerMatchupHistory.tsx(33,1): error TS6133: 'PlayerStatTrend' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(224,63): error TS2345: Argument of type '(number | undefined)[]' is not assignable to parameter of type 'number[]'.
+  Type 'number | undefined' is not assignable to type 'number'.
+    Type 'undefined' is not assignable to type 'number'.
+src/components/PlayerMatchupHistory.tsx(246,17): error TS6133: 'stats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(258,17): error TS6133: 'stats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(271,17): error TS6133: 'stats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(287,7): error TS6133: 'trendStats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(330,3): error TS2741: Property 'format' is missing in type '{ readonly key: "pointsPer36"; readonly label: "PTS/36"; readonly category: "per36"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(336,3): error TS2741: Property 'format' is missing in type '{ readonly key: "assistsPer36"; readonly label: "AST/36"; readonly category: "per36"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(342,3): error TS2741: Property 'format' is missing in type '{ readonly key: "reboundsPer36"; readonly label: "REB/36"; readonly category: "per36"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(348,3): error TS2741: Property 'format' is missing in type '{ readonly key: "pointsPer100"; readonly label: "PTS/100"; readonly category: "per100"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(354,3): error TS2741: Property 'format' is missing in type '{ readonly key: "assistsPer100"; readonly label: "AST/100"; readonly category: "per100"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(360,3): error TS2741: Property 'format' is missing in type '{ readonly key: "reboundsPer100"; readonly label: "REB/100"; readonly category: "per100"; readonly calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(366,3): error TS2741: Property 'format' is missing in type '{ readonly key: "bpm"; readonly label: "BPM"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Box Plus/Minus - Points per 100 possessions above league average"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(373,3): error TS2741: Property 'format' is missing in type '{ readonly key: "vorp"; readonly label: "VORP"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Value Over Replacement Player"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(380,3): error TS2741: Property 'format' is missing in type '{ readonly key: "gameScore"; readonly label: "GmSc"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Game Score - Overall game performance metric"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(387,3): error TS2741: Property 'format' is missing in type '{ readonly key: "winShares"; readonly label: "WS/48"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Win Shares per 48 minutes"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(399,3): error TS2741: Property 'format' is missing in type '{ readonly key: "offensiveRating"; readonly label: "ORtg"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Points produced per 100 possessions"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(413,3): error TS2741: Property 'format' is missing in type '{ readonly key: "pie"; readonly label: "PIE"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Player Impact Estimate - Overall contribution percentage"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(420,3): error TS2741: Property 'format' is missing in type '{ readonly key: "netRating"; readonly label: "Net Rtg"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Net Rating - Point differential per 100 possessions"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(427,3): error TS2741: Property 'format' is missing in type '{ readonly key: "scoreCreation"; readonly label: "Pts Created"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Points Created - Combined scoring and assist points"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(434,3): error TS2741: Property 'format' is missing in type '{ readonly key: "efficiencyScore"; readonly label: "Eff Score"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Efficiency Score - Comprehensive efficiency metric"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(453,3): error TS2741: Property 'format' is missing in type '{ readonly key: "clutchRating"; readonly label: "Clutch"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Clutch Rating - Performance in high-leverage situations"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(470,3): error TS2741: Property 'format' is missing in type '{ readonly key: "pipm"; readonly label: "PIPM"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Player Impact Plus/Minus - Combined box score and plus/minus impact"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(477,3): error TS2741: Property 'format' is missing in type '{ readonly key: "lapm"; readonly label: "LAPM"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Lineup-Adjusted Plus/Minus - Contextual impact rating"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(484,3): error TS2741: Property 'format' is missing in type '{ readonly key: "scaledEfficiency"; readonly label: "Eff Rating"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Scaled Efficiency Rating (0-100) - Overall performance score"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(491,3): error TS2741: Property 'format' is missing in type '{ readonly key: "impactScore"; readonly label: "Impact"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Impact Score - Combined usage, efficiency, playmaking, and defense"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(502,10): error TS18048: 'usage' is possibly 'undefined'.
+src/components/PlayerMatchupHistory.tsx(503,10): error TS18048: 'efficiency' is possibly 'undefined'.
+src/components/PlayerMatchupHistory.tsx(510,3): error TS2741: Property 'format' is missing in type '{ readonly key: "versatilityIndex"; readonly label: "Versatility"; readonly category: "advanced"; readonly calculate: (stats: PlayerStats) => number; readonly description: "Versatility Index - Balance across different aspects of the game"; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(529,3): error TS2322: Type '{ key: string; label: string; color: string; format: string; category: string; calculate: (stats: PlayerStats, allStats: Record<Season, PlayerStats>) => number; description: string; suffix?: undefined; } | { ...; }' is not assignable to type 'TrendStat'.
+  Type '{ key: string; label: string; color: string; format: string; category: string; calculate: (stats: PlayerStats, allStats: Record<Season, PlayerStats>) => number; description: string; suffix?: undefined; }' is not assignable to type 'TrendStat'.
+    Types of property 'calculate' are incompatible.
+      Type '(stats: PlayerStats, allStats: Record<Season, PlayerStats>) => number' is not assignable to type '(stats: PlayerStats, allStats?: Record<Season, PlayerStats> | undefined) => number'.
+        Types of parameters 'allStats' and 'allStats' are incompatible.
+          Type 'Record<Season, PlayerStats> | undefined' is not assignable to type 'Record<Season, PlayerStats>'.
+            Type 'undefined' is not assignable to type 'Record<Season, PlayerStats>'.
+src/components/PlayerMatchupHistory.tsx(540,7): error TS6133: 'advancedTrendStats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(541,3): error TS2741: Property 'format' is missing in type '{ key: string; label: string; description: string; category: string; calculate: (stats: PlayerStats) => number; }' but required in type 'TrendStat'.
+src/components/PlayerMatchupHistory.tsx(564,7): error TS6133: 'validateStats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(599,7): error TS6133: 'cacheKey' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(602,7): error TS6133: 'getCache' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(617,7): error TS6133: 'setCache' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(631,7): error TS6133: 'PREFETCH_THRESHOLD' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(632,7): error TS6133: 'CACHE_BATCH_SIZE' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(643,7): error TS6133: 'prefetchData' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(668,35): error TS6133: 'startSeason' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(668,56): error TS6133: 'endSeason' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(701,7): error TS6133: 'calculateAdvancedMetrics' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(721,7): error TS6133: 'analyzeStatTrend' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(735,7): error TS2322: Type '{ nextValue: number; trend: string; confidence: number; }' is not assignable to type 'StatTrend'.
+  Types of property 'trend' are incompatible.
+    Type 'string' is not assignable to type '"stable" | "improving" | "declining"'.
+src/components/PlayerMatchupHistory.tsx(993,11): error TS6196: 'OptimizedChartProps' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1008,41): error TS6133: 'selectedStat' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1015,10): error TS2739: Type '{}' is missing the following properties from type 'TooltipProps': children, title
+src/components/PlayerMatchupHistory.tsx(1077,7): error TS6133: 'CustomTooltip' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1084,49): error TS6133: 'selectedCategory' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1084,67): error TS6133: 'stats1' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1084,75): error TS6133: 'stats2' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1142,11): error TS6196: 'CustomTooltipProps' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1267,11): error TS6196: 'LoadMoreRef' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1310,11): error TS6196: 'ValidationResult' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1316,11): error TS6196: 'ValidationOptions' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1402,7): error TS6133: 'validatePlayerStats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1410,71): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/PlayerMatchupHistory.tsx(1431,11): error TS6196: 'PercentageValidation' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1435,11): error TS6196: 'CountValidation' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1439,11): error TS6196: 'RatioValidation' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1444,6): error TS6196: 'StatValidationType' is declared but never used.
+src/components/PlayerMatchupHistory.tsx(1451,7): error TS6133: 'enhancedValidationRules' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1453,3): error TS2353: Object literal may only specify known properties, and 'assistToTurnover' does not exist in type 'StatValidationRules'.
+src/components/PlayerMatchupHistory.tsx(1491,7): error TS6133: 'validateDerivedStats' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1501,32): error TS2339: Property 'threePointersMade' does not exist on type 'PlayerStats'.
+src/components/PlayerMatchupHistory.tsx(1501,58): error TS2339: Property 'threePointersAttempted' does not exist on type 'PlayerStats'.
+src/components/PlayerMatchupHistory.tsx(1518,7): error TS6133: 'calculateStatCorrelation' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1549,7): error TS6133: 'createDefaultStatsRecord' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1589,3): error TS6133: 'stats1' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1590,3): error TS6133: 'stats2' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1596,21): error TS6133: 'setIsVisible' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1601,21): error TS6133: 'setTrendData' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1604,28): error TS6133: 'setIsInitialLoading' is declared but its value is never read.
+src/components/PlayerMatchupHistory.tsx(1639,7): error TS2322: Type '(stats: ExtendedPlayerStats) => number' is not assignable to type '(stats: PlayerStats, allStats?: Record<Season, PlayerStats> | undefined) => number'.
+  Types of parameters 'stats' and 'stats' are incompatible.
+    Type 'PlayerStats' is not assignable to type 'ExtendedPlayerStats'.
+      Types of property 'usageRate' are incompatible.
+        Type 'number | undefined' is not assignable to type 'number'.
+          Type 'undefined' is not assignable to type 'number'.
+src/components/PlayerMatchupHistory.tsx(1848,16): error TS2448: Block-scoped variable 'withErrorHandling' used before its declaration.
+src/components/PlayerMatchupHistory.tsx(1848,16): error TS2454: Variable 'withErrorHandling' is used before being assigned.
+src/components/PlayerRadarChart.tsx(12,50): error TS6133: 'Skeleton' is declared but its value is never read.
+src/components/PlayerRadarChart.tsx(188,32): error TS2322: Type '{ scales: { r: { min: number; max: number; ticks: { stepSize: number; callback: (value: number) => string; }; pointLabels: { font: { size: number; weight: "bold"; }; }; grid: { color: string; }; angleLines: { color: string; }; }; }; plugins: { ...; }; animation: { ...; }; responsive: boolean; maintainAspectRatio: bo...' is not assignable to type '_DeepPartialObject<CoreChartOptions<"radar"> & ElementChartOptions<"radar"> & PluginChartOptions<"radar"> & DatasetChartOptions<"radar"> & ScaleChartOptions<...> & LineControllerChartOptions>'.
+  Types of property 'animation' are incompatible.
+    Type '{ duration: number; easing: string; }' is not assignable to type 'false | _DeepPartialObject<AnimationSpec<"radar"> & { onProgress?: ((this: Chart<keyof ChartTypeRegistry, (number | Point | [...] | BubbleDataPoint | null)[], unknown>, event: AnimationEvent) => void) | undefined; onComplete?: ((this: Chart<...>, event: AnimationEvent) => void) | undefined; }> | undefined'.
+      Type '{ duration: number; easing: string; }' is not assignable to type '_DeepPartialObject<AnimationSpec<"radar"> & { onProgress?: ((this: Chart<keyof ChartTypeRegistry, (number | Point | [...] | BubbleDataPoint | null)[], unknown>, event: AnimationEvent) => void) | undefined; onComplete?: ((this: Chart<...>, event: AnimationEvent) => void) | undefined; }>'.
+        Types of property 'easing' are incompatible.
+          Type 'string' is not assignable to type '"linear" | "easeInOutQuart" | "easeInQuad" | "easeOutQuad" | "easeInOutQuad" | "easeInCubic" | "easeOutCubic" | "easeInOutCubic" | "easeInQuart" | "easeOutQuart" | "easeInQuint" | ... 21 more ... | undefined'.
+src/components/players/MatchupComparison.tsx(1,1): error TS6133: 'StatComparison' is declared but its value is never read.
+src/components/PlayerSearch.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/PlayerSearch.tsx(9,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/PlayerSearch.tsx(10,3): error TS6133: 'List' is declared but its value is never read.
+src/components/PlayerSearch.tsx(13,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/SeasonStats.tsx(7,53): error TS6133: 'FilterList' is declared but its value is never read.
+src/components/SeasonStats.tsx(9,20): error TS6133: 'Grow' is declared but its value is never read.
+src/components/SeasonStats.tsx(25,11): error TS6196: 'SeasonStatsData' is declared but never used.
+src/components/SeasonStats.tsx(90,7): error TS6133: 'SortIndicator' is declared but its value is never read.
+src/components/SeasonStats.tsx(133,23): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(133,34): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(137,25): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(137,36): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(142,31): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(142,42): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(143,32): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(143,43): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(147,25): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(147,36): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(152,31): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(152,42): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(153,32): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(153,43): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/SeasonStats.tsx(172,32): error TS2304: Cannot find name 'data'.
+src/components/SeasonStats.tsx(176,27): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(176,43): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(177,27): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(177,43): error TS2551: Property 'season' does not exist on type 'PlayerHistory'. Did you mean 'seasons'?
+src/components/SeasonStats.tsx(202,9): error TS6133: 'handleFilterChange' is declared but its value is never read.
+src/components/SeasonStats.tsx(450,24): error TS2741: Property 'theme' is missing in type '{ children: Element; sx: { opacity: number; animation: `${Keyframes} 0.3s ease-out ${number}ms forwards`; }; }' but required in type '{ theme: Theme; }'.
+src/components/skeletons/ComparisonSkeleton.tsx(2,10): error TS6133: 'Box' is declared but its value is never read.
+src/components/StatComparison.tsx(20,3): error TS6133: 'comparisonData' is declared but its value is never read.
+src/components/StatComparison.tsx(21,3): error TS6133: 'isLoading' is declared but its value is never read.
+src/components/StatsFormatter.tsx(13,3): error TS6133: 'stat' is declared but its value is never read.
+src/components/StatsFormatter.tsx(19,24): error TS2345: Argument of type 'number | null | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/StatsSummary.tsx(71,9): error TS6133: 'theme' is declared but its value is never read.
+src/components/StatsSummary.tsx(170,44): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/StatsSummary.tsx(176,44): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/StatTooltip.tsx(38,7): error TS2322: Type 'ReactNode' is not assignable to type 'ReactElement<any, any>'.
+  Type 'undefined' is not assignable to type 'ReactElement<any, any>'.
+src/components/VirtualizedList.tsx(41,28): error TS6133: 'autoHeight' is declared but its value is never read.
+src/hooks/useFavoritePlayer.ts(3,45): error TS2307: Cannot find module '../services/favoriteService' or its corresponding type declarations.
+src/hooks/useFavoritePlayer.ts(25,15): error TS6133: 'err' is declared but its value is never read.
+src/hooks/useFavoritePlayer.ts(25,20): error TS6133: 'player' is declared but its value is never read.
+src/hooks/useFavoritePlayer.ts(48,15): error TS6133: 'err' is declared but its value is never read.
+src/hooks/useFavoritePlayer.ts(48,20): error TS6133: 'playerId' is declared but its value is never read.
+src/hooks/usePerformanceMonitoring.ts(34,59): error TS2345: Argument of type 'OperationContext' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'OperationContext'.
+src/hooks/usePlayerSearchCache.ts(59,9): error TS6133: 'fetchPlayers' is declared but its value is never read.
+src/hooks/usePlayerSearchCache.ts(116,17): error TS2353: Object literal may only specify known properties, and 'staleTime' does not exist in type 'SetDataOptions'.
+src/hooks/usePlayerSearchCache.ts(121,17): error TS6133: 'error' is declared but its value is never read.
+src/hooks/useStatsValidation.ts(3,1): error TS6133: 'ValidationResult' is declared but its value is never read.
+src/main.tsx(51,5): error TS2353: Object literal may only specify known properties, and 'v7_startTransition' does not exist in type 'Partial<Omit<FutureConfig, "v7_prependBasename">>'.
+src/main.tsx(74,14): error TS6133: 'registration' is declared but its value is never read.
+src/services/playerService.ts(1,1): error TS6133: 'apiClient' is declared but its value is never read.
+src/services/playerService.ts(3,1): error TS6133: 'cacheService' is declared but its value is never read.
+src/services/statsService.ts(2,10): error TS6133: 'Player' is declared but its value is never read.
+src/services/statsService.ts(4,11): error TS6196: 'StatsResponse' is declared but never used.
+src/serviceWorker.ts(18,7): error TS6133: 'API_CACHE_DURATION' is declared but its value is never read.
+src/types/validation.ts(19,18): error TS2430: Interface 'PlayStyleValidation' incorrectly extends interface 'StatisticalValidation'.
+  Types of property 'type' are incompatible.
+    Type '"playStyle"' is not assignable to type '"statistical"'.
+src/types/validation.ts(30,18): error TS2430: Interface 'AdvancedPlayStyleValidation' incorrectly extends interface 'PlayStyleValidation'.
+  Types of property 'type' are incompatible.
+    Type '"advancedPlayStyle"' is not assignable to type '"playStyle"'.
+src/types/validation.ts(51,18): error TS2430: Interface 'HistoricalComparisonValidation' incorrectly extends interface 'StatisticalValidation'.
+  Types of property 'type' are incompatible.
+    Type '"historicalComparison"' is not assignable to type '"statistical"'.
+src/types/validation.ts(66,18): error TS2430: Interface 'ContextualPerformanceValidation' incorrectly extends interface 'StatisticalValidation'.
+  Types of property 'type' are incompatible.
+    Type '"contextualPerformance"' is not assignable to type '"statistical"'.
+src/utils/animationPresets.ts(5,5): error TS2698: Spread types may only be created from object types.
+src/utils/animationPresets.ts(9,5): error TS2698: Spread types may only be created from object types.
+src/utils/animationPresets.ts(13,5): error TS2698: Spread types may only be created from object types.
+src/utils/cacheManager.ts(51,29): error TS2304: Cannot find name 'Query'.
+src/utils/cacheManager.ts(121,51): error TS2345: Argument of type '{ staleTime?: number | undefined; } | undefined' is not assignable to parameter of type 'SetDataOptions | undefined'.
+  Type '{ staleTime?: number | undefined; }' has no properties in common with type 'SetDataOptions'.
+src/utils/compression.ts(2,18): error TS6133: 'textEncoder' is declared but its value is never read.
+src/utils/compression.ts(3,18): error TS6133: 'textDecoder' is declared but its value is never read.
+src/utils/dataMappers.ts(2,1): error TS6192: All imports in import declaration are unused.
+src/utils/dataMappers.ts(58,76): error TS6133: 'player2Id' is declared but its value is never read.
+src/utils/errorLogger.ts(3,11): error TS6196: 'ErrorContext' is declared but never used.
+src/utils/errorLogger.ts(17,36): error TS6133: 'endpoint' is declared but its value is never read.
+src/utils/firebase.ts(1,31): error TS2307: Cannot find module 'firebase/app' or its corresponding type declarations.
+src/utils/firebase.ts(2,25): error TS2307: Cannot find module 'firebase/auth' or its corresponding type declarations.
+src/utils/firebase.ts(3,30): error TS2307: Cannot find module 'firebase/firestore' or its corresponding type declarations.
+src/utils/soundEffects.ts(6,11): error TS6133: 'initialized' is declared but its value is never read.
+src/utils/soundEffects.ts(75,84): error TS2345: Argument of type 'AudioContext | null' is not assignable to parameter of type 'BaseAudioContext'.
+  Type 'null' is not assignable to type 'BaseAudioContext'.
+src/utils/soundEffects.ts(78,65): error TS2345: Argument of type 'AudioContext | null' is not assignable to parameter of type 'BaseAudioContext'.
+  Type 'null' is not assignable to type 'BaseAudioContext'.
+src/validations/statValidations.ts(34,7): error TS2740: Type '{ points: number; fieldGoalPercentage: number; trueShootingPercentage: number; freeThrowPercentage: number; }' is missing the following properties from type 'Record<keyof PlayerStats, number>': assists, rebounds, steals, blocks, and 15 more.
+src/validations/statValidations.ts(61,9): error TS2322: Type '"pace"' is not assignable to type 'keyof PlayerStats'.

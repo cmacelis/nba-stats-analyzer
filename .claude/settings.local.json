@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run lint:*)",
+      "Bash(dir:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(echo:*)",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\cmace\\\\Documents\\\\nba-stats-analyzer\\\\frontend && node_modules\\\\.bin\\\\tsc --noEmit > ..\\\\tsc_errors.txt 2>&1 && echo SUCCESS >> ..\\\\tsc_errors.txt || echo FAILED >> ..\\\\tsc_errors.txt\")",
+      "Bash(cmd /c \"type C:\\\\Users\\\\cmace\\\\Documents\\\\nba-stats-analyzer\\\\tsc_errors.txt | find /c \"\"error TS\"\"\")",
+      "Bash(cmd /c \"find /c \"\"error TS\"\" C:\\\\Users\\\\cmace\\\\Documents\\\\nba-stats-analyzer\\\\tsc_errors.txt\")",
+      "Bash(powershell -Command \"Select-String -Path ''C:\\\\Users\\\\cmace\\\\Documents\\\\nba-stats-analyzer\\\\tsc_errors.txt'' -Pattern ''error TS'' | Measure-Object | Select-Object -ExpandProperty Count\")",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -File:*)",
+      "Bash(./node_modules/.bin/eslint:*)",
+      "Bash(npm ci:*)",
+      "Bash(node ./node_modules/.bin/eslint:*)",
+      "Bash(node_modules.bineslint.cmd:*)",
+      "Bash(node_modules/.bin/eslint.cmd:*)",
+      "Bash(vercel:*)",
+      "Bash(npx vercel:*)",
+      "WebFetch(domain:nba-stats-analyzer.vercel.app)",
+      "Bash(npm run build:*)",
+      "Bash(node -e:*)"
+    ]
+  }
+}
