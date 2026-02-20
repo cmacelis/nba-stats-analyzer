@@ -1,10 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { SoundProvider } from './contexts/SoundContext';
-import { lightTheme } from './utils/theme';
+import { ThemeProvider } from './contexts/ThemeContext';
 import App from './App';
 const Home = React.lazy(() => import('./pages/Home'));
 const PlayerComparison = React.lazy(() => import('./pages/PlayerComparison'));
@@ -55,7 +54,7 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={lightTheme}>
+      <ThemeProvider>
         <CssBaseline />
         <SoundProvider>
           <RouterProvider router={router} />
