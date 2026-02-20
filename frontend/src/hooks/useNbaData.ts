@@ -60,3 +60,28 @@ export const usePlayerStats = (playerId: string, season: number = 2024) => {
     enabled: !!playerId,
   });
 };
+
+export interface NbaGame {
+  id: number;
+  date: string;
+  status: string;
+  season: number;
+  home_team: { id: number; name: string; full_name: string; abbreviation: string };
+  visitor_team: { id: number; name: string; full_name: string; abbreviation: string };
+  home_team_score: number;
+  visitor_team_score: number;
+}
+
+/**
+ * Hook for upcoming games (today + next 3 days, non-Final)
+ */
+export const useUpcomingGames = () => {
+  return useQuery<NbaGame[]>({
+    queryKey: ['games', 'upcoming'],
+    queryFn: async () => {
+      const response = await api.get('/api/games');
+      return response.data.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};

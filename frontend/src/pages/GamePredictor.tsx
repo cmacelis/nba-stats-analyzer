@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
@@ -26,6 +26,7 @@ import {
 import { ArrowBack, ArrowForward, ContentCopy, Remove } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
+import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
 import { usePlayerStats } from '../hooks/useNbaData';
 import { Player } from '../types/player';
@@ -44,6 +45,7 @@ function lastName(name: string): string {
 }
 
 const SEASONS = [
+  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },
@@ -56,8 +58,9 @@ const GamePredictor: React.FC = () => {
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [homeCourtValue, setHomeCourtValue] = useState<string | null>(null);
-  const [season, setSeason] = useState(2024);
+  const [season, setSeason] = useState(2025);
   const [copied, setCopied] = useState(false);
+  const predictorRef = useRef<HTMLDivElement>(null);
 
   // On mount, restore state from URL params
   useEffect(() => {
@@ -84,6 +87,15 @@ const GamePredictor: React.FC = () => {
     if (homeCourtValue) params.hc = homeCourtValue;
     setSearchParams(params, { replace: true });
   }, [player1, player2, season, homeCourtValue, setSearchParams]);
+
+  const handleSelectGame = (p1: Player, p2: Player) => {
+    setPlayer1(p1);
+    setPlayer2(p2);
+    setSeason(2025);
+    setTimeout(() => {
+      predictorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
@@ -132,8 +144,10 @@ const GamePredictor: React.FC = () => {
         Select each team's star player to predict the game outcome.
       </Typography>
 
+      <UpcomingGames onSelectGame={handleSelectGame} />
+
       {/* Player Selection */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid ref={predictorRef} container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={6}>
           <PlayerSearch label="Team 1 Star Player" value={player1} onChange={setPlayer1} />
         </Grid>

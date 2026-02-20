@@ -72,6 +72,7 @@ function fmt(val: any, format?: (v: any) => string): string {
 }
 
 const SEASONS = [
+  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },

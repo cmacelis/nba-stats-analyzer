@@ -82,4 +82,25 @@ app.get('/api/players/:id/stats', async (req: Request, res: Response) => {
   }
 });
 
+// Upcoming games — today through next 3 days, excluding Final games
+app.get('/api/games', async (_req: Request, res: Response) => {
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(today.getDate() + 3);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  try {
+    const response = await axios.get(`${BDL_BASE}/games`, {
+      params: { start_date: fmt(today), end_date: fmt(end), per_page: 25 },
+      headers: BDL_HEADERS,
+    });
+    const games = (response.data.data ?? []).filter(
+      (g: { status: string }) => g.status !== 'Final',
+    );
+    res.json({ data: games });
+  } catch (error: unknown) {
+    const status = (error as { response?: { status: number } }).response?.status ?? 500;
+    res.status(status).json({ error: 'Failed to fetch games' });
+  }
+});
+
 export default app;

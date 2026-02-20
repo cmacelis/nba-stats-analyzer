@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { healthRouter } from './routes/health';
 import { playerRouter } from './routes/players';
+import { gamesRouter } from './routes/games';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -18,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use('/api/health', healthRouter);
 app.use('/api/players', playerRouter);
+app.use('/api/games', gamesRouter);
 
 // Error handling
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
