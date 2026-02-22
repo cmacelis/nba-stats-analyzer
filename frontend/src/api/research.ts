@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export type PropType = 'points' | 'rebounds' | 'assists' | 'combined';
 export type Prediction = 'over' | 'under' | 'neutral';

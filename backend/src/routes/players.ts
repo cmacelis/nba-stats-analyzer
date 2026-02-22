@@ -5,7 +5,7 @@ import axios from 'axios';
 const router = express.Router();
 
 // The API key is safely stored in your backend's .env file
-const NBA_API_KEY = process.env.VITE_NBA_API_KEY;
+const NBA_API_KEY = process.env.BALL_DONT_LIE_API_KEY;
 
 /**
  * 1. Search Players Route

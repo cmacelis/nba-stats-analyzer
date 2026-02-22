@@ -19,7 +19,7 @@ async function collectForPlayer(playerName: string): Promise<void> {
     const mentions = await scrapePlayerMentions(playerName);
     const sentiment = analyzeSentiment(mentions);
     for (const prop of PROP_TYPES) {
-      await generateReport(playerName, prop, mentions, sentiment, {});
+      await generateReport(playerName, prop, mentions, sentiment, null);
     }
     console.log(`[collector] Refreshed research for ${playerName}`);
   } catch (err) {

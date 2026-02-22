@@ -25,6 +25,7 @@ import {
 import { ContentCopy } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
+import ResearchPanel from '../components/ResearchPanel';
 import { usePlayerComparison } from '../hooks/useNbaData';
 import { Player } from '../types/player';
 
@@ -275,6 +276,22 @@ const PlayerComparison: React.FC = () => {
             </Typography>
           </Box>
         </Paper>
+      )}
+
+      {(player1 || player2) && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" fontWeight={600} gutterBottom>
+            AI Research
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <ResearchPanel playerName={player1?.name ?? null} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <ResearchPanel playerName={player2?.name ?? null} />
+            </Grid>
+          </Grid>
+        </Box>
       )}
 
       <Snackbar
