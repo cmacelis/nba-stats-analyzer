@@ -66,3 +66,5 @@ Deployed via GitHub Actions (`deploy.yml`) on push to `main`.
 | `frontend-ci.yml` | `frontend/**` changes | `npm ci` → lint → build (tsc + vite) |
 | `backend-ci.yml` | `backend/**` changes | `npm ci` → build (tsc) |
 | `deploy.yml` | push to `main` | Build + deploy backend to Heroku |
+
+vercel rebuild trigger
