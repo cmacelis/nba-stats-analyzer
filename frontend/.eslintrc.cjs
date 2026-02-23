@@ -23,7 +23,6 @@ module.exports = {
     }
   },
   plugins: [
-    'react-refresh',
     'react',
     '@typescript-eslint',
     'react-hooks'
@@ -34,7 +33,6 @@ module.exports = {
     }
   },
   rules: {
-    'react-refresh/only-export-components': 'off',
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
