@@ -16,6 +16,7 @@ import axios from 'axios';
 
 const app = express();
 
+const VERSION    = '2026-02-23-research-hotfix-1';
 const BDL_KEY    = process.env.BALL_DONT_LIE_API_KEY;
 const BDL_BASE   = 'https://api.balldontlie.io/v1';
 const BDL_SEASON = 2024;
@@ -33,7 +34,7 @@ app.use(express.json());
 // ── Health ────────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+  res.json({ status: 'ok', version: VERSION, timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
 
 // ── Players ───────────────────────────────────────────────────────────────────
