@@ -132,7 +132,7 @@ const GamePredictor: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Typography variant="h4">
-          Game Predictor
+          Matchup Edge
         </Typography>
         <Tooltip title="Copy shareable link">
           <IconButton size="small" onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}>

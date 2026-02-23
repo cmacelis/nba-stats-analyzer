@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import axios from 'axios';
 
 const router = express.Router();
-const NBA_API_KEY = process.env.VITE_NBA_API_KEY;
+const NBA_API_KEY = process.env.BALL_DONT_LIE_API_KEY;
 
 router.get('/', async (_req: Request, res: Response) => {
   const today = new Date();

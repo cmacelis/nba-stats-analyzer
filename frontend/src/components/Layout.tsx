@@ -56,7 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               }
             }}
           >
-            NBA Stats Analyzer
+            NBA Edge Detector
           </Typography>
           <Stack direction="row" spacing={2} alignItems="center">
             <Button 
@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }
               }}
             >
-              Game Predictor
+              Matchup Edge
             </Button>
             <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
               <IconButton 

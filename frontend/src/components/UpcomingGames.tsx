@@ -55,8 +55,21 @@ const TEAM_STAR_PLAYER: Record<string, string> = {
 };
 
 function formatGameDate(isoDate: string): string {
-  const d = new Date(isoDate);
+  // Date-only strings (e.g. "2026-02-22") are parsed as UTC midnight → show wrong day in US timezones.
+  // Appending T12:00:00 keeps noon UTC which survives any UTC-offset conversion.
+  const normalized = isoDate.includes('T') ? isoDate : `${isoDate}T12:00:00`;
+  const d = new Date(normalized);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function formatStatus(status: string): string | null {
+  // BDL returns ISO datetime strings for scheduled games (e.g. "2026-02-22T20:30:00Z")
+  if (/^\d{4}-\d{2}-\d{2}T/.test(status)) {
+    const d = new Date(status);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+  }
+  // In-progress ("2nd Qtr") or finished ("Final") — show as-is (Final is already filtered out)
+  return status;
 }
 
 interface UpcomingGamesProps {
@@ -131,7 +144,7 @@ const UpcomingGames: React.FC<UpcomingGamesProps> = ({ onSelectGame }) => {
                   <CardContent sx={{ flexGrow: 1, pb: 1 }}>
                     <Typography variant="caption" color="text.secondary">
                       {formatGameDate(game.date)}
-                      {game.status !== 'Scheduled' && <> &middot; {game.status}</>}
+                      {(() => { const s = formatStatus(game.status); return s ? <> &middot; {s}</> : null; })()}
                     </Typography>
                     <Typography variant="body1" fontWeight="bold" sx={{ mt: 0.5 }}>
                       {game.visitor_team.abbreviation}{' '}

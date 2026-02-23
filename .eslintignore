@@ -1,7 +1,0 @@
-node_modules
-dist
-coverage
-build
-.vscode
-*.config.js
-vite.config.ts 

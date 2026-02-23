@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
-// We use an empty string because the Vite proxy handles the /api prefix
-const API_BASE_URL = '';
+// Empty in dev — Vite proxy routes /api/* to localhost:3000.
+// In production set VITE_API_BASE_URL to the Heroku backend origin (no trailing slash, no /api).
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,

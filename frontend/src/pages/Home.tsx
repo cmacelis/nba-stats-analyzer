@@ -1,12 +1,27 @@
 import React from 'react';
-import { Typography, Box, Button, Grid, Paper } from '@mui/material';
+import { Typography, Box, Button, Grid, Paper, Chip } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { CompareArrows, ShowChart } from '@mui/icons-material';
 import { useSound } from '../contexts/SoundContext';
 import { fadeIn, slideIn } from '../utils/animations';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+function useApiStatus() {
+  return useQuery({
+    queryKey: ['api', 'health'],
+    queryFn: () => axios.get(`${API_BASE}/api/health`).then((r) => r.data),
+    retry: false,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
 
 const Home: React.FC = () => {
   const { playSound } = useSound();
+  const { data: health, isLoading: healthLoading, isError: healthError } = useApiStatus();
 
   const handleButtonHover = () => {
     playSound('hover');
@@ -18,13 +33,22 @@ const Home: React.FC = () => {
 
   return (
     <Box sx={{ animation: `${fadeIn} 0.5s ease-out` }}>
-      <Typography 
-        variant="h4" 
-        gutterBottom
-        sx={{ animation: `${slideIn} 0.5s ease-out` }}
-      >
-        Welcome to NBA Stats Analyzer
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+        <Typography
+          variant="h4"
+          sx={{ animation: `${slideIn} 0.5s ease-out` }}
+        >
+          Welcome to NBA Edge Detector
+        </Typography>
+        {!healthLoading && (
+          <Chip
+            size="small"
+            label={healthError ? 'API: Offline' : `API: Connected${health?.uptime ? ` · up ${Math.floor(health.uptime / 3600)}h` : ''}`}
+            color={healthError ? 'error' : 'success'}
+            variant="outlined"
+          />
+        )}
+      </Box>
       
       <Grid container spacing={3} sx={{ mt: 3 }}>
         <Grid item xs={12} md={6}>
@@ -69,7 +93,7 @@ const Home: React.FC = () => {
             }}
           >
             <Typography variant="h6" gutterBottom>
-              Game Predictions
+              Matchup Edge
             </Typography>
             <Typography variant="body1" paragraph>
               Get AI-powered predictions for upcoming games.

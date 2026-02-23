@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// All requests go through /api/* which Vite proxies to the backend in dev,
-// and Vercel routes to the serverless function in production.
+// Empty in dev — Vite proxy routes /api/* to localhost:3000.
+// In production set VITE_API_BASE_URL to the Heroku backend origin (no trailing slash, no /api).
 const api = axios.create({
-  baseURL: '',
+  baseURL: (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, ''),
   headers: {
     'Content-Type': 'application/json'
   }

@@ -165,7 +165,7 @@ researchRouter.get('/:playerName', async (req: Request, res: Response) => {
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report = await generateReport(playerName, prop, mentions, sentiment, statContext);
-    res.json({ ...report, cached: false });
+    res.json({ ...report, statContext, cached: false });
   } catch (err) {
     console.error('[research] Error generating report:', err);
     res.status(500).json({ error: 'Failed to generate research report' });
@@ -184,7 +184,7 @@ researchRouter.post('/generate', async (req: Request, res: Response) => {
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report = await generateReport(playerName, prop, mentions, sentiment, statContext);
-    res.json(report);
+    res.json({ ...report, statContext });
   } catch (err) {
     console.error('[research] Error generating report:', err);
     res.status(500).json({ error: 'Failed to generate research report' });

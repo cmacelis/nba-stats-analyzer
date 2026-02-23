@@ -12,19 +12,36 @@ const NBA_API_KEY = process.env.BALL_DONT_LIE_API_KEY;
  * Path: GET /api/players?search=name
  */
 router.get('/', async (req: Request, res: Response) => {
-  const searchTerm = req.query.search as string;
+  const searchTerm = (req.query.search as string) || '';
 
   try {
+    // BDL search only matches single tokens — search by first name, then filter
+    const firstName = searchTerm.split(' ')[0];
     const response = await axios.get('https://api.balldontlie.io/v1/players', {
-      params: { search: searchTerm },
+      params: { search: firstName, per_page: 25 },
       headers: { 'Authorization': NBA_API_KEY }
     });
 
-    // Returns the standard BallDontLie structure { data: [...], meta: {...} }
-    res.json(response.data);
+    const allPlayers = response.data?.data ?? [];
+
+    // If query was a full name, narrow to exact match; otherwise return all results
+    const isFullName = searchTerm.includes(' ');
+    const lower = searchTerm.toLowerCase();
+    const filtered = isFullName
+      ? allPlayers.filter(
+          (p: { first_name: string; last_name: string }) =>
+            `${p.first_name} ${p.last_name}`.toLowerCase() === lower
+        )
+      : allPlayers;
+
+    res.json({ ...response.data, data: filtered });
   } catch (error: any) {
-    console.error('Error fetching from BallDontLie:', error.message);
-    res.status(error.response?.status || 500).json({ error: 'Failed to fetch player data' });
+    if (error.response?.status === 401) {
+      res.status(402).json({ error: 'plan_required', message: 'Player search requires a valid BallDontLie API key.' });
+    } else {
+      console.error('Error fetching from BallDontLie:', error.message);
+      res.status(error.response?.status || 500).json({ error: 'Failed to fetch player data' });
+    }
   }
 });
 

@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// Point this to your local backend through the Vite proxy
-const API_BASE_URL = ''; 
+// Empty in dev — Vite proxy routes /api/* to localhost:3000.
+// In production set VITE_API_BASE_URL to the Heroku backend origin (no trailing slash, no /api).
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

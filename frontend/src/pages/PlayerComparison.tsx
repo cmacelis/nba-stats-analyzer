@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Alert,
   Box,
@@ -174,7 +175,16 @@ const PlayerComparison: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Alert severity="error">Failed to load comparison data. Please try again.</Alert>
+        (() => {
+          const isPlanError = axios.isAxiosError<{ error: string }>(error) && error.response?.data?.error === 'plan_required';
+          return (
+            <Alert severity={isPlanError ? 'warning' : 'error'}>
+              {isPlanError
+                ? 'Season stats require a BallDontLie paid plan. Check that BALL_DONT_LIE_API_KEY is set correctly on the backend.'
+                : 'Failed to load comparison data. Please try again.'}
+            </Alert>
+          );
+        })()
       ) : !hasData ? (
         <Alert severity="warning">
           No {seasonLabel} stats found for one or both players. Try selecting a different season above.
@@ -281,7 +291,7 @@ const PlayerComparison: React.FC = () => {
       {(player1 || player2) && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" fontWeight={600} gutterBottom>
-            AI Research
+            Edge Signal
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>

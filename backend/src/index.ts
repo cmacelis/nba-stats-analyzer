@@ -9,10 +9,15 @@ import { gamesRouter } from './routes/games';
 import { researchRouter } from './api/routes/research';
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
+
+// CORS — in production set ALLOWED_ORIGINS to comma-separated Vercel domain(s)
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : ['http://localhost:5173'];
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: allowedOrigins, methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
