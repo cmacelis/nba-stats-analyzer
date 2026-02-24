@@ -100,11 +100,11 @@ const GamePredictor: React.FC = () => {
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
 
-  const { data: rawStats1, isLoading: loading1 } = usePlayerStats(
+  const { data: rawStats1, isLoading: loading1, isError: statsError1 } = usePlayerStats(
     player1?.id.toString() ?? '',
     season,
   );
-  const { data: rawStats2, isLoading: loading2 } = usePlayerStats(
+  const { data: rawStats2, isLoading: loading2, isError: statsError2 } = usePlayerStats(
     player2?.id.toString() ?? '',
     season,
   );
@@ -191,13 +191,25 @@ const GamePredictor: React.FC = () => {
         </ToggleButtonGroup>
       </Box>
 
+      {/* Stats fetch errors */}
+      {player1 && !loading1 && statsError1 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Could not load stats for {player1.name}. The stats API may be unavailable — check that your BallDontLie API key is set and your plan includes season averages.
+        </Alert>
+      )}
+      {player2 && !loading2 && statsError2 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Could not load stats for {player2.name}. The stats API may be unavailable — check that your BallDontLie API key is set and your plan includes season averages.
+        </Alert>
+      )}
+
       {/* No-stats warnings */}
-      {player1 && !loading1 && rawStats1 !== undefined && !hasStats1 && (
+      {player1 && !loading1 && !statsError1 && rawStats1 !== undefined && !hasStats1 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           No {SEASONS.find(s => s.value === season)?.label} stats available for {player1.name}. Try a different season.
         </Alert>
       )}
-      {player2 && !loading2 && rawStats2 !== undefined && !hasStats2 && (
+      {player2 && !loading2 && !statsError2 && rawStats2 !== undefined && !hasStats2 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           No {SEASONS.find(s => s.value === season)?.label} stats available for {player2.name}. Try a different season.
         </Alert>
