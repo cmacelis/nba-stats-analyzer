@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, bdlGet, BDL_SEASON } from '../../../_lib';
+import { applyCors, bdlGet, BDL_SEASON } from '../../../_lib.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;

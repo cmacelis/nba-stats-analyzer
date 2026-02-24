@@ -6,7 +6,7 @@ import {
   scrapePlayerMentions,
   analyzeSentiment,
   generateReport,
-} from '../_lib';
+} from '../_lib.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Wrap everything — including pre-try code — so any throw returns JSON, not Vercel's error page

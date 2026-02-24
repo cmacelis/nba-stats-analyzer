@@ -19,7 +19,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const games = (data?.data ?? []).filter((g: any) => g.status !== 'Final');
     res.json({ data: games });
   } catch (err) {
-    console.error('[games] error:', (err as Error).message);
-    res.status(500).json({ error: 'Failed to fetch games' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = err as any;
+    const status = e?.response?.status;
+    console.error('[games] error:', e?.message, 'HTTP status:', status);
+    res.status(500).json({ error: 'Failed to fetch games', detail: String(err), bdlStatus: status });
   }
 }
