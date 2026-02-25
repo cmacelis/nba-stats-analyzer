@@ -67,7 +67,7 @@ function PredictionBadge({ prediction }: { prediction: ResearchReport['predictio
 }
 
 function ConfidenceMeter({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100);
+  const pct = Math.round((confidence ?? 0) * 100) || 0;
   // >60% green, 50-60% yellow, <50% red
   const color: 'success' | 'warning' | 'error' =
     pct >= 60 ? 'success' : pct >= 50 ? 'warning' : 'error';
@@ -433,7 +433,7 @@ export default function ResearchPanel({ playerName }: Props) {
             </Box>
 
             <Typography variant="caption" color="text.secondary">
-              Generated {new Date(data.generatedAt).toLocaleString()}
+              Generated {data.generatedAt ? new Date(data.generatedAt).toLocaleString() : '—'}
             </Typography>
           </Stack>
         )}

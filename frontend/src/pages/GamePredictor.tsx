@@ -46,11 +46,11 @@ function lastName(name: string): string {
 }
 
 const SEASONS = [
+  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },
   { value: 2021, label: '2021-22' },
-  { value: 2020, label: '2020-21' },
 ];
 
 const GamePredictor: React.FC = () => {
@@ -58,7 +58,7 @@ const GamePredictor: React.FC = () => {
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [homeCourtValue, setHomeCourtValue] = useState<string | null>(null);
-  const [season, setSeason] = useState(2024);
+  const [season, setSeason] = useState(2025);
   const [copied, setCopied] = useState(false);
   const predictorRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +94,7 @@ const GamePredictor: React.FC = () => {
   const handleSelectGame = (p1: Player, p2: Player) => {
     setPlayer1(p1);
     setPlayer2(p2);
-    setSeason(2024);
+    setSeason(2025);
     setTimeout(() => {
       predictorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);

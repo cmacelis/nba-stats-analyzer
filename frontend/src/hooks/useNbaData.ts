@@ -49,7 +49,7 @@ export const usePlayerComparison = (id1: string, id2: string, season: number = 2
 /**
  * Hook for individual player stats
  */
-export const usePlayerStats = (playerId: string, season: number = 2024) => {
+export const usePlayerStats = (playerId: string, season: number = 2025) => {
   return useQuery({
     queryKey: ['players', 'stats', playerId, season],
     queryFn: async () => {
@@ -88,14 +88,14 @@ export const usePlayerPhoto = (playerName: string) => {
   });
 };
 
-const FALLBACK_SEASONS = [2024, 2023, 2022, 2021, 2020];
+const FALLBACK_SEASONS = [2025, 2024, 2023, 2022, 2021];
 
 /**
  * Like usePlayerStats but automatically falls back to season-1 if the selected
  * season returns no data (pts === undefined/0). Returns isFallback and effectiveSeason
  * so the UI can show an info banner when the fallback kicks in.
  */
-export const usePlayerStatsWithFallback = (playerId: string, season: number) => {
+export const usePlayerStatsWithFallback = (playerId: string, season: number = 2025) => {
   const primary = usePlayerStats(playerId, season);
   const hasNoData = !primary.isLoading && !primary.isError && primary.data !== undefined && !primary.data?.pts;
   const prevSeason = season - 1;

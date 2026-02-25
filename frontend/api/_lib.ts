@@ -12,7 +12,7 @@ import axios from 'axios';
 
 export const VERSION    = '2026-02-23-research-hotfix-1';
 export const BDL_BASE   = 'https://api.balldontlie.io/v1';
-export const BDL_SEASON = 2024;
+export const BDL_SEASON = 2025;
 
 const BDL_KEY       = process.env.BALL_DONT_LIE_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;

@@ -75,11 +75,11 @@ function fmt(val: any, format?: (v: any) => string): string {
 }
 
 const SEASONS = [
+  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },
   { value: 2021, label: '2021-22' },
-  { value: 2020, label: '2020-21' },
 ];
 
 const PlayerComparison: React.FC = () => {
@@ -87,7 +87,7 @@ const PlayerComparison: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
-  const [season, setSeason] = useState(2024);
+  const [season, setSeason] = useState(2025);
   const [copied, setCopied] = useState(false);
 
   // On mount, restore state from URL params
