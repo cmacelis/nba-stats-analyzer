@@ -12,6 +12,13 @@ const PerformanceDashboard = React.lazy(() => import('./pages/PerformanceDashboa
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
+// Remove any previously registered service worker — no SW file exists in this project
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(r => r.unregister());
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
