@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, bdlGet, BDL_SEASON } from '../../../_lib.js';
+import { applyCors, getSeasonAverages, BDL_SEASON } from '../../../_lib.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
@@ -9,15 +9,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const season = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {
-    const [r1, r2] = await Promise.all([
-      bdlGet('/season_averages', { player_id: parseInt(id1), season }),
-      bdlGet('/season_averages', { player_id: parseInt(id2), season }),
+    const [player1, player2] = await Promise.all([
+      getSeasonAverages(parseInt(id1), season),
+      getSeasonAverages(parseInt(id2), season),
     ]);
-    res.json({
-      player1:      r1?.data?.[0] ?? null,
-      player2:      r2?.data?.[0] ?? null,
-      head_to_head: [],
-    });
+    res.json({ player1, player2, head_to_head: [] });
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = err as any;

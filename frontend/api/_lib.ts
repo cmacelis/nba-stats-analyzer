@@ -124,13 +124,58 @@ function calcStreak(games: number[], line: number): number {
   return streak;
 }
 
+/**
+ * Fetch season averages for a player.
+ * Tries /season_averages first; falls back to computing from game logs
+ * so it works on BDL free plan where /season_averages may return empty.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getSeasonAverages(playerId: number, season: number): Promise<Record<string, any> | null> {
+  try {
+    const data = await bdlGet('/season_averages', { player_id: playerId, season });
+    if (data?.data?.[0]) return data.data[0];
+  } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.response?.status === 401) throw err; // propagate auth errors
+  }
+
+  // Fallback: compute from game logs (free plan compatible)
+  const logsData = await bdlGet('/stats', {
+    'player_ids[]': playerId,
+    'seasons[]': season,
+    per_page: 100,
+  });
+  const allGames: Array<Record<string, unknown>> = logsData?.data ?? [];
+  const games = allGames.filter(g => parseMins(g['min'] as string | number) >= 5);
+  if (games.length < 3) return null;
+
+  const n = games.length;
+  const avgN = (key: string) =>
+    Math.round((games.reduce((s, g) => s + (Number(g[key]) || 0), 0) / n) * 10) / 10;
+  const sumK = (key: string) => games.reduce((s, g) => s + (Number(g[key]) || 0), 0);
+  const minsAvg = games.reduce((s, g) => s + parseMins(g['min'] as string | number), 0) / n;
+
+  return {
+    player_id: playerId, season, games_played: n,
+    pts: avgN('pts'), reb: avgN('reb'), ast: avgN('ast'),
+    stl: avgN('stl'), blk: avgN('blk'), turnover: avgN('turnover'),
+    oreb: avgN('oreb'), dreb: avgN('dreb'), pf: avgN('pf'),
+    fgm: avgN('fgm'), fga: avgN('fga'), fg3m: avgN('fg3m'), fg3a: avgN('fg3a'),
+    ftm: avgN('ftm'), fta: avgN('fta'),
+    fg_pct:  sumK('fga')  > 0 ? Math.round((sumK('fgm')  / sumK('fga'))  * 1000) / 1000 : 0,
+    fg3_pct: sumK('fg3a') > 0 ? Math.round((sumK('fg3m') / sumK('fg3a')) * 1000) / 1000 : 0,
+    ft_pct:  sumK('fta')  > 0 ? Math.round((sumK('ftm')  / sumK('fta'))  * 1000) / 1000 : 0,
+    min: `${Math.floor(minsAvg)}:${Math.round((minsAvg % 1) * 60).toString().padStart(2, '0')}`,
+  };
+}
+
 export async function fetchStatContext(playerName: string, propType: string): Promise<StatContext | null> {
   try {
     const player = await findPlayer(playerName);
     if (!player) return null;
 
     const [avgData, logsData] = await Promise.all([
-      bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }),
+      bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }).catch(() => ({ data: [] })),
       bdlGet('/stats', {
         'player_ids[]': player.id,
         'seasons[]': BDL_SEASON,
@@ -140,7 +185,17 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
       }),
     ]);
 
-    const avgRow = avgData?.data?.[0];
+    const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
+    const playedLogs = rawLogs.filter(g => parseMins(g['min'] as string | number) >= 10);
+
+    // Use dedicated season averages if available; otherwise estimate from recent logs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let avgRow: Record<string, any> | undefined = avgData?.data?.[0];
+    if (!avgRow && playedLogs.length >= 3) {
+      const n = playedLogs.length;
+      const avg = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0) / n;
+      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), games_played: n };
+    }
     if (!avgRow) return null;
 
     const statKey = PROP_STAT[propType];
@@ -153,9 +208,7 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
       return null;
     }
 
-    const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
-    const values = rawLogs
-      .filter(g => parseMins(g['min'] as string | number) >= 10)
+    const values = playedLogs
       .slice(0, 10)
       .map(g =>
         propType === 'combined'
@@ -446,7 +499,7 @@ function getNbaPlayerList(): Promise<Array<{ id: number; name: string }>> {
     _nbaListFetch = axios
       .get('https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=2024-25&IsOnlyCurrentSeason=0', {
         headers: NBA_HEADERS,
-        timeout: 8000,
+        timeout: 3000,
       })
       .then(resp => {
         const hdrs: string[] = resp.data.resultSets[0].headers;
