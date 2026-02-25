@@ -391,13 +391,13 @@ export default function ResearchPanel({ playerName }: Props) {
             </Box>
 
             {/* Key factors */}
-            {data.keyFactors.length > 0 && (
+            {(data.keyFactors?.length ?? 0) > 0 && (
               <Box>
                 <Typography variant="caption" color="text.secondary" gutterBottom display="block">
                   Key Factors
                 </Typography>
                 <Stack spacing={0.5}>
-                  {data.keyFactors.map((factor, i) => (
+                  {data.keyFactors!.map((factor, i) => (
                     <Typography
                       key={i}
                       variant="body2"

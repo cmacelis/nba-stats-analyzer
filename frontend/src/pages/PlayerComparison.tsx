@@ -3,7 +3,6 @@ import axios from 'axios';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Divider,
@@ -102,7 +101,10 @@ const PlayerComparison: React.FC = () => {
     const s = searchParams.get('s');
     if (p1id && p1name) setPlayer1({ id: parseInt(p1id), name: p1name, team: p1team || '', position: '' });
     if (p2id && p2name) setPlayer2({ id: parseInt(p2id), name: p2name, team: p2team || '', position: '' });
-    if (s) setSeason(parseInt(s));
+    if (s) {
+      const parsed = parseInt(s);
+      if (SEASONS.some(opt => opt.value === parsed)) setSeason(parsed);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -187,17 +189,8 @@ const PlayerComparison: React.FC = () => {
           );
         })()
       ) : !hasData ? (
-        <Alert
-          severity="warning"
-          action={
-            SEASONS.find(s => s.value === season - 1) ? (
-              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
-                Try {SEASONS.find(s => s.value === season - 1)?.label}
-              </Button>
-            ) : undefined
-          }
-        >
-          No {seasonLabel} stats found for one or both players.
+        <Alert severity="info">
+          No {seasonLabel} stats found for one or both players. Try selecting an older season from the dropdown above.
         </Alert>
       ) : (
         <Paper elevation={2}>

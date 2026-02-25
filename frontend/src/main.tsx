@@ -11,7 +11,6 @@ const GamePredictor = React.lazy(() => import('./pages/GamePredictor'));
 const PerformanceDashboard = React.lazy(() => import('./pages/PerformanceDashboard'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
-import { register } from './utils/serviceWorkerRegistration';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,14 +62,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>
 );
-
-// Register service worker
-register({
-  onSuccess: (registration) => {
-    console.log('Service Worker registered successfully:', registration);
-  },
-  onUpdate: (_registration) => {
-    console.log('New version available. Please refresh the page.');
-    // You could show a notification to the user here
-  },
-});

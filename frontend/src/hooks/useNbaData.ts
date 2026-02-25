@@ -88,6 +88,31 @@ export const usePlayerPhoto = (playerName: string) => {
   });
 };
 
+const FALLBACK_SEASONS = [2024, 2023, 2022, 2021, 2020];
+
+/**
+ * Like usePlayerStats but automatically falls back to season-1 if the selected
+ * season returns no data (pts === undefined/0). Returns isFallback and effectiveSeason
+ * so the UI can show an info banner when the fallback kicks in.
+ */
+export const usePlayerStatsWithFallback = (playerId: string, season: number) => {
+  const primary = usePlayerStats(playerId, season);
+  const hasNoData = !primary.isLoading && !primary.isError && primary.data !== undefined && !primary.data?.pts;
+  const prevSeason = season - 1;
+  const canFallback = hasNoData && FALLBACK_SEASONS.includes(prevSeason);
+  // Always call the hook (Rules of Hooks) — disable it when not needed via empty playerId
+  const fallback = usePlayerStats(canFallback ? playerId : '', prevSeason);
+  const isFallback = canFallback && !fallback.isLoading && !!fallback.data?.pts;
+
+  return {
+    data: isFallback ? fallback.data : primary.data,
+    isLoading: primary.isLoading || (canFallback && fallback.isLoading),
+    isError: primary.isError,
+    isFallback,
+    effectiveSeason: isFallback ? prevSeason : season,
+  };
+};
+
 /**
  * Hook for upcoming games (today + next 3 days, non-Final)
  */

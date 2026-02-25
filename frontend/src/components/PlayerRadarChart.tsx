@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -15,8 +15,6 @@ import { Player, PlayerStats } from '../types/player';
 import { useSound } from '../contexts/SoundContext';
 import { TransitionComponent } from './common/TransitionComponent';
 import { LoadingOverlay } from './common/LoadingOverlay';
-import { useMemoizedCalculation } from '../hooks/useMemoizedCalculation';
-import { usePerformanceMonitoring } from '../hooks/usePerformanceMonitoring';
 
 ChartJS.register(
   RadialLinearScale,
@@ -54,53 +52,46 @@ export const PlayerRadarChart: React.FC<PlayerRadarChartProps> = ({
   const theme = useTheme();
   const { playSound } = useSound();
   const [isVisible, setIsVisible] = useState(false);
-  const { recordOperation } = usePerformanceMonitoring('PlayerRadarChart');
 
   useEffect(() => {
     setIsVisible(true);
     playSound('switch');
   }, [player1.id, player2.id, playSound]);
 
-  const calculateChartData = useMemoizedCalculation(
-    () => {
-      if (!stats1 || !stats2) return null;
-      const endCalculation = recordOperation('calculateChartData');
-      const result = {
-        labels: statsToShow.map(stat => stat.label),
-        datasets: [
-          {
-            label: player1.name,
-            data: statsToShow.map(stat => stats1[stat.key as keyof PlayerStats]),
-            backgroundColor: `${theme.palette.primary.main}40`,
-            borderColor: theme.palette.primary.main,
-            borderWidth: 2,
-            pointBackgroundColor: theme.palette.primary.main,
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: theme.palette.primary.main,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-          },
-          {
-            label: player2.name,
-            data: statsToShow.map(stat => stats2[stat.key as keyof PlayerStats]),
-            backgroundColor: `${theme.palette.secondary.main}40`,
-            borderColor: theme.palette.secondary.main,
-            borderWidth: 2,
-            pointBackgroundColor: theme.palette.secondary.main,
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: theme.palette.secondary.main,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-          },
-        ],
-      };
-      endCalculation();
-      return result;
-    },
-    [player1, player2, stats1, stats2, theme.palette, recordOperation]
-  );
+  const calculateChartData = useMemo(() => {
+    if (!stats1 || !stats2) return null;
+    return {
+      labels: statsToShow.map(stat => stat.label),
+      datasets: [
+        {
+          label: player1.name,
+          data: statsToShow.map(stat => stats1[stat.key as keyof PlayerStats]),
+          backgroundColor: `${theme.palette.primary.main}40`,
+          borderColor: theme.palette.primary.main,
+          borderWidth: 2,
+          pointBackgroundColor: theme.palette.primary.main,
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: theme.palette.primary.main,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: player2.name,
+          data: statsToShow.map(stat => stats2[stat.key as keyof PlayerStats]),
+          backgroundColor: `${theme.palette.secondary.main}40`,
+          borderColor: theme.palette.secondary.main,
+          borderWidth: 2,
+          pointBackgroundColor: theme.palette.secondary.main,
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: theme.palette.secondary.main,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+      ],
+    };
+  }, [player1, player2, stats1, stats2, theme.palette]);
 
   if (isLoading || !stats1 || !stats2) {
     return (

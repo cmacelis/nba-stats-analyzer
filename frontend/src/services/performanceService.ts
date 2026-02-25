@@ -95,9 +95,8 @@ class PerformanceService {
     this.observers.forEach(observer => observer(metric));
   }
 
-  private sendToAnalytics(metric: PerformanceMetric) {
-    // TODO: Implement analytics service integration
-    console.log('Performance metric:', metric);
+  private sendToAnalytics(_metric: PerformanceMetric) {
+    // Analytics integration placeholder
   }
 
   public getMetrics() {

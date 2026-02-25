@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   FormControl,
@@ -30,7 +29,7 @@ import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
-import { usePlayerStats, usePlayerPhoto } from '../hooks/useNbaData';
+import { usePlayerStatsWithFallback, usePlayerPhoto } from '../hooks/useNbaData';
 import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
@@ -75,7 +74,10 @@ const GamePredictor: React.FC = () => {
     const hc = searchParams.get('hc');
     if (p1id && p1name) setPlayer1({ id: parseInt(p1id), name: p1name, team: p1team || '', position: '' });
     if (p2id && p2name) setPlayer2({ id: parseInt(p2id), name: p2name, team: p2team || '', position: '' });
-    if (s) setSeason(parseInt(s));
+    if (s) {
+      const parsed = parseInt(s);
+      if (SEASONS.some(opt => opt.value === parsed)) setSeason(parsed);
+    }
     if (hc) setHomeCourtValue(hc);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -92,7 +94,7 @@ const GamePredictor: React.FC = () => {
   const handleSelectGame = (p1: Player, p2: Player) => {
     setPlayer1(p1);
     setPlayer2(p2);
-    setSeason(2025);
+    setSeason(2024);
     setTimeout(() => {
       predictorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
@@ -101,11 +103,11 @@ const GamePredictor: React.FC = () => {
   const homeTeam: 1 | 2 | null =
     homeCourtValue === '1' ? 1 : homeCourtValue === '2' ? 2 : null;
 
-  const { data: rawStats1, isLoading: loading1, isError: statsError1 } = usePlayerStats(
+  const { data: rawStats1, isLoading: loading1, isError: statsError1, isFallback: isFallback1, effectiveSeason: effectiveSeason1 } = usePlayerStatsWithFallback(
     player1?.id.toString() ?? '',
     season,
   );
-  const { data: rawStats2, isLoading: loading2, isError: statsError2 } = usePlayerStats(
+  const { data: rawStats2, isLoading: loading2, isError: statsError2, isFallback: isFallback2, effectiveSeason: effectiveSeason2 } = usePlayerStatsWithFallback(
     player2?.id.toString() ?? '',
     season,
   );
@@ -210,35 +212,27 @@ const GamePredictor: React.FC = () => {
         </Alert>
       )}
 
-      {/* No-stats warnings */}
+      {/* Auto-fallback info banners */}
+      {player1 && !loading1 && isFallback1 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No {SEASONS.find(s => s.value === season)?.label} stats for {player1.name} yet — showing {SEASONS.find(s => s.value === effectiveSeason1)?.label}.
+        </Alert>
+      )}
+      {player2 && !loading2 && isFallback2 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No {SEASONS.find(s => s.value === season)?.label} stats for {player2.name} yet — showing {SEASONS.find(s => s.value === effectiveSeason2)?.label}.
+        </Alert>
+      )}
+
+      {/* No stats found even after fallback */}
       {player1 && !loading1 && !statsError1 && rawStats1 !== undefined && !hasStats1 && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            SEASONS.find(s => s.value === season - 1) ? (
-              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
-                Try {SEASONS.find(s => s.value === season - 1)?.label}
-              </Button>
-            ) : undefined
-          }
-        >
-          No {SEASONS.find(s => s.value === season)?.label} stats for {player1.name}.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No season averages found for {player1.name}. Try selecting an older season.
         </Alert>
       )}
       {player2 && !loading2 && !statsError2 && rawStats2 !== undefined && !hasStats2 && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            SEASONS.find(s => s.value === season - 1) ? (
-              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
-                Try {SEASONS.find(s => s.value === season - 1)?.label}
-              </Button>
-            ) : undefined
-          }
-        >
-          No {SEASONS.find(s => s.value === season)?.label} stats for {player2.name}.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No season averages found for {player2.name}. Try selecting an older season.
         </Alert>
       )}
 
@@ -411,7 +405,7 @@ const GamePredictor: React.FC = () => {
         color="text.secondary"
         sx={{ mt: 2, display: 'block', textAlign: 'center' }}
       >
-        Note: Predictions are based on {SEASONS.find(s => s.value === season)?.label} season averages and are for entertainment purposes only.
+        Note: Predictions use the most recent available season averages (auto-fallback if needed) and are for entertainment purposes only.
       </Typography>
 
       <Snackbar
