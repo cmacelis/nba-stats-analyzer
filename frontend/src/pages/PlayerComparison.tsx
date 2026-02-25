@@ -3,6 +3,7 @@ import axios from 'axios';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Divider,
@@ -75,7 +76,6 @@ function fmt(val: any, format?: (v: any) => string): string {
 }
 
 const SEASONS = [
-  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },
@@ -187,8 +187,17 @@ const PlayerComparison: React.FC = () => {
           );
         })()
       ) : !hasData ? (
-        <Alert severity="warning">
-          No {seasonLabel} stats found for one or both players. Try selecting a different season above.
+        <Alert
+          severity="warning"
+          action={
+            SEASONS.find(s => s.value === season - 1) ? (
+              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
+                Try {SEASONS.find(s => s.value === season - 1)?.label}
+              </Button>
+            ) : undefined
+          }
+        >
+          No {seasonLabel} stats found for one or both players.
         </Alert>
       ) : (
         <Paper elevation={2}>

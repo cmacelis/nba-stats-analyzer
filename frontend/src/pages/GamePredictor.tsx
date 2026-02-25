@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControl,
@@ -46,7 +47,6 @@ function lastName(name: string): string {
 }
 
 const SEASONS = [
-  { value: 2025, label: '2025-26' },
   { value: 2024, label: '2024-25' },
   { value: 2023, label: '2023-24' },
   { value: 2022, label: '2022-23' },
@@ -59,7 +59,7 @@ const GamePredictor: React.FC = () => {
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [homeCourtValue, setHomeCourtValue] = useState<string | null>(null);
-  const [season, setSeason] = useState(2025);
+  const [season, setSeason] = useState(2024);
   const [copied, setCopied] = useState(false);
   const predictorRef = useRef<HTMLDivElement>(null);
 
@@ -212,13 +212,33 @@ const GamePredictor: React.FC = () => {
 
       {/* No-stats warnings */}
       {player1 && !loading1 && !statsError1 && rawStats1 !== undefined && !hasStats1 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          No {SEASONS.find(s => s.value === season)?.label} stats available for {player1.name}. Try a different season.
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            SEASONS.find(s => s.value === season - 1) ? (
+              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
+                Try {SEASONS.find(s => s.value === season - 1)?.label}
+              </Button>
+            ) : undefined
+          }
+        >
+          No {SEASONS.find(s => s.value === season)?.label} stats for {player1.name}.
         </Alert>
       )}
       {player2 && !loading2 && !statsError2 && rawStats2 !== undefined && !hasStats2 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          No {SEASONS.find(s => s.value === season)?.label} stats available for {player2.name}. Try a different season.
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            SEASONS.find(s => s.value === season - 1) ? (
+              <Button color="inherit" size="small" onClick={() => setSeason(season - 1)}>
+                Try {SEASONS.find(s => s.value === season - 1)?.label}
+              </Button>
+            ) : undefined
+          }
+        >
+          No {SEASONS.find(s => s.value === season)?.label} stats for {player2.name}.
         </Alert>
       )}
 
