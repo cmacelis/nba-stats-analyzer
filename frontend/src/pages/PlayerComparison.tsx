@@ -124,6 +124,11 @@ const PlayerComparison: React.FC = () => {
 
   const hasData = player1 && player2 && data?.player1 && data?.player2;
   const seasonLabel = SEASONS.find(s => s.value === season)?.label ?? '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const effectiveSeason: number | undefined = (data as any)?.effectiveSeason;
+  const effectiveSeasonLabel = effectiveSeason
+    ? (SEASONS.find(s => s.value === effectiveSeason)?.label ?? `${effectiveSeason}-${effectiveSeason + 1 - 2000}`)
+    : null;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -191,8 +196,15 @@ const PlayerComparison: React.FC = () => {
       ) : !hasData ? (
         <Alert severity="info">
           No {seasonLabel} stats found for one or both players. Try selecting an older season from the dropdown above.
+          {' '}(If you're on the BallDontLie free plan, current-season data may not be available.)
         </Alert>
       ) : (
+        <>
+          {effectiveSeason && effectiveSeason !== season && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              No {seasonLabel} data found — showing {effectiveSeasonLabel} season averages instead.
+            </Alert>
+          )}
         <Paper elevation={2}>
           <Box
             sx={{
@@ -305,6 +317,7 @@ const PlayerComparison: React.FC = () => {
             </Typography>
           </Box>
         </Paper>
+        </>
       )}
 
       {(player1 || player2) && (

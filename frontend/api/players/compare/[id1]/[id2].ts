@@ -9,11 +9,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const season = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {
-    const [player1, player2] = await Promise.all([
+    let [player1, player2] = await Promise.all([
       getSeasonAverages(parseInt(id1), season),
       getSeasonAverages(parseInt(id2), season),
     ]);
-    res.json({ player1, player2, head_to_head: [] });
+
+    // If either player has no data for the requested season, try the previous season for both
+    // (keeps comparison consistent — same season for both players)
+    let effectiveSeason = season;
+    if (!player1 || !player2) {
+      effectiveSeason = season - 1;
+      const [fb1, fb2] = await Promise.all([
+        getSeasonAverages(parseInt(id1), effectiveSeason),
+        getSeasonAverages(parseInt(id2), effectiveSeason),
+      ]);
+      player1 = fb1;
+      player2 = fb2;
+    }
+
+    res.json({ player1, player2, head_to_head: [], effectiveSeason });
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = err as any;
