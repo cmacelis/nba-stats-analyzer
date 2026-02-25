@@ -26,6 +26,7 @@ import {
 import { ContentCopy } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
+import PlayerAvatar from '../components/PlayerAvatar';
 import ResearchPanel from '../components/ResearchPanel';
 import { usePlayerComparison } from '../hooks/useNbaData';
 import { Player } from '../types/player';
@@ -201,13 +202,29 @@ const PlayerComparison: React.FC = () => {
               borderRadius: '4px 4px 0 0',
             }}
           >
-            <Typography variant="subtitle2" fontWeight={600}>Stat</Typography>
-            <Typography variant="subtitle2" fontWeight={600} textAlign="center">
-              {player1.name}
-            </Typography>
-            <Typography variant="subtitle2" fontWeight={600} textAlign="center">
-              {player2.name}
-            </Typography>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ alignSelf: 'center' }}>Stat</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <PlayerAvatar
+                name={player1.name}
+                photoUrl={player1.photoUrl}
+                size={56}
+                sx={{ border: '2px solid rgba(255,255,255,0.5)' }}
+              />
+              <Typography variant="subtitle2" fontWeight={600} textAlign="center">
+                {player1.name}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <PlayerAvatar
+                name={player2.name}
+                photoUrl={player2.photoUrl}
+                size={56}
+                sx={{ border: '2px solid rgba(255,255,255,0.5)', bgcolor: 'secondary.main' }}
+              />
+              <Typography variant="subtitle2" fontWeight={600} textAlign="center">
+                {player2.name}
+              </Typography>
+            </Box>
           </Box>
 
           <TableContainer>

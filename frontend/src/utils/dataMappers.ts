@@ -6,7 +6,8 @@ export function mapApiPlayerToPlayer(apiPlayer: any): Player {
     id: apiPlayer.id,
     name: `${apiPlayer.first_name} ${apiPlayer.last_name}`,
     team: apiPlayer.team?.full_name || 'Free Agent',
-    position: apiPlayer.position || 'N/A'
+    position: apiPlayer.position || 'N/A',
+    photoUrl: apiPlayer.photo_url ?? undefined,
   };
 }
 

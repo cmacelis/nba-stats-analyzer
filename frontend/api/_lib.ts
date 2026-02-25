@@ -422,6 +422,63 @@ function buildPrompt(
   return `You are an expert NBA prop betting analyst focused on finding edges.\nPlayer: ${playerName} | Prop: ${propType} | Line: ${r1(ctx.propLine)}\nLast 10 games: ${games}\nHit rate L10: ${Math.round(ctx.overHitRate * 100)}% | L5 avg: ${r1(ctx.recentAvg5)} (${sign(d5)}) | L10 avg: ${r1(ctx.recentAvg10)} (${sign(d10)})\nStd dev: ${r1(ctx.stdDev)} (${consistencyLabel(ctx.stdDev)}) | Streak: ${streakLabel(ctx.streak)}\nSentiment: ${st}\n${top}\nRespond ONLY with valid JSON:\n{"prediction":"over"|"under"|"neutral","confidence":0-100,"reasoning":"<2-3 sentences>","key_factors":["..."],"sentiment_weight":"<e.g. Low (10%)>","stat_weight":"<e.g. Primary (90%)>"}`;
 }
 
+// ── NBA headshots ─────────────────────────────────────────────────────────────
+
+const NBA_CDN_BASE = 'https://cdn.nba.com/headshots/nba/latest/260x190';
+export const buildNbaPhotoUrl = (personId: number): string => `${NBA_CDN_BASE}/${personId}.png`;
+
+const NBA_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Referer': 'https://www.nba.com/',
+  'Origin': 'https://www.nba.com',
+  'x-nba-stats-origin': 'stats',
+  'x-nba-stats-token': 'true',
+};
+
+const NBA_LIST_TTL = 24 * 60 * 60 * 1000;
+let _nbaListCache: { data: Array<{ id: number; name: string }>; ts: number } | null = null;
+let _nbaListFetch: Promise<Array<{ id: number; name: string }>> | null = null;
+
+function getNbaPlayerList(): Promise<Array<{ id: number; name: string }>> {
+  const now = Date.now();
+  if (_nbaListCache && now - _nbaListCache.ts < NBA_LIST_TTL) return Promise.resolve(_nbaListCache.data);
+  if (!_nbaListFetch) {
+    _nbaListFetch = axios
+      .get('https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=2024-25&IsOnlyCurrentSeason=0', {
+        headers: NBA_HEADERS,
+        timeout: 8000,
+      })
+      .then(resp => {
+        const hdrs: string[] = resp.data.resultSets[0].headers;
+        const rows: unknown[][] = resp.data.resultSets[0].rowSet;
+        const idIdx   = hdrs.indexOf('PERSON_ID');
+        const nameIdx = hdrs.indexOf('DISPLAY_FIRST_LAST');
+        const data = rows.map(r => ({ id: r[idIdx] as number, name: (r[nameIdx] as string).toLowerCase() }));
+        _nbaListCache = { ts: Date.now(), data };
+        _nbaListFetch = null;
+        return data;
+      })
+      .catch(err => {
+        _nbaListFetch = null;
+        throw err;
+      });
+  }
+  return _nbaListFetch;
+}
+
+export async function findNbaPersonId(playerName: string): Promise<number | null> {
+  const list = await getNbaPlayerList();
+  const needle   = playerName.toLowerCase();
+  const lastName = needle.split(' ').pop() ?? needle;
+  return (
+    list.find(p => p.name === needle)?.id ??
+    list.find(p => p.name.endsWith(` ${lastName}`))?.id ??
+    null
+  );
+}
+
+// ── Research report generation ────────────────────────────────────────────────
+
 export async function generateReport(
   playerName: string, propType: string,
   mentions: SocialMention[], sentiment: SentimentScore | null, ctx: StatContext | null

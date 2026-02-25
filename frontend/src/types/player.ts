@@ -3,6 +3,7 @@ export interface Player {
   name: string;
   team: string;
   position: string;
+  photoUrl?: string;
 }
 
 export interface PlayerStats {

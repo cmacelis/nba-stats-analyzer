@@ -7,8 +7,10 @@ import {
   Typography,
   Pagination,
   ListItem,
+  ListItemAvatar,
   ListItemText,
 } from '@mui/material';
+import PlayerAvatar from './PlayerAvatar';
 import { useSearchPlayers } from '../hooks/useNbaData';
 import { useDebounce } from '../hooks/useDebounce';
 import { Player } from '../types/player';
@@ -82,9 +84,12 @@ const mappedPlayers = searchResults?.data?.map(mapApiPlayerToPlayer) || [];
         )}
         renderOption={(props, option) => (
           <ListItem {...props}>
-            <ListItemText 
-              primary={option.name} 
-              secondary={`${option.team} • ${option.position}`} 
+            <ListItemAvatar sx={{ minWidth: 48 }}>
+              <PlayerAvatar name={option.name} photoUrl={option.photoUrl} size={36} />
+            </ListItemAvatar>
+            <ListItemText
+              primary={option.name}
+              secondary={`${option.team} • ${option.position}`}
             />
           </ListItem>
         )}

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, searchPlayers } from '../_lib.js';
+import { applyCors, searchPlayers, findNbaPersonId, buildNbaPhotoUrl, BdlPlayer } from '../_lib.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -9,7 +9,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!search) return res.status(400).json({ error: 'search query param is required' });
 
     const result = await searchPlayers(search);
-    res.json(result);
+    const enriched = await Promise.all(
+      result.data.map(async (p: BdlPlayer) => {
+        const fullName = `${p.first_name} ${p.last_name}`;
+        const personId = await findNbaPersonId(fullName).catch(() => null);
+        return { ...p, photo_url: personId != null ? buildNbaPhotoUrl(personId) : null };
+      })
+    );
+    res.json({ ...result, data: enriched });
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = err as any;

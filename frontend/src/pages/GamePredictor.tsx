@@ -26,9 +26,10 @@ import {
 import { ArrowBack, ArrowForward, ContentCopy, Remove } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
+import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
-import { usePlayerStats } from '../hooks/useNbaData';
+import { usePlayerStats, usePlayerPhoto } from '../hooks/useNbaData';
 import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
@@ -111,6 +112,12 @@ const GamePredictor: React.FC = () => {
 
   const hasStats1 = !!rawStats1?.pts;
   const hasStats2 = !!rawStats2?.pts;
+
+  // Resolve photos — use player.photoUrl if already set (from search), else fetch by name
+  const { data: fetchedPhoto1 } = usePlayerPhoto(!player1?.photoUrl && !!player1 ? player1.name : '');
+  const { data: fetchedPhoto2 } = usePlayerPhoto(!player2?.photoUrl && !!player2 ? player2.name : '');
+  const resolvedPhoto1 = player1?.photoUrl ?? fetchedPhoto1 ?? undefined;
+  const resolvedPhoto2 = player2?.photoUrl ?? fetchedPhoto2 ?? undefined;
 
   const prediction = useMemo(() => {
     if (!hasStats1 || !hasStats2) return null;
@@ -231,13 +238,19 @@ const GamePredictor: React.FC = () => {
               Win Probability
             </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" fontWeight="bold" color="primary.main">
-                {player1.name} ({prediction.team1WinProbability.toFixed(0)}%)
-              </Typography>
-              <Typography variant="body2" fontWeight="bold" color="secondary.main">
-                {player2.name} ({(100 - prediction.team1WinProbability).toFixed(0)}%)
-              </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PlayerAvatar name={player1.name} photoUrl={resolvedPhoto1} size={48} />
+                <Typography variant="body2" fontWeight="bold" color="primary.main">
+                  {player1.name} ({prediction.team1WinProbability.toFixed(0)}%)
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" fontWeight="bold" color="secondary.main">
+                  {player2.name} ({(100 - prediction.team1WinProbability).toFixed(0)}%)
+                </Typography>
+                <PlayerAvatar name={player2.name} photoUrl={resolvedPhoto2} size={48} />
+              </Box>
             </Box>
 
             <Box

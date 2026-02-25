@@ -74,6 +74,21 @@ export interface NbaGame {
 }
 
 /**
+ * Hook for resolving a player photo URL by name (for players without photoUrl in their Player object)
+ */
+export const usePlayerPhoto = (playerName: string) => {
+  return useQuery<string | null>({
+    queryKey: ['players', 'photo', playerName],
+    queryFn: async () => {
+      const response = await api.get('/api/players/photo', { params: { name: playerName } });
+      return response.data.photo_url ?? null;
+    },
+    enabled: !!playerName,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+};
+
+/**
  * Hook for upcoming games (today + next 3 days, non-Final)
  */
 export const useUpcomingGames = () => {
