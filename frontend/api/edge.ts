@@ -88,12 +88,21 @@ export interface EdgeEntry {
   games_played: number;
 }
 
+interface UpstreamError {
+  status:       number | null;
+  message:      string;
+  url:          string;
+  body_preview: string | null;
+}
+
 export interface EdgeDebugInfo {
   active_players_count: number;
   active_player_ids_sample: number[];
   season_averages_count: number;
   season_averages_empty_reason: 'empty' | 'error' | null;
+  season_averages_error: UpstreamError | null;
   stats_logs_count_total: number;
+  stats_error: UpstreamError | null;
   stats_logs_count_sample_player: { player_id: number; games: number; minutes_values: number[] } | null;
   grouped_players_with_logs: number;
   final_candidates_before_sort: number;
@@ -122,21 +131,47 @@ export async function computeEdgeFeed(
   }
 
   let seasonEmptyReason: EdgeDebugInfo['season_averages_empty_reason'] = null;
+  let seasonUpstreamErr: UpstreamError | null = null;
+  let statsUpstreamErr:  UpstreamError | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let seasonResData: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let statsResData:  any[] = [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function captureErr(err: any, path: string): UpstreamError {
+    const resp   = err?.response;
+    const status: number | null = resp?.status ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body   = resp?.data;
+    const bodyStr = body
+      ? (typeof body === 'string' ? body : JSON.stringify(body)).slice(0, 200)
+      : null;
+    return {
+      status,
+      message: err?.message ?? String(err),
+      url:     `${BDL_BASE}${path}`,
+      body_preview: bodyStr,
+    };
+  }
+
   const [seasonRes, statsRes] = await Promise.all([
     bdlBatch('/season_averages', { 'player_ids[]': ids, season })
-      .catch(() => { seasonEmptyReason = 'error'; return { data: [] }; }),
+      .catch((err) => {
+        seasonEmptyReason = 'error';
+        seasonUpstreamErr = captureErr(err, '/season_averages');
+        return { data: [] };
+      }),
     bdlBatch('/stats', {
       'player_ids[]': ids,
       'seasons[]':    [season],
       per_page:        150,
       sort:           'date',
       direction:      'desc',
-    }).catch(() => ({ data: [] })),
+    }).catch((err) => {
+      statsUpstreamErr = captureErr(err, '/stats');
+      return { data: [] };
+    }),
   ]);
 
   seasonResData = seasonRes?.data ?? [];
@@ -149,7 +184,9 @@ export async function computeEdgeFeed(
   if (debugOut) {
     debugOut.season_averages_count        = seasonResData.length;
     debugOut.season_averages_empty_reason = seasonEmptyReason;
+    debugOut.season_averages_error        = seasonUpstreamErr;
     debugOut.stats_logs_count_total       = statsResData.length;
+    debugOut.stats_error                  = statsUpstreamErr;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -234,7 +271,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     active_player_ids_sample:     [],
     season_averages_count:        0,
     season_averages_empty_reason: null,
+    season_averages_error:        null,
     stats_logs_count_total:       0,
+    stats_error:                  null,
     stats_logs_count_sample_player: null,
     grouped_players_with_logs:    0,
     final_candidates_before_sort: 0,
