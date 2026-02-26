@@ -88,18 +88,48 @@ export interface EdgeEntry {
   games_played: number;
 }
 
+export interface EdgeDebugInfo {
+  active_players_count: number;
+  active_player_ids_sample: number[];
+  season_averages_count: number;
+  season_averages_empty_reason: 'empty' | 'error' | null;
+  stats_logs_count_total: number;
+  stats_logs_count_sample_player: { player_id: number; games: number; minutes_values: number[] } | null;
+  grouped_players_with_logs: number;
+  final_candidates_before_sort: number;
+  final_returned: number;
+}
+
 // ── core computation (exported for reuse by alerts endpoint) ──────────────────
 
 /**
  * Computes the edge feed entries for a given stat/season without headshot enrichment.
  * Returns entries sorted by |delta| descending, capped at 20.
+ * Pass a debugOut object to collect pipeline stage counts.
  */
-export async function computeEdgeFeed(stat: StatKey, minMin: number, season: number): Promise<EdgeEntry[]> {
+export async function computeEdgeFeed(
+  stat: StatKey,
+  minMin: number,
+  season: number,
+  debugOut?: EdgeDebugInfo,
+): Promise<EdgeEntry[]> {
   const players = await getActivePlayers();
   const ids     = players.map(p => p.id);
 
+  if (debugOut) {
+    debugOut.active_players_count      = players.length;
+    debugOut.active_player_ids_sample  = ids.slice(0, 5);
+  }
+
+  let seasonEmptyReason: EdgeDebugInfo['season_averages_empty_reason'] = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let seasonResData: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let statsResData:  any[] = [];
+
   const [seasonRes, statsRes] = await Promise.all([
-    bdlBatch('/season_averages', { 'player_ids[]': ids, season }).catch(() => ({ data: [] })),
+    bdlBatch('/season_averages', { 'player_ids[]': ids, season })
+      .catch(() => { seasonEmptyReason = 'error'; return { data: [] }; }),
     bdlBatch('/stats', {
       'player_ids[]': ids,
       'seasons[]':    [season],
@@ -109,17 +139,46 @@ export async function computeEdgeFeed(stat: StatKey, minMin: number, season: num
     }).catch(() => ({ data: [] })),
   ]);
 
+  seasonResData = seasonRes?.data ?? [];
+  statsResData  = statsRes?.data  ?? [];
+
+  if (debugOut && seasonEmptyReason !== 'error') {
+    seasonEmptyReason = seasonResData.length === 0 ? 'empty' : null;
+  }
+
+  if (debugOut) {
+    debugOut.season_averages_count        = seasonResData.length;
+    debugOut.season_averages_empty_reason = seasonEmptyReason;
+    debugOut.stats_logs_count_total       = statsResData.length;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const seasonMap = new Map<number, any>();
-  for (const row of (seasonRes?.data ?? [])) seasonMap.set(row.player_id, row);
+  for (const row of seasonResData) seasonMap.set(row.player_id, row);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameMap = new Map<number, any[]>();
-  for (const g of (statsRes?.data ?? [])) {
+  for (const g of statsResData) {
     const pid: number = g?.player?.id ?? g?.player_id;
     if (!pid || parseMins(g.min) < minMin) continue;
     if (!gameMap.has(pid)) gameMap.set(pid, []);
     gameMap.get(pid)!.push(g);
+  }
+
+  if (debugOut) {
+    debugOut.grouped_players_with_logs = [...gameMap.values()].filter(gs => gs.length >= 3).length;
+    // Sample: first player from the active list that has any logs
+    const sampleEntry = players.find(p => gameMap.has(p.id));
+    if (sampleEntry) {
+      const sampleGames = gameMap.get(sampleEntry.id)!;
+      debugOut.stats_logs_count_sample_player = {
+        player_id:     sampleEntry.id,
+        games:         sampleGames.length,
+        minutes_values: sampleGames.slice(0, 5).map(g => Math.round(parseMins(g.min) * 10) / 10),
+      };
+    } else {
+      debugOut.stats_logs_count_sample_player = null;
+    }
   }
 
   const entries: EdgeEntry[] = [];
@@ -146,8 +205,18 @@ export async function computeEdgeFeed(stat: StatKey, minMin: number, season: num
     });
   }
 
+  if (debugOut) {
+    debugOut.final_candidates_before_sort = entries.length;
+  }
+
   entries.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  return entries.slice(0, 20);
+  const result = entries.slice(0, 20);
+
+  if (debugOut) {
+    debugOut.final_returned = result.length;
+  }
+
+  return result;
 }
 
 // ── handler ───────────────────────────────────────────────────────────────────
@@ -155,12 +224,25 @@ export async function computeEdgeFeed(stat: StatKey, minMin: number, season: num
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
-  const stat   = ((req.query.stat as string) || 'pts') as StatKey;
-  const minMin = parseFloat(req.query.min_minutes as string) || 20;
-  const season = parseInt(req.query.season as string) || BDL_SEASON;
+  const stat    = ((req.query.stat as string) || 'pts') as StatKey;
+  const minMin  = parseFloat(req.query.min_minutes as string) || 20;
+  const season  = parseInt(req.query.season as string) || BDL_SEASON;
+  const isDebug = req.query.debug === '1';
+
+  const debugOut: EdgeDebugInfo | undefined = isDebug ? {
+    active_players_count:         0,
+    active_player_ids_sample:     [],
+    season_averages_count:        0,
+    season_averages_empty_reason: null,
+    stats_logs_count_total:       0,
+    stats_logs_count_sample_player: null,
+    grouped_players_with_logs:    0,
+    final_candidates_before_sort: 0,
+    final_returned:               0,
+  } : undefined;
 
   try {
-    const top = await computeEdgeFeed(stat, minMin, season);
+    const top = await computeEdgeFeed(stat, minMin, season, debugOut);
 
     // Enrich with headshots (in parallel, non-fatal)
     await Promise.all(
@@ -172,7 +254,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     );
 
-    res.json({ data: top, stat, season, generated_at: new Date().toISOString() });
+    res.json({
+      data: top,
+      stat,
+      season,
+      generated_at: new Date().toISOString(),
+      ...(isDebug && { debug: debugOut }),
+    });
   } catch (err) {
     console.error('[edge] error:', (err as Error).message);
     res.status(500).json({ error: 'Failed to generate edge feed' });
