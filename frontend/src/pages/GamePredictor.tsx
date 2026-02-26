@@ -126,6 +126,17 @@ const GamePredictor: React.FC = () => {
     return predictGame(rawStats1 as RawPlayerStats, rawStats2 as RawPlayerStats, homeTeam);
   }, [rawStats1, rawStats2, homeTeam, hasStats1, hasStats2]);
 
+  // Track prediction events in localStorage for the /performance dashboard
+  useEffect(() => {
+    if (!prediction) return;
+    const KEY = 'nba_prediction_log';
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const prev: string[] = JSON.parse(localStorage.getItem(KEY) || '[]');
+    const trimmed = prev.filter(t => new Date(t).getTime() > cutoff);
+    trimmed.push(new Date().toISOString());
+    localStorage.setItem(KEY, JSON.stringify(trimmed));
+  }, [prediction]);
+
   const mappedStats1 = useMemo(
     () => (rawStats1 ? mapApiStatsToPlayerStats(rawStats1) : undefined),
     [rawStats1],
@@ -215,12 +226,12 @@ const GamePredictor: React.FC = () => {
       {/* Auto-fallback info banners */}
       {player1 && !loading1 && isFallback1 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          No {SEASONS.find(s => s.value === season)?.label} stats for {player1.name} yet — showing {SEASONS.find(s => s.value === effectiveSeason1)?.label}.
+          Not enough {SEASONS.find(s => s.value === season)?.label} games yet to compute a reliable average for {player1.name} — showing {SEASONS.find(s => s.value === effectiveSeason1)?.label}.
         </Alert>
       )}
       {player2 && !loading2 && isFallback2 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          No {SEASONS.find(s => s.value === season)?.label} stats for {player2.name} yet — showing {SEASONS.find(s => s.value === effectiveSeason2)?.label}.
+          Not enough {SEASONS.find(s => s.value === season)?.label} games yet to compute a reliable average for {player2.name} — showing {SEASONS.find(s => s.value === effectiveSeason2)?.label}.
         </Alert>
       )}
 

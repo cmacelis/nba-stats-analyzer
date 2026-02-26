@@ -9,6 +9,7 @@ const Home = React.lazy(() => import('./pages/Home'));
 const PlayerComparison = React.lazy(() => import('./pages/PlayerComparison'));
 const GamePredictor = React.lazy(() => import('./pages/GamePredictor'));
 const PerformanceDashboard = React.lazy(() => import('./pages/PerformanceDashboard'));
+const EdgeDetector = React.lazy(() => import('./pages/EdgeDetector'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -48,6 +49,10 @@ const router = createBrowserRouter([
       {
         path: 'performance',
         element: <PerformanceDashboard />
+      },
+      {
+        path: 'edge',
+        element: <EdgeDetector />
       }
     ]
   }

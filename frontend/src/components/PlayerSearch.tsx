@@ -83,7 +83,7 @@ const mappedPlayers = searchResults?.data?.map(mapApiPlayerToPlayer) || [];
           />
         )}
         renderOption={(props, option) => (
-          <ListItem {...props}>
+          <ListItem key={option.id} {...props}>
             <ListItemAvatar sx={{ minWidth: 48 }}>
               <PlayerAvatar name={option.name} photoUrl={option.photoUrl} size={36} />
             </ListItemAvatar>

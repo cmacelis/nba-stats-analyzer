@@ -14,6 +14,8 @@ export const HeadToHeadStats: React.FC<HeadToHeadStatsProps> = ({
   player1Name,
   player2Name,
 }) => {
+  if (!data?.matchups) return null;
+
   const player1WinPercentage = (data.player1Wins / data.matchups) * 100;
   
   return (

@@ -201,8 +201,8 @@ const PlayerComparison: React.FC = () => {
       ) : (
         <>
           {effectiveSeason && effectiveSeason !== season && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              No {seasonLabel} data found — showing {effectiveSeasonLabel} season averages instead.
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Not enough {seasonLabel} games yet to compute a reliable average — showing {effectiveSeasonLabel}.
             </Alert>
           )}
         <Paper elevation={2}>

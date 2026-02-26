@@ -104,6 +104,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               Matchup Edge
             </Button>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/edge"
+              onMouseEnter={handleButtonHover}
+              onClick={handleButtonClick}
+              sx={{
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.05)'
+                }
+              }}
+            >
+              Edge Feed
+            </Button>
             <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
               <IconButton 
                 color="inherit"

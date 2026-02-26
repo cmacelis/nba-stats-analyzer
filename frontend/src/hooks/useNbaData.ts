@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 
 // Empty in dev — Vite proxy routes /api/* to localhost:3000.
@@ -111,6 +111,92 @@ export const usePlayerStatsWithFallback = (playerId: string, season: number = 20
     isFallback,
     effectiveSeason: isFallback ? prevSeason : season,
   };
+};
+
+// ── Pick tracking ─────────────────────────────────────────────────────────────
+
+export interface Pick {
+  id:               string;
+  created_at:       string;
+  type:             'signal' | 'bet';
+  player_id:        number;
+  player_name:      string;
+  team:             string;
+  stat:             'pts' | 'reb' | 'ast' | 'pra';
+  season_used:      number;
+  season_avg:       number;
+  l5_avg:           number;
+  delta:            number;
+  min_minutes:      number;
+  direction:        'over' | 'under';
+  confidence_tier:  'high' | 'medium' | 'low';
+  line?:            number;
+  notes?:           string;
+}
+
+export interface PicksResponse {
+  data:       Pick[];
+  configured: boolean;
+  range?:     string;
+}
+
+export const usePickHistory = (range: '7d' | '30d' = '30d') => {
+  return useQuery<PicksResponse>({
+    queryKey: ['picks', range],
+    queryFn:  async () => {
+      const res = await api.get('/api/picks', { params: { range } });
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+};
+
+export const useTrackPick = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (pick: Omit<Pick, 'id' | 'created_at'>) => {
+      const res = await api.post('/api/picks', pick);
+      return res.data as { ok: boolean; configured: boolean; pick?: Pick };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['picks'] });
+    },
+  });
+};
+
+// ── Edge Feed ──────────────────────────────────────────────────────────────────
+
+export interface EdgeEntry {
+  player_id: number;
+  player_name: string;
+  team: string;
+  team_abbrev: string;
+  photo_url: string | null;
+  season_avg: number;
+  recent_avg: number;
+  delta: number;
+  last5: number[];
+  games_played: number;
+}
+
+export interface EdgeFeedResponse {
+  data: EdgeEntry[];
+  stat: string;
+  season: number;
+  generated_at: string;
+}
+
+export const useEdgeFeed = (stat: string, minMinutes: number, season: number) => {
+  return useQuery<EdgeFeedResponse>({
+    queryKey: ['edge', stat, minMinutes, season],
+    queryFn: async () => {
+      const response = await api.get('/api/edge', {
+        params: { stat, min_minutes: minMinutes, season },
+      });
+      return response.data;
+    },
+    staleTime: 10 * 60 * 1000, // 10 min — feed doesn't change in real-time
+  });
 };
 
 /**

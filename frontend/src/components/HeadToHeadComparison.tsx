@@ -25,6 +25,8 @@ const HeadToHeadComparison: React.FC<HeadToHeadComparisonProps> = ({
   player2,
   matchups
 }) => {
+  if (!matchups?.length) return null;
+
   // Calculate head-to-head stats
   const totalGames = matchups.length;
   const player1Wins = matchups.filter(m => 
@@ -51,13 +53,7 @@ const HeadToHeadComparison: React.FC<HeadToHeadComparisonProps> = ({
         Head-to-Head Matchups
       </Typography>
       
-      {matchups.length === 0 ? (
-        <Typography variant="body1" color="text.secondary">
-          No head-to-head matchups found between these players.
-        </Typography>
-      ) : (
-        <>
-          <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="subtitle2" color="text.secondary">
                 Total Games
@@ -133,8 +129,6 @@ const HeadToHeadComparison: React.FC<HeadToHeadComparisonProps> = ({
               </TableBody>
             </Table>
           </TableContainer>
-        </>
-      )}
     </Paper>
   );
 };
