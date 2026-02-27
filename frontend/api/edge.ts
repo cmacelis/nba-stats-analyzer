@@ -130,14 +130,6 @@ export async function computeEdgeFeed(
     debugOut.active_player_ids_sample  = ids.slice(0, 5);
   }
 
-  let seasonEmptyReason: EdgeDebugInfo['season_averages_empty_reason'] = null;
-  let seasonUpstreamErr: UpstreamError | null = null;
-  let statsUpstreamErr:  UpstreamError | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let seasonResData: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let statsResData:  any[] = [];
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function captureErr(err: any, path: string): UpstreamError {
     const resp   = err?.response;
@@ -147,51 +139,42 @@ export async function computeEdgeFeed(
     const bodyStr = body
       ? (typeof body === 'string' ? body : JSON.stringify(body)).slice(0, 200)
       : null;
-    return {
-      status,
-      message: err?.message ?? String(err),
-      url:     `${BDL_BASE}${path}`,
-      body_preview: bodyStr,
-    };
+    return { status, message: err?.message ?? String(err), url: `${BDL_BASE}${path}`, body_preview: bodyStr };
   }
 
-  const [seasonRes, statsRes] = await Promise.all([
-    bdlBatch('/season_averages', { 'player_ids[]': ids, season })
-      .catch((err) => {
-        seasonEmptyReason = 'error';
-        seasonUpstreamErr = captureErr(err, '/season_averages');
-        return { data: [] };
-      }),
-    bdlBatch('/stats', {
-      'player_ids[]': ids,
-      'seasons[]':    [season],
-      per_page:        150,
-      sort:           'date',
-      direction:      'desc',
-    }).catch((err) => {
-      statsUpstreamErr = captureErr(err, '/stats');
-      return { data: [] };
-    }),
+  // Season averages endpoint only accepts a single player_id — not batch-compatible.
+  // Instead, compute the season baseline directly from game logs:
+  //   season_avg = mean of ALL fetched games for the player
+  //   recent_avg = mean of the 5 most recent games
+  // Two pages fetched in parallel (200 games = ~6-7 per player for 30 players).
+  // Games are returned date-desc globally; per-player grouping preserves that order.
+  let statsUpstreamErr: UpstreamError | null = null;
+
+  const statsParams = {
+    'player_ids[]': ids,
+    'seasons[]':    [season],
+    per_page:       100,
+    sort:           'date',
+    direction:      'desc',
+  };
+
+  const [res1, res2] = await Promise.all([
+    bdlBatch('/stats', { ...statsParams, page: 1 })
+      .catch((err: unknown) => { statsUpstreamErr = captureErr(err, '/stats'); return { data: [] }; }),
+    bdlBatch('/stats', { ...statsParams, page: 2 })
+      .catch(() => ({ data: [] })), // page 2 optional; page 1 error is the critical one
   ]);
 
-  seasonResData = seasonRes?.data ?? [];
-  statsResData  = statsRes?.data  ?? [];
-
-  if (debugOut && seasonEmptyReason !== 'error') {
-    seasonEmptyReason = seasonResData.length === 0 ? 'empty' : null;
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const statsResData: any[] = [...(res1?.data ?? []), ...(res2?.data ?? [])];
 
   if (debugOut) {
-    debugOut.season_averages_count        = seasonResData.length;
-    debugOut.season_averages_empty_reason = seasonEmptyReason;
-    debugOut.season_averages_error        = seasonUpstreamErr;
+    debugOut.season_averages_count        = 0; // removed — computed from logs
+    debugOut.season_averages_empty_reason = null;
+    debugOut.season_averages_error        = null;
     debugOut.stats_logs_count_total       = statsResData.length;
     debugOut.stats_error                  = statsUpstreamErr;
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const seasonMap = new Map<number, any>();
-  for (const row of seasonResData) seasonMap.set(row.player_id, row);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameMap = new Map<number, any[]>();
@@ -204,13 +187,12 @@ export async function computeEdgeFeed(
 
   if (debugOut) {
     debugOut.grouped_players_with_logs = [...gameMap.values()].filter(gs => gs.length >= 3).length;
-    // Sample: first player from the active list that has any logs
     const sampleEntry = players.find(p => gameMap.has(p.id));
     if (sampleEntry) {
       const sampleGames = gameMap.get(sampleEntry.id)!;
       debugOut.stats_logs_count_sample_player = {
-        player_id:     sampleEntry.id,
-        games:         sampleGames.length,
+        player_id:      sampleEntry.id,
+        games:          sampleGames.length,
         minutes_values: sampleGames.slice(0, 5).map(g => Math.round(parseMins(g.min) * 10) / 10),
       };
     } else {
@@ -223,10 +205,13 @@ export async function computeEdgeFeed(
     const games = gameMap.get(p.id) ?? [];
     if (games.length < 3) continue;
 
-    const last5Vals = games.slice(0, 5).map(g => Math.round(gameVal(g, stat) * 10) / 10);
+    // season_avg = mean of ALL fetched games (season-to-date baseline from logs)
+    const allVals   = games.map(g => gameVal(g, stat));
+    const seasonAvg = Math.round((allVals.reduce((a, b) => a + b, 0) / allVals.length) * 10) / 10;
+
+    // recent_avg = mean of 5 most recent games (array is date-desc)
+    const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
-    const sv = seasonVal(seasonMap.get(p.id), stat);
-    if (sv === null) continue;
 
     entries.push({
       player_id:    p.id,
@@ -234,11 +219,11 @@ export async function computeEdgeFeed(
       team:         p.team?.full_name    ?? '—',
       team_abbrev:  p.team?.abbreviation ?? '—',
       photo_url:    null,
-      season_avg:   Math.round(sv * 10) / 10,
+      season_avg:   seasonAvg,
       recent_avg:   recentAvg,
-      delta:        Math.round((recentAvg - sv) * 10) / 10,
+      delta:        Math.round((recentAvg - seasonAvg) * 10) / 10,
       last5:        last5Vals,
-      games_played: seasonMap.get(p.id)?.games_played ?? games.length,
+      games_played: games.length,
     });
   }
 
