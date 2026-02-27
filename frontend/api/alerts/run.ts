@@ -89,29 +89,45 @@ function matchesDirection(entry: EdgeEntry, direction: Direction, minDelta: numb
 
 // ── Discord helpers ────────────────────────────────────────────────────────────
 
-function compareUrl(entry: EdgeEntry, season: number): string {
+function buildEdgeFeedUrl(stat: StatKey, season: number, minMinutes: number): string {
   if (!SITE_URL) return '';
+  const p = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes) });
+  return `${SITE_URL}/edge?${p.toString()}`;
+}
+
+function buildTrackPickUrl(entry: EdgeEntry, stat: StatKey, season: number, minMinutes: number): string {
+  if (!SITE_URL) return '';
+  const dir = entry.delta >= 0 ? 'over' : 'under';
   const p = new URLSearchParams({
-    p1:  String(entry.player_id),
-    p1n: entry.player_name,
-    p1t: entry.team,
-    s:   String(season),
+    stat,
+    s:               String(season),
+    min_minutes:     String(minMinutes),
+    track_player_id: String(entry.player_id),
+    track_stat:      stat,
+    track_direction: dir,
   });
-  return `${SITE_URL}/compare?${p.toString()}`;
+  return `${SITE_URL}/edge?${p.toString()}`;
 }
 
 function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMinutes: number, season: number): object {
   const label    = stat === 'pra' ? 'PRA' : 'PTS';
   const isOver   = entry.delta >= 0;
   const sign     = isOver ? '+' : '';
-  const url      = compareUrl(entry, season);
   const emoji    = isOver ? '🔥' : '🧊';
   const edgeType = isOver ? 'Over Edge' : 'Under Edge';
   const color    = isOver ? 0x22c55e : 0x3b82f6; // green : blue
+  const feedUrl  = buildEdgeFeedUrl(stat, season, minMinutes);
+  const pickUrl  = buildTrackPickUrl(entry, stat, season, minMinutes);
+
+  const linkParts = [
+    feedUrl && `[🔗 Open Edge Feed](${feedUrl})`,
+    pickUrl && `[➕ Track this pick](${pickUrl})`,
+  ].filter(Boolean);
 
   return {
     title:       `${emoji} ${entry.player_name} (${entry.team_abbrev}) — ${label} ${edgeType}`,
     color,
+    ...(feedUrl && { url: feedUrl }),
     description: `**${sign}${entry.delta.toFixed(1)}** vs season average (L5 trending ${isOver ? 'hot' : 'cold'})`,
     fields: [
       { name: 'Season Avg',  value: entry.season_avg.toFixed(1),          inline: true  },
@@ -121,8 +137,8 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
       { name: 'Games',       value: String(entry.games_played),           inline: true  },
       { name: 'Min Filter',  value: `≥${minMinutes} min/game`,            inline: true  },
       { name: 'L5 Scores',   value: entry.last5.join(' · '),              inline: false },
+      ...(linkParts.length ? [{ name: '\u200b', value: linkParts.join('  ·  '), inline: false }] : []),
     ],
-    ...(url && { url }),
     footer: { text: `NBA Edge Detector · ${new Date().toUTCString()}` },
   };
 }

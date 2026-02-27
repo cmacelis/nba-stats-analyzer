@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
@@ -33,7 +33,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { AddCircleOutline, BoltOutlined, TrendingDown, TrendingUp } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
 
@@ -94,20 +94,21 @@ const Sparkline: React.FC<{ values: number[]; seasonAvg: number }> = ({ values, 
 // ── track modal ───────────────────────────────────────────────────────────────
 
 interface TrackModalProps {
-  entry:       EdgeEntry;
-  stat:        string;
-  season:      number;
-  minMinutes:  number;
-  onClose:     () => void;
-  onNavigate:  () => void;
+  entry:             EdgeEntry;
+  stat:              string;
+  season:            number;
+  minMinutes:        number;
+  initialDirection?: 'over' | 'under';
+  onClose:           () => void;
+  onNavigate:        () => void;
 }
 
-const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes, onClose, onNavigate }) => {
+const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes, initialDirection, onClose, onNavigate }) => {
   const theme = useTheme();
   const trackPick = useTrackPick();
 
   const [pickStat,   setPickStat]   = useState<'pts' | 'reb' | 'ast' | 'pra'>(stat as 'pts' | 'pra');
-  const [direction,  setDirection]  = useState<'over' | 'under'>(entry.delta > 0 ? 'over' : 'under');
+  const [direction,  setDirection]  = useState<'over' | 'under'>(initialDirection ?? (entry.delta > 0 ? 'over' : 'under'));
   const [tier,       setTier]       = useState<'high' | 'medium' | 'low'>(autoTier(entry.delta));
   const [line,       setLine]       = useState('');
   const [notes,      setNotes]      = useState('');
@@ -359,14 +360,44 @@ const EdgeRow: React.FC<{
 
 const EdgeDetector: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [stat,         setStat]         = useState<'pts' | 'pra'>('pts');
-  const [minMinutes,   setMinMinutes]   = useState(20);
-  const [season,       setSeason]       = useState(2025);
+  // Read URL params set by Discord "Open Edge Feed" / "Track this pick" links
+  const urlStat        = searchParams.get('stat')        as 'pts' | 'pra' | null;
+  const urlSeason      = searchParams.get('s');
+  const urlMinMinutes  = searchParams.get('min_minutes');
+  const trackPlayerId  = searchParams.get('track_player_id');
+  const trackStat      = searchParams.get('track_stat')  as 'pts' | 'pra' | null;
+  const trackDirection = searchParams.get('track_direction') as 'over' | 'under' | null;
+
+  const [stat,         setStat]         = useState<'pts' | 'pra'>(urlStat ?? 'pts');
+  const [minMinutes,   setMinMinutes]   = useState(urlMinMinutes ? parseInt(urlMinMinutes, 10) : 20);
+  const [season,       setSeason]       = useState(urlSeason ? parseInt(urlSeason, 10) : 2025);
   const [positiveOnly, setPositiveOnly] = useState(false);
   const [tracked,      setTracked]      = useState<EdgeEntry | null>(null);
+  const [trackedInitialStat,      setTrackedInitialStat]      = useState<'pts' | 'pra' | undefined>();
+  const [trackedInitialDirection, setTrackedInitialDirection] = useState<'over' | 'under' | undefined>();
+
+  // Prevent double-open if data re-fetches while modal is already open
+  const deepLinkHandled = useRef(false);
 
   const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season);
+
+  // Auto-open TrackModal when arriving via Discord "Track this pick" deep link
+  useEffect(() => {
+    if (!trackPlayerId || !data?.data || deepLinkHandled.current) return;
+    const pid = parseInt(trackPlayerId, 10);
+    const entry = data.data.find(e => e.player_id === pid);
+    if (!entry) return;
+    deepLinkHandled.current = true;
+    setTracked(entry);
+    setTrackedInitialStat(trackStat ?? undefined);
+    setTrackedInitialDirection(trackDirection ?? undefined);
+    // Clean track_* params from URL so a refresh doesn't re-open the modal
+    const clean = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes) });
+    navigate(`/edge?${clean.toString()}`, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, trackPlayerId]);
 
   const rows = useMemo(() => {
     const entries = data?.data ?? [];
@@ -486,11 +517,12 @@ const EdgeDetector: React.FC = () => {
       {tracked && (
         <TrackModal
           entry={tracked}
-          stat={stat}
+          stat={trackedInitialStat ?? stat}
           season={season}
           minMinutes={minMinutes}
-          onClose={() => setTracked(null)}
-          onNavigate={() => { setTracked(null); handleCompare(tracked); }}
+          initialDirection={trackedInitialDirection}
+          onClose={() => { setTracked(null); setTrackedInitialStat(undefined); setTrackedInitialDirection(undefined); }}
+          onNavigate={() => { setTracked(null); setTrackedInitialStat(undefined); setTrackedInitialDirection(undefined); handleCompare(tracked); }}
         />
       )}
     </Box>
