@@ -28,6 +28,11 @@ app.use('/api/players', playerRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/research', researchRouter);
 
+// Root-level health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Error handling
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
