@@ -1,5 +1,55 @@
 # MEMORY.md — Long-Term Memory
 
+## Discord Integration (Feb 27, 2026)
+**Status:** ✅ Live and operational
+
+**Server:** Ellis Private Server (1476911682205909142)
+**Bot:** Ghost (token in .env, secured)
+
+**Channels:**
+- `#nba-stats` (1476913782226685993) — NBA Analyzer updates
+- `#ninja-trader` (1476913958702153859) — NinjaTrader work
+- `#ellis` (1476913502856810536) — Backups, general alerts, weekly review
+
+**Strategy:**
+| Frequency | Type | Destination | Trigger |
+|-----------|------|-------------|---------|
+| Auto | Backup completion | #ellis | Every 6 AM & 11 PM |
+| Auto | Errors/failures | Project channel | On occurrence |
+| Daily | Session summary | Project channel | End of work |
+| Weekly | Review + metrics | #ellis | Every Friday |
+| On-demand | Blockers/milestones | Relevant channel | As needed |
+
+**How to Post (Manual):**
+```bash
+source .env
+./discord-post.sh $DISCORD_CHANNEL_ELLIS "Your message"
+./discord-post.sh $DISCORD_CHANNEL_NBA "NBA update"
+./discord-post.sh $DISCORD_CHANNEL_NINJA "NinjaTrader update"
+```
+
+**How to Read Channels (On-Demand):**
+```bash
+# Quick reads via helper script
+./discord-channels-helper.sh nba          # Last 10 #nba-stats messages
+./discord-channels-helper.sh ninja 20    # Last 20 #ninja-trader messages
+./discord-channels-helper.sh ellis 5     # Last 5 #ellis messages
+./discord-channels-helper.sh all 15      # All channels (15 each)
+
+# Or direct read (if preferred)
+source .env
+./discord-read.sh $DISCORD_CHANNEL_NBA 10
+```
+
+**Can Now:**
+- ✅ Post to Discord channels (automated backups + manual updates)
+- ✅ Read Discord channels on-demand (fetch history, search context)
+
+**Discord = Passive reference + status dashboard**
+**Telegram = Active decisions + real-time blockers**
+
+---
+
 ## Operating Rules & Principles (CRITICAL)
 
 ### Token Optimization Strategy
@@ -42,6 +92,44 @@
 - Don't ask how → Research, decide, then propose
 - Keep decisions <5 min
 - Always document what I did & why
+
+---
+
+## Current Projects
+
+### NinjaTrader VWAP Mean Reversion (Feb 27, 2026)
+**Status:** Exp 2 in progress 🚀
+**Repo:** `cmacelis/nt-mes-vwap-mr`
+**Branch:** fix/issue-2 (PR ready for merge)
+
+**Exp 1 Results:** 1 trade over 6+ months (insufficient to evaluate edge)
+**Exp 2 Results:** 1 trade over 6mo (same as Exp 1)
+**Exp 2 Change:** Removed next-bar confirmation → immediate entry on band cross
+- Diagnosis: Confirmation removal didn't increase signal frequency
+
+**Exp 3 Change:** Reduce Band Multiplier (k) from 1.0 → 0.3
+- Root cause: k=1.0 bands too wide for 1-min MES RTH (price rarely closes beyond ±1 ATR)
+- Solution: Narrow bands (0.3 ATR) → more frequent price crosses → more signals
+- Updated Range: [0.1, 2.0] to allow 0.3
+- **Status:** ✅ Merged to main (commit 46530d7)
+- **Backtest Result:** Still 1 trade (no improvement)
+
+**Diagnostic: Entry Sanity Check** (Feb 27, 5:30 PM)
+**Hypothesis:** Entry logic not triggering in historical processing (not a band-width issue)
+**Test:** Remove VWAP bands entirely, replace with basic Close[0] > Close[1] logic
+- Long: if Close > Close[1] → EnterLong (immediate, every bar potentially)
+- Short: if Close < Close[1] → EnterShort (immediate, every bar potentially)
+- Kept: Stop (8 ticks), Target (6 ticks), Risk rules, RTH, Daily limits
+- **Purpose:** Confirm strategy executes on high frequency and generates trades
+- **Expected:** High trade count if framework working, OR 1 trade if entry not executing
+- **Branch:** debug/entry-sanity-check (ready for backtest)
+
+**UNCHANGED (all experiments):** ATR period (14), Stop (8 ticks), Target (6 ticks), Risk rules, Time windows, Logging
+
+**Exp 3 Backtest Specs (same as Exp 2):**
+- Instrument: MES, 1-minute, Last 6 full months RTH
+- Commission: 1.25 RT, Slippage: 1 tick
+- Workflow: PR merge → pull + sync + compile → backtest → Issue #3
 
 ---
 
