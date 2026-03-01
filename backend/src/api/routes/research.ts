@@ -160,6 +160,7 @@ async function fetchStatContext(
     };
   } catch (err) {
     console.error('[research] fetchStatContext error:', (err as Error).message);
+    console.error('[research] Full error:', JSON.stringify(err, null, 2));
     return null;
   }
 }
