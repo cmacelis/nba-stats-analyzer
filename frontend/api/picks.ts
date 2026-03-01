@@ -34,17 +34,22 @@ export interface Pick {
   confidence_tier:  'high' | 'medium' | 'low';
   line?:            number;
   notes?:           string;
+  // Settlement fields (populated by POST /api/picks/settle)
+  actual?:              number | null;
+  result?:              'W' | 'L' | 'P' | null;
+  settled_at?:          string | null;
+  settled_game_date?:   string | null;
 }
 
 // ── KV helpers (raw REST — no extra bundling issues) ──────────────────────────
 
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const PICKS_KEY = 'nba:picks';
-const KV_OK     = !!(KV_URL && KV_TOKEN);
+export const KV_URL   = process.env.KV_REST_API_URL;
+export const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+export const PICKS_KEY = 'nba:picks';
+export const KV_OK     = !!(KV_URL && KV_TOKEN);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function kvCmd(...args: unknown[]): Promise<any> {
+export async function kvCmd(...args: unknown[]): Promise<any> {
   const res = await fetch(KV_URL!, {
     method: 'POST',
     headers: {
@@ -58,7 +63,7 @@ async function kvCmd(...args: unknown[]): Promise<any> {
   return json.result;
 }
 
-async function storePick(pick: Pick): Promise<void> {
+export async function storePick(pick: Pick): Promise<void> {
   const score = new Date(pick.created_at).getTime();
   await kvCmd('ZADD', PICKS_KEY, score, JSON.stringify(pick));
   // Prune entries older than 90 days on every write (keep store lean)
@@ -66,7 +71,7 @@ async function storePick(pick: Pick): Promise<void> {
   await kvCmd('ZREMRANGEBYSCORE', PICKS_KEY, '-inf', cutoff90).catch(() => null);
 }
 
-async function listPicks(since: number): Promise<Pick[]> {
+export async function listPicks(since: number): Promise<Pick[]> {
   // ZRANGEBYSCORE returns members between [since, +inf] sorted ascending
   const raw = await kvCmd('ZRANGEBYSCORE', PICKS_KEY, since, '+inf') as string[];
   if (!Array.isArray(raw)) return [];
@@ -74,6 +79,20 @@ async function listPicks(since: number): Promise<Pick[]> {
     .map(r => { try { return JSON.parse(r) as Pick; } catch { return null; } })
     .filter(Boolean)
     .reverse() as Pick[]; // newest first
+}
+
+/** Replace a pick in the sorted-set while preserving its original score (created_at timestamp). */
+export async function updatePick(pick: Pick): Promise<void> {
+  const score = new Date(pick.created_at).getTime();
+  // Fetch all members at this exact score, find the one with matching id, remove it
+  const raw = await kvCmd('ZRANGEBYSCORE', PICKS_KEY, score, score) as string[];
+  if (Array.isArray(raw)) {
+    const old = raw.find(r => {
+      try { return (JSON.parse(r) as Pick).id === pick.id; } catch { return false; }
+    });
+    if (old) await kvCmd('ZREM', PICKS_KEY, old);
+  }
+  await kvCmd('ZADD', PICKS_KEY, score, JSON.stringify(pick));
 }
 
 // ── handler ───────────────────────────────────────────────────────────────────

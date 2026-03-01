@@ -14,6 +14,7 @@
  *   POST /api/research/generate          → generateHandler
  *   GET  /api/discord/help               → discordHelpHandler
  *   GET  /api/discord/today              → discordTodayHandler
+ *   POST /api/picks/settle               → picksSettleHandler
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -27,6 +28,7 @@ import { researchHandler } from './_handlers/research.js';
 import { generateHandler } from './_handlers/generate.js';
 import { discordHelpHandler } from './_handlers/discord-help.js';
 import { discordTodayHandler } from './_handlers/discord-today.js';
+import { picksSettleHandler } from './_handlers/picks-settle.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Apply CORS
@@ -84,6 +86,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // /api/discord/today
     if (pathname === '/api/discord/today') {
       return await discordTodayHandler(req, res);
+    }
+
+    // /api/picks/settle
+    if (pathname === '/api/picks/settle') {
+      return await picksSettleHandler(req, res);
     }
 
     // No match
