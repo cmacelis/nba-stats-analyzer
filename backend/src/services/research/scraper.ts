@@ -1,12 +1,12 @@
 /**
  * Research Scraper
- * Fetches NBA player mentions from Reddit and ESPN
+ * Fetches NBA player mentions from Reddit, ESPN, and Twitter
  */
 import axios from 'axios';
 
 export interface SocialMention {
   content: string;
-  source: 'reddit' | 'espn';
+  source: 'reddit' | 'espn' | 'twitter';
   url: string;
   timestamp: Date;
   score?: number;
