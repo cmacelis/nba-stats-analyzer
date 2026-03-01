@@ -1,8 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, findNbaPersonId, buildNbaPhotoUrl } from '../_lib.js';
+/**
+ * player-photo.ts handler — GET /api/players/photo?name=...
+ * Get photo URL for a player by name
+ */
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { findNbaPersonId, buildNbaPhotoUrl } from '../_lib.js';
+
+export async function playerPhotoHandler(req: VercelRequest, res: VercelResponse) {
   const name = req.query.name as string;
   if (!name) return res.status(400).json({ error: 'name param required' });
   try {

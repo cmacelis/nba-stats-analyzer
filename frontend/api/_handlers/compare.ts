@@ -1,11 +1,12 @@
+/**
+ * compare.ts handler — GET /api/players/compare/:id1/:id2
+ * Compare two players' season averages
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, getSeasonAverages, BDL_SEASON } from '../../../_lib.js';
+import { getSeasonAverages, BDL_SEASON } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
-
-  const id1    = req.query.id1 as string;
-  const id2    = req.query.id2 as string;
+export async function compareHandler(req: VercelRequest, res: VercelResponse, id1: string, id2: string) {
   const season = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {

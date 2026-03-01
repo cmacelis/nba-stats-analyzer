@@ -1,10 +1,12 @@
+/**
+ * player-stats.ts handler — GET /api/players/:id/stats
+ * Get season averages for a player
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, getSeasonAverages, BDL_SEASON } from '../../_lib.js';
+import { getSeasonAverages, BDL_SEASON } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
-
-  const id     = req.query.id as string;
+export async function playerStatsHandler(req: VercelRequest, res: VercelResponse, id: string) {
   const season = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {

@@ -1,15 +1,18 @@
+/**
+ * generate.ts handler — POST /api/research/generate
+ * Generate research report via POST (request body)
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
-  applyCors,
   fetchStatContext,
   scrapePlayerMentions,
   analyzeSentiment,
   generateReport,
 } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function generateHandler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (applyCors(req, res)) return;
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { playerName, prop = 'points' } = (req.body as { playerName?: string; prop?: string }) ?? {};

@@ -1,6 +1,10 @@
+/**
+ * research.ts handler — GET /api/research/:playerName
+ * Get research report for a player (predictions + sentiment + analysis)
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
-  applyCors,
   getCachedReport,
   fetchStatContext,
   scrapePlayerMentions,
@@ -8,12 +12,8 @@ import {
   generateReport,
 } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Wrap everything — including pre-try code — so any throw returns JSON, not Vercel's error page
+export async function researchHandler(req: VercelRequest, res: VercelResponse, playerName: string) {
   try {
-    if (applyCors(req, res)) return;
-
-    const playerName = req.query.playerName as string | undefined;
     if (!playerName) {
       return res.status(400).json({ error: 'playerName is required' });
     }

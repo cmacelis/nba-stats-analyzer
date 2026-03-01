@@ -1,25 +1,15 @@
 /**
- * POST /api/discord/help
- *
- * Posts a pinnable "How it works" reference embed to the Discord webhook channel.
- * Run this once during setup, then pin the message in the alerts channel.
- *
- * Required env vars:
- *   DISCORD_WEBHOOK_URL  — already scoped to the target channel when created
- *
- * Optional env vars:
- *   SITE_URL             — for Edge Feed deep-link (auto-detected from VERCEL_URL)
+ * discord-help.ts handler — POST /api/discord/help
+ * Posts a pinnable "How it works" reference embed to the Discord webhook
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors } from '../_lib.js';
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const SITE_URL    = process.env.SITE_URL
   || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
+export async function discordHelpHandler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
 

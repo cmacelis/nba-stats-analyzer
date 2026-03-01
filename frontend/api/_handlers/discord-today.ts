@@ -1,20 +1,11 @@
 /**
- * POST /api/discord/today?season=2025&min_minutes=20&top_n=5
- *
- * Posts "Today's Top 5 Edges" for BOTH PTS and PRA as two embeds in one message.
- * Pass stat=pts or stat=pra to limit to a single stat.
- * Designed to be called once daily via a cron or manually.
- *
- * Required env vars:
- *   DISCORD_WEBHOOK_URL  — already scoped to the VIP alerts channel
- *
- * Optional env vars:
- *   SITE_URL             — for deep-link generation (auto-detected from VERCEL_URL)
+ * discord-today.ts handler — POST /api/discord/today
+ * Posts "Today's Top 5 Edges" for both PTS and PRA as two embeds
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, BDL_SEASON } from '../_lib.js';
-import { computeEdgeFeed, EdgeEntry, StatKey } from '../edge.js';
+import { BDL_SEASON } from '../_lib.js';
+import { computeEdgeFeed, type EdgeEntry, type StatKey } from '../edge.js';
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const SITE_URL    = process.env.SITE_URL
@@ -22,7 +13,6 @@ const SITE_URL    = process.env.SITE_URL
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// PTS = blue, PRA = violet — distinct but both feel premium
 const STAT_COLOR: Record<StatKey, number> = {
   pts: 0x3b82f6,
   pra: 0x8b5cf6,
@@ -83,8 +73,7 @@ function buildStatEmbed(
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
+export async function discordTodayHandler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
 
@@ -93,14 +82,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const minMinutes = parseFloat(req.query.min_minutes as string) || 20;
   const topN       = parseInt(req.query.top_n       as string) || 5;
 
-  // Default: both PTS + PRA. Pass ?stat=pts or ?stat=pra to limit.
   const stats: StatKey[] = (rawStat === 'pts' || rawStat === 'pra') ? [rawStat] : ['pts', 'pra'];
 
   const now     = new Date();
   const dateStr = `${WEEKDAYS[now.getUTCDay()]}, ${now.toUTCString().slice(5, 16)}`;
 
   try {
-    // Fetch all stats in parallel
     const results = await Promise.all(
       stats.map(s => computeEdgeFeed(s, minMinutes, season))
     );

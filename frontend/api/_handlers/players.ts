@@ -1,10 +1,13 @@
+/**
+ * players.ts handler — GET /api/players?search=...
+ * Player search with photo enrichment
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, searchPlayers, findNbaPersonId, buildNbaPhotoUrl, BdlPlayer } from '../_lib.js';
+import { searchPlayers, findNbaPersonId, buildNbaPhotoUrl, BdlPlayer } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function playersHandler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (applyCors(req, res)) return;
-
     const search = (req.query.search as string) || '';
     if (!search) return res.status(400).json({ error: 'search query param is required' });
 

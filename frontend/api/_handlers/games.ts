@@ -1,9 +1,12 @@
+/**
+ * games.ts handler — GET /api/games
+ * Returns upcoming games (next 3 days, non-final only)
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors, bdlGet } from './_lib.js';
+import { bdlGet } from '../_lib.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (applyCors(req, res)) return;
-
+export async function gamesHandler(req: VercelRequest, res: VercelResponse) {
   const today = new Date();
   const end   = new Date(today);
   end.setDate(today.getDate() + 3);
