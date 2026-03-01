@@ -1,6 +1,6 @@
 # MEMORY.md — Long-Term Memory
 
-## Discord Integration (Feb 27, 2026)
+## Discord Integration (Feb 27, 2026 — Updated Feb 28)
 **Status:** ✅ Live and operational
 
 **Server:** Ellis Private Server (1476911682205909142)
@@ -10,6 +10,7 @@
 - `#nba-stats` (1476913782226685993) — NBA Analyzer updates
 - `#ninja-trader` (1476913958702153859) — NinjaTrader work
 - `#ellis` (1476913502856810536) — Backups, general alerts, weekly review
+- `#spendguard` (1477482461859680266) — SpendGuard project tracking (NEW Feb 28)
 
 **Strategy:**
 | Frequency | Type | Destination | Trigger |
@@ -51,6 +52,56 @@ source .env
 ---
 
 ## Operating Rules & Principles (CRITICAL)
+
+### Daily Session Startup Check
+**EVERY session init:**
+1. Check if Ollama is running: `curl -s http://localhost:11434/api/tags >/dev/null 2>&1`
+2. If NOT running: `brew services start ollama`
+3. If error: Report and proceed (Ollama optional but preferred for heartbeat cost savings)
+
+**Why:** Ollama daemon sometimes dies overnight. Automatic restart ensures zero-token heartbeat routing stays available.
+
+### Local-First Routing (Feb 28, 2026 @ 3:52 PM EST) ✅ DEPLOYED
+**Architecture:** Ollama (default) → Claude Haiku (escalation)
+
+**Files Deployed:**
+- `~/.openclaw/openclaw.json` — Config updated (Ollama primary, Claude fallback)
+- `~/.openclaw/router-policy.js` — Routing logic + logging (4.4 KB)
+- `~/.openclaw/router-startup-check.sh` — Session startup verification
+- `~/.openclaw/logs/router.log` — Routing decision log
+- `~/.openclaw/ROUTER_IMPLEMENTATION.md` — Full reference
+
+**Escalation Rules (All 4 Active):**
+1. **Risky Files:** auth, billing, secrets, deploy, ci, migration, password → Claude
+2. **Test Failures:** 2+ consecutive failures → Claude
+3. **Large Diffs:** >300 lines → Claude
+4. **Final Review:** final_review, merge, deploy, release → Claude
+
+**Cost Impact:**
+- Before: $55/month (all tasks → Claude Haiku)
+- After: ~$2-3/month (90% tasks → Ollama, 10% → Claude)
+- **Savings: 95% reduction**
+
+**Ollama Status:**
+- Running: ✅ Yes (homebrew.mxcl.ollama)
+- Models: llama3.2:3b (primary), llama2:latest (backup)
+- Endpoint: http://localhost:11434
+- Persisted: ✅ Yes (LaunchAgent)
+
+**Testing:**
+- ✅ Task 1 (safe): → ollama/llama3.2
+- ✅ Task 2 (auth.js): → claude-haiku-4-5 (risky file)
+- ✅ Task 3 (500 lines): → claude-haiku-4-5 (large diff)
+- ✅ Task 4 (final_review): → claude-haiku-4-5 (final review)
+- ✅ Logging: All decisions recorded to router.log
+
+**Next Integration:**
+- Add startup check to OpenClaw session boot hook
+- Wire router-policy into coding-agent skill
+- Implement diff analysis for large_diff rule
+- Implement test tracking for test_failures rule
+
+---
 
 ### Token Optimization Strategy
 **$55/month budget = Haiku tokens only. Must be strategic.**
@@ -134,7 +185,7 @@ source .env
 ---
 
 ## Current Project: NBA Stats Analyzer
-**Status:** Phase 2 in progress 🚀
+**Status:** Phase 2 in progress 🚀 | **Production:** EllaMac 192.168.10.101:3000
 **Budget:** $55/month API costs (Claude Haiku focus)
 **Timeline:** ASAP, quality-first approach
 **Repo:** `cmacelis/NBA-STATS` (local: `/Users/ellis/.openclaw/workspace/nba-analyzer`)
@@ -216,14 +267,61 @@ CC added explicit SPA rewrite to `vercel.json`:
 - CC: Frontend ResearchPanel integration + backtesting pipeline
 - Me: System monitoring, Discord bot prep
 
-### Known Issues & Blockers
+### EllaMac Production Deployment (Feb 28, 2026 ✅ LIVE)
+
+**Verified Endpoints:**
+- ✅ `GET /health` → `{"status":"ok"}` (new root-level endpoint)
+- ✅ `GET /api/health` → `{"status":"ok","timestamp":"...","uptime":...}` (existing endpoint)
+
+**Startup Hardening:**
+- **Issue:** LaunchAgent failed with `env: node: No such file or directory` (minimal PATH)
+- **Fix:** Updated `/Users/ellamac/bin/start-nba-backend.sh` to set clean PATH before launch
+- **KEY:** LaunchAgent must include `/opt/homebrew/bin` and `/opt/homebrew/opt/node@18/bin` in PATH
+
+**Startup Script (`/Users/ellamac/bin/start-nba-backend.sh`):**
+```bash
+#!/bin/bash
+export PATH="/opt/homebrew/bin:/opt/homebrew/opt/node@18/bin:$PATH"
+cd /Users/ellamac/apps/nba-backend/backend
+/opt/homebrew/bin/npm run dev
+```
+
+**LaunchAgent:** `~/Library/LaunchAgents/com.nba-analyzer.backend.plist` (uid 501)
+
+**Manual Deploy Flow (After GitHub merge to main):**
+```bash
+# 1. SSH to EllaMac
+ssh ellamac@192.168.10.101
+
+# 2. Sync to main + pull latest
+cd /Users/ellamac/apps/nba-backend/backend
+git checkout main && git pull origin main
+
+# 3. Restart service
+launchctl kickstart -k gui/501/com.nba-analyzer.backend
+
+# 4. Verify health
+curl http://localhost:3000/health
+curl http://localhost:3000/api/health
+```
+
+**Known Gotcha:** LaunchAgent PATH is minimal by default. Must explicitly set in startup script or plist to find Node/npm under `/opt/homebrew/`.
+
+**Known Issues & Blockers (Updated)**
+
+**BallDontLie API (Feb 28, 2026)**
+- **Issue:** Backend returning 401 on games data fetch
+- **Error:** `Error fetching from BallDontLie: Request failed with status code 401`
+- **Status:** Credentials missing or expired in `.env` on EllaMac
+- **Fix:** Update `BALL_DONT_LIE_API_KEY` on EllaMac, restart service
+- **Priority:** High (games endpoint broken)
 
 **Discord Bot Port Mismatch (Feb 24, 2026)**
 - **Issue:** Bot trying to hit port 1300, backend on port 3000
 - **Error:** `ECONNREFUSED ::1:1300`
 - **Status:** Identified, awaiting CC bot code for fix
 - **Fix:** Update `.env` or config to `NBA_API_BASE=http://localhost:3000`
-- **Priority:** High (blocking Discord command testing)
+- **Priority:** Medium (Discord testing blocked)
 
 ---
 
