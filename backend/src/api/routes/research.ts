@@ -63,6 +63,7 @@ async function fetchStatContext(
     const firstName = playerName.split(' ')[0];
     console.log(`[research] Fetching BDL data for ${playerName} (${propType})`);
     
+    console.log(`[research] Searching BDL for: ${firstName}`);
     const searchRes = await axios.get(`${BDL_BASE}/players`, {
       params: { search: firstName, per_page: 10 },
       headers: { Authorization: BDL_KEY },
@@ -70,6 +71,8 @@ async function fetchStatContext(
     });
     const candidates: Array<{ id: number; first_name: string; last_name: string }> =
       searchRes.data?.data ?? [];
+    console.log(`[research] BDL search returned ${candidates.length} candidates`);
+    
     const lower = playerName.toLowerCase();
     const player =
       candidates.find(p => `${p.first_name} ${p.last_name}`.toLowerCase() === lower) ??
