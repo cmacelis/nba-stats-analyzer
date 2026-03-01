@@ -23,24 +23,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
 
+  const edgeLink    = SITE_URL ? `[🔗 Edge Feed](${SITE_URL}/edge)` : null;
+  const predictLink = SITE_URL ? `[🔮 Game Predictor](${SITE_URL}/predict)` : null;
+  const ctaLine     = [edgeLink, predictLink].filter(Boolean).join('  ·  ')
+    || 'Set SITE_URL env var to enable deep links.';
+
   const embed = {
-    title:       '📖 NBA Edge Detector — How It Works',
+    title:       '📖 NBA Edge Detector — VIP Alerts Room',
     color:       0x6366f1, // indigo
-    description: 'Automated alerts for NBA player **prop betting edges** — last-5-game average vs season average.',
+    description: 'Automated alerts for NBA player **prop betting edges** — last-5-game average vs season average. Pin this message for quick reference.',
     fields: [
       {
         name:   '📈 What is an Edge?',
-        value:  'An **edge** is a meaningful gap between a player\'s last-5-game avg and their season avg. It signals that their current form diverges from their established baseline — useful for over/under props.',
+        value:  'An **edge** is a meaningful gap between a player\'s last-5-game avg and their season avg. Large positive Δ = trending hot (Over signal). Large negative Δ = trending cold (Under signal).',
         inline: false,
       },
       {
         name:   '🔥 Over Edge',
-        value:  'L5 avg is **above** season avg → player trending hot. Lean **Over** on their prop line.',
+        value:  'L5 avg **above** season avg — lean **Over** on their prop line.',
         inline: true,
       },
       {
         name:   '🧊 Under Edge',
-        value:  'L5 avg is **below** season avg → player trending cold. Lean **Under** on their prop line.',
+        value:  'L5 avg **below** season avg — lean **Under** on their prop line.',
         inline: true,
       },
       {
@@ -50,31 +55,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       {
         name:   '🔔 Alerts (this channel)',
-        value:  'Auto-posted when a player\'s Δ exceeds the threshold.\n**Default thresholds:** ±2.0 PTS · ±3.5 PRA\n**Cooldown:** 3 hrs per player/stat before re-alerting.\nEach alert shows Season Avg, L5 Avg, Δ, and a **Track this pick** deep-link.',
+        value:  'Auto-posted when Δ exceeds the threshold.\n**Thresholds:** ±2.0 PTS · ±3.5 PRA\n**Cooldown:** 3 hrs per player/stat/direction\nEach alert includes a **Track this pick** deep-link → 1-click to log the signal.',
         inline: false,
       },
       {
-        name:   '📊 Daily Digest',
-        value:  'Top 5 biggest movers posted each morning.\nTriggered via `POST /api/discord/today` — add a daily cron to automate.',
+        name:   '📊 /today — Daily Digest',
+        value:  'Top 5 PTS + Top 5 PRA movers posted each morning as two embeds.\n`POST /api/discord/today` — set a daily cron to automate.',
+        inline: false,
+      },
+      {
+        name:   '🔮 /predict — Game Predictor',
+        value:  predictLink
+          ? `Use ${predictLink} to run head-to-head stat comparisons and win-probability estimates before picking sides. Full interactive tool on the web.`
+          : 'Head-to-head stat comparison + win-probability tool. Set SITE_URL to get the deep-link here.',
         inline: false,
       },
       {
         name:   '➕ Track a Pick',
-        value:  'Click **Track this pick** in any alert → Edge Feed opens with the Track modal **pre-filled** for that player/stat/direction. Enter an optional sportsbook line to upgrade it from a Signal to a Bet. One click to submit.',
+        value:  'Click **Track this pick** in any alert → Edge Feed opens with the Track modal pre-filled (player, stat, direction). Add a sportsbook line to upgrade from Signal → Bet. One click to submit.',
         inline: false,
       },
       {
         name:   '⚙️ Tuning Alerts',
-        value:  '`POST /api/alerts/run?stat=pts&direction=both&min_delta=1.5&min_minutes=15`\n`direction`: `over` · `under` · `both`\n`stat`: `pts` · `pra`\nAll params override env defaults per-run.',
+        value:  '`POST /api/alerts/run?stat=pts&direction=both&min_delta=1.5&min_minutes=15`\n`direction`: `over` `under` `both` · `stat`: `pts` `pra`',
         inline: false,
       },
       {
         name:   '\u200b',
-        value:  SITE_URL ? `[🔗 Open Edge Feed](${SITE_URL}/edge)` : 'Set SITE_URL env var to enable deep links.',
+        value:  ctaLine,
         inline: false,
       },
     ],
-    footer:    { text: 'NBA Edge Detector · pin this message · updated when config changes' },
+    footer:    { text: 'NBA Edge Detector · pin this message · re-run /help after config changes' },
     timestamp: new Date().toISOString(),
   };
 
