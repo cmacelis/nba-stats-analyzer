@@ -75,9 +75,13 @@ async function fetchStatContext(
       console.error(`[research] BDL search failed:`, (searchErr as Error).message);
       throw searchErr;
     }
+    console.log(`[research] BDL search response:`, JSON.stringify({status: searchRes.status, dataKeys: Object.keys(searchRes.data || {})}));
     const candidates: Array<{ id: number; first_name: string; last_name: string }> =
       searchRes.data?.data ?? [];
     console.log(`[research] BDL search returned ${candidates.length} candidates`);
+    if (candidates.length === 0) {
+      console.warn(`[research] No candidates returned for ${firstName}`);
+    }
     
     const lower = playerName.toLowerCase();
     const player =
