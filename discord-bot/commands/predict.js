@@ -33,9 +33,16 @@ export default {
     const playerName = interaction.options.getString('player');
     const statType = interaction.options.getString('stat_type');
 
-    await interaction.deferReply();
-
     try {
+      console.log(`   Fetching: ${playerName} (${statType})`);
+      
+      // Reply IMMEDIATELY to acknowledge interaction
+      await interaction.reply({
+        content: '🔄 Fetching...',
+        ephemeral: false,
+      });
+
+      // THEN fetch data
       const response = await axios.get(`${API_BASE}/api/research/${encodeURIComponent(playerName)}`, {
         params: { prop: statType },
         timeout: 5000,
@@ -48,7 +55,7 @@ export default {
         throw new Error('Invalid API response format');
       }
 
-      // Normalize prediction to OVER/UNDER
+      // NOW reply with the data
       const predictionText = data.prediction.toUpperCase() === 'OVER' ? 'OVER' : 
                              data.prediction.toUpperCase() === 'UNDER' ? 'UNDER' : 
                              String(data.prediction).toUpperCase();
@@ -83,25 +90,24 @@ export default {
         .setFooter({ text: `NBA Stats Analyzer • Phase 2 ${data.simulated ? '(Simulated Data)' : ''}` })
         .setTimestamp();
 
-      console.log(`   ✓ Prediction fetched: ${data.playerName} ${data.propType} → ${predictionText} (${confidence}%)`);
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ content: '', embeds: [embed] });
+      console.log(`   ✓ Prediction sent: ${predictionText} (${confidence}%)`);
+      
     } catch (error) {
-      console.error(`   ❌ API Error: ${error.message}`);
+      console.error(`   ❌ Error: ${error.message}`);
 
       let errorMessage = '❌ Backend offline';
       if (error.response?.status === 404) {
-        errorMessage = `❌ Player "${playerName}" not found`;
+        errorMessage = `❌ Player not found`;
       } else if (error.message.includes('timeout')) {
         errorMessage = '❌ Request timed out';
       }
 
-      const errorEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Error')
-        .setDescription(errorMessage)
-        .setFooter({ text: 'NBA Stats Analyzer • Phase 2' });
-
-      await interaction.editReply({ embeds: [errorEmbed] });
+      try {
+        await interaction.editReply({ content: errorMessage });
+      } catch (replyError) {
+        console.error('   Failed to edit reply:', replyError.message);
+      }
     }
   },
 };

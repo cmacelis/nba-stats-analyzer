@@ -21,9 +21,16 @@ export default {
   async execute(interaction) {
     const playerName = interaction.options.getString('player');
 
-    await interaction.deferReply();
-
     try {
+      console.log(`   Fetching sentiment: ${playerName}`);
+
+      // Reply immediately
+      await interaction.reply({
+        content: '💭 Analyzing...',
+        ephemeral: false,
+      });
+
+      // Then fetch data
       const response = await axios.get(`${API_BASE}/api/research/${encodeURIComponent(playerName)}`, {
         timeout: 5000,
       });
@@ -89,25 +96,24 @@ export default {
         .setFooter({ text: `NBA Stats Analyzer • Phase 2 ${data.simulated ? '(Simulated Data)' : ''}` })
         .setTimestamp();
 
-      console.log(`   ✓ Sentiment fetched: ${data.playerName} → ${formatSentimentValue(overallSentiment)}`);
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ content: '', embeds: [embed] });
+      console.log(`   ✓ Sentiment sent: ${data.playerName}`);
+      
     } catch (error) {
-      console.error(`   ❌ API Error: ${error.message}`);
+      console.error(`   ❌ Error: ${error.message}`);
 
       let errorMessage = '❌ Backend offline';
       if (error.response?.status === 404) {
-        errorMessage = `❌ Player "${playerName}" not found`;
+        errorMessage = `❌ Player not found`;
       } else if (error.message.includes('timeout')) {
         errorMessage = '❌ Request timed out';
       }
 
-      const errorEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Error')
-        .setDescription(errorMessage)
-        .setFooter({ text: 'NBA Stats Analyzer • Phase 2' });
-
-      await interaction.editReply({ embeds: [errorEmbed] });
+      try {
+        await interaction.editReply({ content: errorMessage });
+      } catch (replyError) {
+        console.error('   Failed to edit reply:', replyError.message);
+      }
     }
   },
 };
