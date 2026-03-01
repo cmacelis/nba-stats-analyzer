@@ -64,11 +64,17 @@ async function fetchStatContext(
     console.log(`[research] Fetching BDL data for ${playerName} (${propType})`);
     
     console.log(`[research] Searching BDL for: ${firstName}`);
-    const searchRes = await axios.get(`${BDL_BASE}/players`, {
-      params: { search: firstName, per_page: 10 },
-      headers: { Authorization: BDL_KEY },
-      timeout: 8000,
-    });
+    let searchRes;
+    try {
+      searchRes = await axios.get(`${BDL_BASE}/players`, {
+        params: { search: firstName, per_page: 10 },
+        headers: { Authorization: BDL_KEY },
+        timeout: 8000,
+      });
+    } catch (searchErr) {
+      console.error(`[research] BDL search failed:`, (searchErr as Error).message);
+      throw searchErr;
+    }
     const candidates: Array<{ id: number; first_name: string; last_name: string }> =
       searchRes.data?.data ?? [];
     console.log(`[research] BDL search returned ${candidates.length} candidates`);
