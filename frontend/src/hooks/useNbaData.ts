@@ -132,6 +132,11 @@ export interface Pick {
   confidence_tier:  'high' | 'medium' | 'low';
   line?:            number;
   notes?:           string;
+  // Settlement fields (populated by POST /api/picks/settle)
+  actual?:              number | null;
+  result?:              'W' | 'L' | 'P' | null;
+  settled_at?:          string | null;
+  settled_game_date?:   string | null;
 }
 
 export interface PicksResponse {
