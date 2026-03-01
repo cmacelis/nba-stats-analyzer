@@ -13,7 +13,7 @@ export const researchRouter = express.Router();
 
 const BDL_KEY = process.env.BALL_DONT_LIE_API_KEY;
 const BDL_BASE = 'https://api.balldontlie.io/v1';
-const BDL_SEASON = 2024;
+const BDL_SEASON = 2025;  // 2025-26 season (current)
 
 // Map prop type to BDL game-log stat key
 const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
