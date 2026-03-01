@@ -18,6 +18,7 @@ import {
 import {
   BookmarkAdded,
   CheckCircle,
+  EmojiEvents,
   Error as ErrorIcon,
   QueryStats,
   TrackChanges,
@@ -52,6 +53,7 @@ const ENDPOINTS = [
   { path: '/api/edge',                      label: 'Edge Feed (momentum)',  method: 'GET'  },
   { path: '/api/picks',                     label: 'Pick history (read)',   method: 'GET'  },
   { path: '/api/picks',                     label: 'Track new pick',        method: 'POST' },
+  { path: '/api/picks/settle',             label: 'Settle bets (W/L/P)',   method: 'POST' },
   { path: '/api/alerts/run',               label: 'Discord alert run',     method: 'POST' },
 ];
 
@@ -99,6 +101,19 @@ const PerformanceDashboard: React.FC = () => {
   const bets30d         = allPicks.filter(p => p.type === 'bet').length;
   const recentPicks     = allPicks.slice(0, 5);
   const picksConfigured = picks30.data?.configured ?? true; // assume configured until we know otherwise
+
+  // Settlement stats — bets only
+  const settledBets     = allPicks.filter(p => p.type === 'bet' && p.result != null);
+  const settledBets7d   = picks7d.filter(p => p.type === 'bet' && p.result != null);
+  const wins30          = settledBets.filter(p => p.result === 'W').length;
+  const losses30        = settledBets.filter(p => p.result === 'L').length;
+  const pushes30        = settledBets.filter(p => p.result === 'P').length;
+  const wins7           = settledBets7d.filter(p => p.result === 'W').length;
+  const losses7         = settledBets7d.filter(p => p.result === 'L').length;
+  const pushes7         = settledBets7d.filter(p => p.result === 'P').length;
+  const hitRate30       = wins30 + losses30 > 0 ? Math.round((wins30 / (wins30 + losses30)) * 100) : null;
+  const hitRate7        = wins7  + losses7  > 0 ? Math.round((wins7  / (wins7  + losses7))  * 100) : null;
+  const recentSettled   = settledBets.slice(0, 10);
 
   const { data: health, isLoading: healthLoading, isError: healthError } = useQuery<HealthData>({
     queryKey: ['health'],
@@ -406,6 +421,127 @@ const PerformanceDashboard: React.FC = () => {
         {!picks30.isLoading && !picks30.isError && picks30dCount === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
             No picks tracked yet — use the <strong>Edge Feed</strong> to log your first pick.
+          </Typography>
+        )}
+      </Paper>
+
+      {/* Results (Bets only) */}
+      <Paper sx={{ p: 2.5, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <EmojiEvents fontSize="small" color="primary" />
+          <Typography variant="h6" fontWeight={600}>
+            Results
+          </Typography>
+          <Chip label="Bets only" size="small" variant="outlined" color="secondary" sx={{ ml: 0.5 }} />
+          {picks30.isLoading && <CircularProgress size={16} />}
+        </Box>
+
+        <Grid container spacing={2} sx={{ mb: recentSettled.length > 0 ? 2 : 0 }}>
+          {/* 7-day column */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight={600}>Last 7 days</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Chip label={`${wins7}W`}    size="small" color="success"  variant={wins7    > 0 ? 'filled' : 'outlined'} />
+              <Chip label={`${losses7}L`}  size="small" color="error"    variant={losses7  > 0 ? 'filled' : 'outlined'} />
+              <Chip label={`${pushes7}P`}  size="small" color="default"  variant="outlined" />
+              {hitRate7 != null && (
+                <Chip
+                  label={`${hitRate7}% hit`}
+                  size="small"
+                  color={hitRate7 >= 55 ? 'success' : hitRate7 >= 45 ? 'warning' : 'error'}
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Grid>
+
+          {/* 30-day column */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight={600}>Last 30 days</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Chip label={`${wins30}W`}   size="small" color="success"  variant={wins30   > 0 ? 'filled' : 'outlined'} />
+              <Chip label={`${losses30}L`} size="small" color="error"    variant={losses30 > 0 ? 'filled' : 'outlined'} />
+              <Chip label={`${pushes30}P`} size="small" color="default"  variant="outlined" />
+              {hitRate30 != null && (
+                <Chip
+                  label={`${hitRate30}% hit`}
+                  size="small"
+                  color={hitRate30 >= 55 ? 'success' : hitRate30 >= 45 ? 'warning' : 'error'}
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+
+        {recentSettled.length > 0 && (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+              Recent settled bets
+            </Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Player</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Stat</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Dir</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Line</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Actual</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Result</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Tracked</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Game</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recentSettled.map(pick => (
+                    <TableRow key={pick.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>{pick.player_name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{pick.team}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={(pick.stat ?? '?').toUpperCase()} size="small" variant="outlined" />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={pick.direction === 'over' ? 'Ov' : 'Un'}
+                          size="small"
+                          color={pick.direction === 'over' ? 'success' : 'error'}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{pick.line ?? '—'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{pick.actual ?? '—'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={pick.result ?? '—'}
+                          size="small"
+                          color={pick.result === 'W' ? 'success' : pick.result === 'L' ? 'error' : 'default'}
+                          variant={pick.result ? 'filled' : 'outlined'}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
+                        {new Date(pick.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
+                        {pick.settled_game_date ?? '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
+
+        {!picks30.isLoading && settledBets.length === 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
+            No settled bets yet — run <code>POST /api/picks/settle</code> after tracking bets.
           </Typography>
         )}
       </Paper>
