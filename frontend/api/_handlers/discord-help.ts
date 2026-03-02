@@ -10,7 +10,7 @@ const SITE_URL    = process.env.SITE_URL
   || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
 export async function discordHelpHandler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (!['GET', 'POST'].includes(req.method || '')) return res.status(405).json({ error: 'Method not allowed' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
 
   const edgeLink    = SITE_URL ? `[🔗 Edge Feed](${SITE_URL}/edge)` : null;

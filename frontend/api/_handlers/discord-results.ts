@@ -25,7 +25,7 @@ function formatLine(s: ReturnType<typeof calcStats>): string {
 }
 
 export async function discordResultsHandler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (!['GET', 'POST'].includes(req.method || '')) return res.status(405).json({ error: 'Method not allowed' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
   if (!KV_OK) return res.status(400).json({ error: 'KV not configured' });
 
