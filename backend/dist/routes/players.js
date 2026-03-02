@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/compare/:id1/:id2', async (req, res) => {
     const { id1, id2 } = req.params;
-    const season = parseInt(req.query.season) || 2024;
+    const season = parseInt(req.query.season) || 2025;
     try {
         // Fetch both players' stats at the same time for performance
         const [stats1, stats2] = await Promise.all([
@@ -82,7 +82,7 @@ router.get('/compare/:id1/:id2', async (req, res) => {
  * Path: GET /api/players/:id/stats
  */
 router.get('/:id/stats', async (req, res) => {
-    const season = parseInt(req.query.season) || 2024;
+    const season = parseInt(req.query.season) || 2025;
     try {
         const response = await axios_1.default.get('https://api.balldontlie.io/v1/season_averages', {
             params: {
