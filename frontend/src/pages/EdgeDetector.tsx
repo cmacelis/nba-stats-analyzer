@@ -32,12 +32,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { AddCircleOutline, BoltOutlined, TrendingDown, TrendingUp } from '@mui/icons-material';
+import { AddCircleOutline, BoltOutlined, LockOutlined, TrendingDown, TrendingUp } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
 
 // ── constants ─────────────────────────────────────────────────────────────────
+
+const FREE_LIMIT = 5; // free tier sees top N rows; rest are gated
 
 const STAT_OPTIONS = [
   { value: 'pts', label: 'PTS (Points)' },
@@ -404,6 +406,9 @@ const EdgeDetector: React.FC = () => {
     return positiveOnly ? entries.filter(e => e.delta > 0) : entries;
   }, [data, positiveOnly]);
 
+  const freeRows    = rows.slice(0, FREE_LIMIT);
+  const lockedCount = Math.max(0, rows.length - FREE_LIMIT);
+
   const handleCompare = (entry: EdgeEntry) => {
     const params = new URLSearchParams({
       p1:  String(entry.player_id),
@@ -494,7 +499,7 @@ const EdgeDetector: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.map((entry, i) => (
+              {freeRows.map((entry, i) => (
                 <EdgeRow
                   key={entry.player_id}
                   rank={i + 1}
@@ -504,9 +509,55 @@ const EdgeDetector: React.FC = () => {
                   onTrack={e => { e.stopPropagation(); setTracked(entry); }}
                 />
               ))}
+              {/* Ghost locked rows — hinting at hidden content */}
+              {lockedCount > 0 && [...Array(Math.min(3, lockedCount))].map((_, i) => (
+                <TableRow key={`locked-${i}`} sx={{ filter: 'blur(4px)', opacity: 0.22, pointerEvents: 'none', userSelect: 'none' }}>
+                  <TableCell sx={{ color: 'text.disabled', fontWeight: 600 }}>{FREE_LIMIT + i + 1}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ width: 36, height: 36, bgcolor: 'grey.500', borderRadius: '50%' }} />
+                      <Box>
+                        <Box sx={{ width: 90 + i * 15, height: 10, bgcolor: 'grey.500', borderRadius: 1, mb: 0.75 }} />
+                        <Box sx={{ width: 55, height: 8, bgcolor: 'grey.400', borderRadius: 1 }} />
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Box sx={{ width: 44, height: 22, bgcolor: 'grey.400', borderRadius: 3, mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Box sx={{ width: 50, height: 24, bgcolor: 'grey.400', borderRadius: 1, mx: 'auto' }} /></TableCell>
+                  <TableCell />
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Paywall gate */}
+        {lockedCount > 0 && (
+          <Box sx={{
+            mt: 0.5, p: 3, textAlign: 'center', borderRadius: 2,
+            border: '1px solid', borderColor: 'primary.main',
+            bgcolor: 'background.paper',
+          }}>
+            <LockOutlined color="primary" sx={{ fontSize: 36, mb: 1 }} />
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              +{lockedCount} edges hidden
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, maxWidth: 360, mx: 'auto' }}>
+              Unlock the full Edge Feed + VIP Discord alerts
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              color="primary"
+              onClick={() => navigate('/pricing')}
+              sx={{ px: 4, fontWeight: 700, borderRadius: 2 }}
+            >
+              Join VIP Pro
+            </Button>
+          </Box>
+        )}
       )}
 
       <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
