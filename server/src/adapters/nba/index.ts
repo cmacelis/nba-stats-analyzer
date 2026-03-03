@@ -1,0 +1,1 @@
+export { NBAAdapter } from './NBAAdapter';

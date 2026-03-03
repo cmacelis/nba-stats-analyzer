@@ -8,9 +8,24 @@ import userRouter from './routes/user';
 // Error handling middleware
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { adapterMiddleware } from './middleware/adapterMiddleware';
+
+// Adapters
+import { bootstrapAdapters, League } from './adapters';
+import { adapterConfig, logAdapterConfig } from './config/adapters.config';
 
 const app = express();
 const port = process.env.PORT || 3001;
+
+// ============================================================================
+// Bootstrap Phase 0: Initialize adapters
+// ============================================================================
+console.log('[Server] Starting Phase 0 initialization...');
+bootstrapAdapters();
+logAdapterConfig();
+if (!adapterConfig.enabled) {
+  console.warn('[Server] ADAPTERS_ENABLED=false: Using legacy direct NBA calls');
+}
 
 // Configure CORS with more specific options
 app.use(cors({
@@ -47,9 +62,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/nba', nbaRouter);
-app.use('/api/nba', nbaNewsRouter);
+// ============================================================================
+// API Routes (Legacy + League-aware)
+// ============================================================================
+
+// Legacy routes (default to NBA for backwards compatibility)
+app.use('/api/nba', adapterMiddleware(League.NBA), nbaRouter);
+app.use('/api/nba', adapterMiddleware(League.NBA), nbaNewsRouter);
+
+// League-aware routes (new Phase 1+ paths)
+// /api/:league/players, /api/:league/edge, etc.
+if (adapterConfig.features.leagueAwareRoutes) {
+  app.use('/api/:league/nba', adapterMiddleware(), nbaRouter);
+  app.use('/api/:league/nba', adapterMiddleware(), nbaNewsRouter);
+  console.log('[Server] League-aware routes enabled');
+}
+
+// User routes (league-agnostic)
 app.use('/api/user', userRouter);
 
 // Error handling
