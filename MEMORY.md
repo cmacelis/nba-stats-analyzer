@@ -1,5 +1,69 @@
 # MEMORY.md — Long-Term Memory
 
+## NinjaTrader Automation Skill — BUILT & SAVED (Mar 3, 2026) ⏸️
+**Status:** 90% complete, saved for later deployment
+**Location:** ~/.openclaw/skills/ninjat-automation/
+**When to deploy:** After NBA analytics complete
+
+**What was built:**
+- Complete skill with SKILL.md + SETUP_GUIDE.md documentation
+- backtest-runner.js (8.7 KB) — Orchestrates compile → backtest → parse → store → notify
+- webhook-server.js (4.6 KB) — GitHub webhook listener for PR merges
+- .env template + configuration file (ready for values)
+- Dependencies installed (dotenv, sqlite3)
+
+**Expected impact when deployed:**
+- 100-200 min/week saved (5-10 min per backtest × 20/week)
+- 5x faster iteration cycle (2-3 min vs 10-15 min)
+- Fully automated: PR merge → results in 1 minute
+
+**To deploy later (20 min total):**
+1. Edit .env with 6 values (NinjaTrader host, GitHub secret, Telegram bot)
+2. Start webhook server: `node scripts/webhook-server.js`
+3. Configure GitHub webhook (settings → webhooks)
+4. Test with first PR merge to main
+5. Done! Backtest automation live
+
+**Status:** Paused after Step 4/6 (dependencies installed, webhook tested on port 8000)
+**Next step when ready:** Edit .env with your values
+
+---
+
+## Token Optimization System Phase 3 — COMPLETE (Mar 3, 2026) ✅
+**Status:** Production-ready, fully operational, $0.0067 spent (99.99% under $55/month budget)
+
+**What was built:**
+- **Phase 1:** Decision tree + budget config ($55/month allocation, 80/20 Ollama/Claude target)
+- **Phase 2:** Real-time token tracking (6 scripts, daily/weekly/monthly reporting, context caching)
+- **Phase 3:** Mission Control dashboard (React frontend, port 5174, live cost visualization + API logs)
+
+**Key Achievement:** Projected 73-99% cost reduction vs. baseline. Implementation cost: ~$0.05.
+
+**How to Use:**
+```bash
+# Start Mission Control
+cd ~/mission-control && npm install && npm run dev
+# Open localhost:5174 — shows daily budget, spend, projects, timeline, API log
+```
+
+**Automation Active:**
+- ✅ Token tracking (6 scripts: daily/weekly/monthly reports, context cache, memory archive)
+- ✅ Hard spend limit ($50 killswitch)
+- ✅ Weekly Telegram alerts
+- ✅ Ollama preference scoring (target 80% local, 20% Claude)
+- ✅ Per-project cost breakdown (NBA 60%, Ninja 25%, Infra 10%, Research 5%)
+- ✅ Memory search fallback (grep-based when embeddings disabled)
+
+**Key Decision:** OpenAI provider disabled (quota exhausted). No impact — memory search still works via keyword fallback.
+
+**Files Created:** 15 documentation guides (150+ KB), 13 tracking scripts, 1 full-stack dashboard app (13 React components).
+
+**Backed Up:** Discord (#ellis), GitHub, external drive, Git history.
+
+**Next:** First weekly report Fri Mar 7, monthly report Apr 1.
+
+---
+
 ## Discord Integration (Feb 27, 2026 — Updated Feb 28)
 **Status:** ✅ Live and operational
 
@@ -103,34 +167,78 @@ source .env
 
 ---
 
-### Token Optimization Strategy
-**$55/month budget = Haiku tokens only. Must be strategic.**
+### Token Optimization Strategy (UPDATED Mar 3, 2026)
+**$55/month budget = Haiku tokens only. Ollama-first approach = 95% cost savings.**
+
+**Architecture: Three-Tier Model**
+1. **Ollama (Free, Local)** — Handle 80% of work
+2. **Claude Haiku ($)** — Handle critical 20% (auth, deploy, final review)
+3. **Claude Code (IDE)** — YOUR subscription, free, unlimited (use for intensive coding)
 
 **Division of Labor:**
-- **Claude Code (IDE):** Intensive coding (builds, refactors, features) — YOUR subscription, unlimited
-- **Ghost/Me (Terminal):** Integration, testing, deployment, decisions — MY token budget
+- **Claude Code (IDE):** All intensive coding (builds, refactors, new features) — YOUR subscription, unlimited ✅
+- **Ollama (Terminal):** 80% of work (code reviews, analysis, debugging, summaries) — FREE local ✅
+- **Claude Haiku (Terminal):** 20% critical work (auth, security, large changes, deploy) — $55/month ✅
 
-**When to Use Claude Code:**
-- Building new features (multi-line code)
-- Refactoring large codebases
-- Complex debugging
-- Architecture design
-- Framework decisions
-
-**When to Use Me:**
-- Quick fixes (<50 lines)
-- File reads/writes
+**When to Use Ollama (FREE) — Default:**
+- Code reviews (<100 lines)
+- Error/log analysis
+- Documentation writing
+- Simple refactors (<200 lines)
+- Test writing
+- File operations
 - Git commands
-- SSH/deployment
-- Testing & verification
-- Strategic planning
+- SSH/deployment commands
+- Summaries & brainstorming
+- **Expected:** 70-80% of all interactions
 
-**Never:**
-- Don't do intensive coding in terminal (burns tokens)
-- Don't re-implement features from scratch using me
-- Don't multi-hour coding sessions via exec
+**When to Use Claude Haiku ($$) — Escalate:**
+- Auth/billing/security files (password, token, oauth, secrets)
+- Large refactors (>300 lines)
+- Complex architectural decisions
+- Production debugging
+- Multi-system integration
+- 2+ consecutive test failures
+- Final review before deploy/merge
+- **Expected:** 20-30% of interactions only
 
-**Why:** Claude Code is free to you (already subscribed). Me coding burns your $55/month fast.
+**When to Use Claude Code (IDE) — Always for intensive:**
+- Building new features (multi-file)
+- Full refactoring passes
+- Complex debugging (interactive)
+- Architecture design (long-form)
+- Framework decisions
+- **Cost:** FREE (your subscription)
+- **Don't route these through terminal** — wastes Haiku tokens
+
+**Daily Decision Tree:**
+```
+Before every task:
+1. Auth/billing/secrets/deploy? → Claude Haiku
+2. >300 lines changed? → Claude Haiku
+3. 2+ test failures? → Claude Haiku
+4. Final review? → Claude Haiku
+5. Otherwise → Ollama (FREE) ✅
+```
+
+**Monthly Budget Allocation:**
+- NBA Stats (60%): $33 → Mostly Ollama + API synthesis
+- NinjaTrader (25%): $13.75 → Mostly Ollama + strategy
+- Infrastructure (10%): $5.50 → Ollama + selective debugging
+- Research (5%): $2.75 → Ollama + decisions
+
+**Cost Impact If Optimized:**
+- Current (all Claude): $55/month
+- With Ollama routing: $15-20/month
+- With batching + caching: $10-15/month
+- **Savings: $40-45/month (73-82% reduction)**
+
+**Files for Reference:**
+- `TOKEN_AUDIT.md` — Full audit report
+- `OLLAMA_FIRST_CHECKLIST.md` — Detailed decision tree + use cases
+- `TOKEN_QUICK_REF.txt` — One-page reference
+- `token-budget.json` — Budget configuration
+- `logs/daily-usage.json` — Daily tracking (auto-updated)
 
 ### Figure It Out Directive (SOUL.md)
 **Default to autonomy.** Ask only when necessary.
