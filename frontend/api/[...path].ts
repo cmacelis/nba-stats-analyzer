@@ -5,12 +5,14 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyCors } from './_lib.js';
+import { applyCors, BDL_SEASON } from './_lib.js';
 import { AdapterFactory } from './_adapters/AdapterFactory.js';
+import type { StatKey } from '../src/adapters/types.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
 import { researchHandler } from './_handlers/research.js';
 import { generateHandler } from './_handlers/generate.js';
+import edgeHandler from './edge.js';
 
 async function routerHandler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
@@ -33,7 +35,7 @@ async function routerHandler(req: VercelRequest, res: VercelResponse) {
   try {
     // ===== PLAYERS ROUTES =====
 
-    // GET /api/players?search=...
+    // GET /api/players?search=...  or  /api/nba/players?search=...
     if (cleanPath === 'players' && method === 'GET') {
       const search = (req.query.search as string) || '';
       if (!search) return res.status(400).json({ error: 'search query param required' });
@@ -59,10 +61,10 @@ async function routerHandler(req: VercelRequest, res: VercelResponse) {
 
     // ===== GAMES ROUTE =====
 
-    // GET /api/games
+    // GET /api/games  or  /api/nba/games
     if (cleanPath === 'games' && method === 'GET') {
-      const result = await AdapterFactory.get(league).getGames();
-      return res.json(result);
+      const games = await AdapterFactory.get(league).games();
+      return res.json({ data: games });
     }
 
     // ===== RESEARCH ROUTES =====
@@ -81,16 +83,24 @@ async function routerHandler(req: VercelRequest, res: VercelResponse) {
       return generateHandler(req, res);
     }
 
+    // ===== PLAYER STATS ROUTE =====
+
+    // GET /api/players/:id/stats  or  /api/nba/players/:id/stats
+    if (cleanPath.match(/^players\/\d+\/stats$/) && method === 'GET') {
+      const match = cleanPath.match(/^players\/(\d+)\/stats$/);
+      if (match) {
+        const season = parseInt(req.query.season as string) || BDL_SEASON;
+        const stat = ((req.query.stat as string) || 'pts') as StatKey;
+        const ctx = await AdapterFactory.get(league).playerStats(match[1], stat);
+        return res.json(ctx ?? {});
+      }
+    }
+
     // ===== EDGE ROUTE =====
 
-    // GET /api/edge
+    // GET /api/nba/edge — delegate to dedicated edge handler (preserves photo enrichment + debug mode)
     if (cleanPath === 'edge' && method === 'GET') {
-      const result = await AdapterFactory.get(league).getEdgeStats(
-        req.query.stat as string,
-        parseInt(req.query.min_minutes as string) || 0,
-        parseInt(req.query.season as string) || 2025
-      );
-      return res.json(result);
+      return edgeHandler(req, res);
     }
 
     // Default 404

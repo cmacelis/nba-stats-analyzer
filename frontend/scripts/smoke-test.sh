@@ -58,6 +58,34 @@ else
   ((FAIL++))
 fi
 
+echo ""
+echo "── /api/nba/* aliases ───────────────────────────────"
+
+# 6. /api/nba/players — league-aware alias
+check "/api/nba/players search returns JSON"         "$BASE/api/nba/players?search=LeBron"                '"id"'
+
+# 7. /api/nba/games
+check "/api/nba/games returns data array"            "$BASE/api/nba/games"                                '"data"'
+
+# 8. /api/nba/edge
+check "/api/nba/edge returns edge feed"              "$BASE/api/nba/edge?stat=pts&season=2025"             '"data"'
+
+# 9. /api/nba/players/compare — league-aware alias
+check "/api/nba/players/compare returns stats"       "$BASE/api/nba/players/compare/115/237?season=2025"  '"pts"'
+
+# 10. /api/nba/players/photo
+check "/api/nba/players/photo returns photo_url"     "$BASE/api/nba/players/photo?name=LeBron%20James"    '"photo_url"'
+
+# 11. /api/nba/players/compare must NOT return HTML
+body=$(curl -sf "$BASE/api/nba/players/compare/115/237?season=2025" 2>/dev/null)
+if echo "$body" | grep -qi "<!doctype"; then
+  echo "  ✗  /api/nba/players/compare must NOT return HTML"
+  ((FAIL++))
+else
+  echo "  ✓  /api/nba/players/compare returns JSON, not HTML"
+  ((PASS++))
+fi
+
 echo "────────────────────────────────────────────────────"
 echo "  Passed: $PASS  |  Failed: $FAIL"
 echo ""

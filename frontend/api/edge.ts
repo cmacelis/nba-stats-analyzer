@@ -8,6 +8,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import { applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON } from './_lib.js';
+import { AdapterFactory } from './_adapters/AdapterFactory.js';
 
 const BDL_KEY = process.env.BALL_DONT_LIE_API_KEY;
 
@@ -266,7 +267,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } : undefined;
 
   try {
-    const top = await computeEdgeFeed(stat, minMin, season, debugOut);
+    // Debug mode uses computeEdgeFeed directly to capture pipeline diagnostics.
+    // Production path goes through the adapter (zero behaviour change — NBAAdapter calls computeEdgeFeed internally).
+    const top = isDebug
+      ? await computeEdgeFeed(stat, minMin, season, debugOut)
+      : (await AdapterFactory.get('nba').edgeFeed({ stat, minMinutes: minMin, season })) as EdgeEntry[];
 
     // Enrich with headshots (in parallel, non-fatal)
     await Promise.all(
