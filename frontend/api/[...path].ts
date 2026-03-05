@@ -18,7 +18,10 @@ async function routerHandler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
   // Extract the path (everything after /api/)
-  const path = (req.query.path as string[])?.join('/') || '';
+  // Handle both string and string[] cases from Next.js catch-all routing
+  const raw = req.query.path;
+  const parts = Array.isArray(raw) ? raw : (raw ? String(raw).split('/') : []);
+  const path = parts.join('/');
   const method = req.method;
 
   // Detect league (nba, wnba, etc.) from path prefix
