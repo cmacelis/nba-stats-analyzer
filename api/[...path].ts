@@ -36,6 +36,8 @@ async function routerHandler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    console.log('[router]', { raw: req.query.path, path, cleanPath, method });
+
     // ===== PLAYERS ROUTES =====
 
     // GET /api/players?search=...  or  /api/nba/players?search=...
