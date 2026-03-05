@@ -1,16 +1,16 @@
 /**
- * NBAAdapter — Phase 0.5
+ * NBAAdapter — Sprint A
  *
  * Thin wrapper around the existing _lib.ts helpers and edge-feed function.
- * All methods delegate to the same data sources / API clients already in
- * production; no new logic, no behavior change, no new env vars.
+ * All methods replicate the exact logic already in production handlers;
+ * no new APIs, no new env vars, no behavior change.
  *
- * Phase 1 will replace internals with richer NBA-specific data pipelines.
+ * Phase 1 will swap internals for richer NBA-specific pipelines.
  */
 
 import type {
   ILeagueAdapter,
-  PlayerSearchResult,
+  PlayerSearchResponse,
   Game,
   EdgeEntry,
   StatContext,
@@ -24,54 +24,45 @@ import {
   findNbaPersonId,
   buildNbaPhotoUrl,
   bdlGet,
+  BdlPlayer,
 } from '../_lib.js';
 
 import { computeEdgeFeed } from '../edge.js';
 
 export class NBAAdapter implements ILeagueAdapter {
   // ─── playerSearch ──────────────────────────────────────────────────────────
+  // Mirrors _handlers/players.ts exactly:
+  //   searchPlayers() → BDL envelope → enrich data[] with photo_url → { ...result, data: enriched }
 
-  async playerSearch(query: string, _limit = 10): Promise<PlayerSearchResult[]> {
-    const result = await searchPlayers(query);
-    const players = (result.data ?? []) as Array<{
-      id: number;
-      first_name: string;
-      last_name: string;
-      position?: string;
-      team?: { full_name: string; abbreviation: string };
-    }>;
-
-    // Best-effort photo enrichment — identical to _handlers/players.ts
-    return Promise.all(
-      players.map(async (p) => {
+  async playerSearch(_query: string): Promise<PlayerSearchResponse> {
+    const result = await searchPlayers(_query);
+    const enriched = await Promise.all(
+      result.data.map(async (p: BdlPlayer) => {
         const fullName = `${p.first_name} ${p.last_name}`;
         const personId = await findNbaPersonId(fullName).catch(() => null);
-        return {
-          ...p,
-          photo_url: personId ? buildNbaPhotoUrl(personId) : null,
-        };
+        return { ...p, photo_url: personId != null ? buildNbaPhotoUrl(personId) : null };
       }),
     );
+    return { ...result, data: enriched };
   }
 
   // ─── games ─────────────────────────────────────────────────────────────────
+  // Mirrors _handlers/games.ts exactly:
+  //   single BDL call with start_date/end_date range, per_page:25, filter non-Final
 
   async games(): Promise<Game[]> {
     const today = new Date();
-    const dates = Array.from({ length: 3 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      return d.toISOString().split('T')[0];
+    const end = new Date(today);
+    end.setDate(today.getDate() + 3);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+    const data = await bdlGet('/games', {
+      start_date: fmt(today),
+      end_date:   fmt(end),
+      per_page:   25,
     });
-
-    const responses = await Promise.all(
-      dates.map((date) =>
-        bdlGet('/games', { dates: [date], per_page: 100 }).catch(() => ({ data: { data: [] } })),
-      ),
-    );
-
-    const allGames = responses.flatMap((r) => (r.data?.data ?? []) as Game[]);
-    return allGames.filter((g) => g.status !== 'Final');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data?.data ?? []).filter((g: any) => g.status !== 'Final') as Game[];
   }
 
   // ─── playerStats ───────────────────────────────────────────────────────────
@@ -81,6 +72,8 @@ export class NBAAdapter implements ILeagueAdapter {
   }
 
   // ─── compare ───────────────────────────────────────────────────────────────
+  // Mirrors _handlers/compare.ts: fetch both seasons, fall back to prev season
+  // if either player has no data, to keep results consistent.
 
   async compare(id1: number, id2: number, season: number): Promise<CompareResult> {
     const [r1, r2] = await Promise.all([
@@ -88,20 +81,18 @@ export class NBAAdapter implements ILeagueAdapter {
       bdlGet('/season_averages', { season, player_ids: [id2] }),
     ]);
 
-    let player1 = r1.data?.data?.[0] ?? null;
-    let player2 = r2.data?.data?.[0] ?? null;
+    let player1 = r1.data?.[0] ?? null;
+    let player2 = r2.data?.[0] ?? null;
     let effectiveSeason = season;
 
-    // Fallback to previous season if either player has no data — mirrors
-    // the behaviour in _handlers/compare.ts to keep results consistent.
     if (!player1 || !player2) {
       const prev = season - 1;
       const [f1, f2] = await Promise.all([
         bdlGet('/season_averages', { season: prev, player_ids: [id1] }),
         bdlGet('/season_averages', { season: prev, player_ids: [id2] }),
       ]);
-      player1 = f1.data?.data?.[0] ?? null;
-      player2 = f2.data?.data?.[0] ?? null;
+      player1 = f1.data?.[0] ?? null;
+      player2 = f2.data?.[0] ?? null;
       effectiveSeason = prev;
     }
 

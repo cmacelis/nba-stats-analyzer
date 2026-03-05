@@ -70,6 +70,17 @@ export interface CompareResult {
   effectiveSeason: number;
 }
 
+/**
+ * Full BDL-envelope response from playerSearch.
+ * Mirrors the `{ ...result, data: enriched }` shape returned by the players handler
+ * so endpoints can pass it directly to res.json() with no structural change.
+ */
+export interface PlayerSearchResponse {
+  data: PlayerSearchResult[];
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 // ─── Adapter interface ────────────────────────────────────────────────────────
 
 /**
@@ -81,8 +92,12 @@ export interface CompareResult {
  * Additional methods (injuries, odds, team stats, …) will be added in Phase 1.
  */
 export interface ILeagueAdapter {
-  /** Search players by name string. Returns up to `limit` results. */
-  playerSearch(query: string, limit?: number): Promise<PlayerSearchResult[]>;
+  /**
+   * Search players by name string.
+   * Returns the full BDL envelope `{ data: [...], meta: {...} }` with photo_url enrichment,
+   * so the endpoint can pass it straight to res.json().
+   */
+  playerSearch(query: string, limit?: number): Promise<PlayerSearchResponse>;
 
   /** Upcoming / in-progress games (next N days, non-final). */
   games(): Promise<Game[]>;
