@@ -10,7 +10,7 @@
  *   const results = await nba.playerSearch('Luka');
  */
 
-import type { ILeagueAdapter } from '../../src/adapters/types.js';
+import type { ILeagueAdapter } from '../../frontend/src/adapters/types.js';
 import { NBAAdapter } from './NBAAdapter.js';
 
 type AdapterCtor = new () => ILeagueAdapter;

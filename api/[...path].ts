@@ -7,7 +7,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, BDL_SEASON } from './_lib.js';
 import { AdapterFactory } from './_adapters/AdapterFactory.js';
-import type { StatKey } from '../src/adapters/types.js';
+import type { StatKey } from '../frontend/src/adapters/types.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
 import { researchHandler } from './_handlers/research.js';

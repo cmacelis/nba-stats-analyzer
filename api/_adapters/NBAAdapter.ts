@@ -16,7 +16,7 @@ import type {
   StatContext,
   CompareResult,
   StatKey,
-} from '../../src/adapters/types.js';
+} from '../../frontend/src/adapters/types.js';
 
 import {
   searchPlayers,

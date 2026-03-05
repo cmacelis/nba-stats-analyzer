@@ -11,7 +11,7 @@ import {
   generateReport,
 } from '../_lib.js';
 import { AdapterFactory } from '../_adapters/AdapterFactory.js';
-import type { StatKey } from '../../src/adapters/types.js';
+import type { StatKey } from '../../frontend/src/adapters/types.js';
 
 export async function researchHandler(req: VercelRequest, res: VercelResponse, playerName: string) {
   try {
