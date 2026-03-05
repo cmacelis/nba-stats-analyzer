@@ -35,8 +35,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
   const url = new URL(req.url || '', `http://${req.headers.host}`);
-  const pathname = url.pathname;
+  let pathname = url.pathname;
   const method = req.method || 'GET';
+
+  // Normalize /api/nba/* to /api/* for internal routing
+  if (pathname.startsWith('/api/nba/')) {
+    pathname = pathname.replace(/^\/api\/nba/, '/api');
+  }
 
   try {
     // Route based on path pattern
