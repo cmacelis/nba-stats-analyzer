@@ -434,11 +434,40 @@ function simulatedReport(
   };
 }
 
-// Claude API call disabled to avoid API costs during development.
-// The simulatedReport() fallback provides statistical analysis without any API spend.
-// Re-enable when going live if AI-generated reasoning is desired.
-async function callClaude(_prompt: string): Promise<string | null> {
-  return null;
+// Claude API call disabled during development to avoid API costs.
+// To re-enable for production:
+//   1. Set ENABLE_CLAUDE_RESEARCH=true in Vercel env vars
+//   2. Ensure ANTHROPIC_API_KEY is set
+//   3. Redeploy
+// Uses Haiku 4.5 (~5x cheaper than Sonnet) + prompt caching for 90% input discount.
+// Estimated cost: ~$5/month at 50 reports/day.
+async function callClaude(prompt: string): Promise<string | null> {
+  if (process.env.ENABLE_CLAUDE_RESEARCH !== 'true' || !ANTHROPIC_KEY) return null;
+  try {
+    const res = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: [{ type: 'text', text: 'You are an expert NBA prop betting analyst focused on finding edges. Respond ONLY with valid JSON.', cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: prompt }],
+      },
+      {
+        headers: {
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const block = (res.data as any)?.content?.[0];
+    return block?.type === 'text' ? block.text : null;
+  } catch (err) {
+    console.error('[research] Claude API error:', (err as Error).message);
+    return null;
+  }
 }
 
 function buildPrompt(
