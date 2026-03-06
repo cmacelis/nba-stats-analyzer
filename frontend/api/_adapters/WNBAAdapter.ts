@@ -114,6 +114,7 @@ export class WNBAAdapter implements ILeagueAdapter {
       });
       
       const data = response.data;
+      console.log(`[WNBAAdapter.espnGames] ESPN API response status: ${response.status}, events: ${data.events?.length || 0}`);
       const events = data.events || [];
       
       // Map ESPN events to Game interface
