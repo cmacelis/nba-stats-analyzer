@@ -77,8 +77,8 @@ export class NBAAdapter implements ILeagueAdapter {
 
   async compare(id1: number, id2: number, season: number): Promise<CompareResult> {
     const [r1, r2] = await Promise.all([
-      bdlGet('/season_averages', { season, player_ids: [id1] }),
-      bdlGet('/season_averages', { season, player_ids: [id2] }),
+      bdlGet('/season_averages', { season, player_id: id1 }),
+      bdlGet('/season_averages', { season, player_id: id2 }),
     ]);
 
     let player1 = r1.data?.[0] ?? null;
@@ -88,8 +88,8 @@ export class NBAAdapter implements ILeagueAdapter {
     if (!player1 || !player2) {
       const prev = season - 1;
       const [f1, f2] = await Promise.all([
-        bdlGet('/season_averages', { season: prev, player_ids: [id1] }),
-        bdlGet('/season_averages', { season: prev, player_ids: [id2] }),
+        bdlGet('/season_averages', { season: prev, player_id: id1 }),
+        bdlGet('/season_averages', { season: prev, player_id: id2 }),
       ]);
       player1 = f1.data?.[0] ?? null;
       player2 = f2.data?.[0] ?? null;
