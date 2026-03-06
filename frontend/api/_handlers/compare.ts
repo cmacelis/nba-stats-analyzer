@@ -19,7 +19,7 @@ export async function compareHandler(req: VercelRequest, res: VercelResponse, id
     if (e?.response?.status === 401) {
       return res.status(402).json({ error: 'plan_required', message: 'Season stats require a BallDontLie Starter plan.' });
     }
-    console.error('[compare] error:', e?.message);
-    res.status(500).json({ error: 'Failed to fetch comparison data' });
+    console.error('[compare] error:', e?.message, e?.response?.status, e?.response?.data);
+    res.status(500).json({ error: 'Failed to fetch comparison data', detail: e?.message, status: e?.response?.status });
   }
 }
