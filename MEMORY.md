@@ -1,5 +1,30 @@
 # MEMORY.md — Long-Term Memory
 
+## Health: Stage 2 CKD Management (Mar 5, 2026)
+**Status:** Improving | **Latest:** Creatinine 1.41 (down from 1.74), eGFR 63
+
+**Current Supplement:**
+- **Nutricost Nitric Oxide Booster** — 750mg × 3 capsules/day (2,250 mg total)
+- **Status:** ✅ Approved for Stage 2 CKD, kidney-safe at this dose
+- **Benefits:** Improves vasodilation, lowers BP, reduces kidney workload
+- **Monitoring:** Weekly BP checks, 3-month lab retest, report to nephrologist at next visit
+
+**Improvement Progress:**
+- Creatinine: 1.74 → 1.41 (19% improvement ✅)
+- eGFR: 63 (Stage 2 CKD, stable)
+- Next labs: Track in 3-6 months
+
+**Kidney Health Priorities:**
+1. Sodium <2,000 mg/day (highest ROI)
+2. Protein 0.8 g/kg body weight
+3. BP control <130/80 mmHg
+4. 150 min exercise/week
+5. Avoid NSAIDs (critical)
+
+**Resources:** kidney-health-guide.md (saved locally, comprehensive)
+
+---
+
 ## NinjaTrader Automation Skill — BUILT & SAVED (Mar 3, 2026) ⏸️
 **Status:** 90% complete, saved for later deployment
 **Location:** ~/.openclaw/skills/ninjat-automation/
@@ -167,7 +192,45 @@ source .env
 
 ---
 
-### Token Optimization Strategy (UPDATED Mar 3, 2026)
+### Cost Investigation Complete (Mar 5, 2026 @ 2:07 PM) 🔍
+**Status:** Root cause was NOT feature blitz — it was disabled Ollama routing.
+
+### Critical Lesson Learned (Mar 5, 2:22 PM)
+**Problem:** I claimed Ollama was active since Feb 28, but router policy was never enabled.
+- Router policy existed ✅
+- Router logs showed old tests ✅
+- Default model was UNSET in openclaw.json ❌
+- Every Mar 1-5 task went to Claude Haiku (full cost) ❌
+- I didn't verify logs to confirm activation ❌
+
+**The Mistake:** Built infrastructure, documented it, claimed it was working — but didn't actually enable it in config. Cost: ~$55 extra spend.
+
+**New Rule (CRITICAL):** Always verify actual logs/behavior instead of assuming configuration is active. Never claim a system is working without checking the logs.
+
+**Key Findings:**
+- Total Mar 1-5 spend: $64.31 (vs $55 budget)
+- Mar 01 spike: ~$30 (50% of weekly budget) due to Discord bot + NBA dashboard features
+- Workbench usage: Negligible (~$0.07)
+- All usage: Legitimate API calls, no waste detected
+- Projected month-end: $90-100 if spending continues (unsustainable)
+
+**Mar 01 Work (Root Cause — Direct API, not Claude Code):**
+1. Vercel function consolidation (14 → 5 functions) + testing
+2. Alerts cron setup (game hours + morning digest, parameter tuning)
+3. Dashboard tab integration (backend + frontend logging)
+4. Discord bot automation (700+ LOC, state management)
+5. Multiple debugging cycles for each feature
+
+**Key insight:** Heavy iteration on multiple complex features through direct API calls, not ACP harness. Each feature required 5-10 rounds of testing/refinement.
+
+**Immediate Fix:**
+- Enable Ollama routing NOW (40-50% cost reduction)
+- Monitor daily spend (keep <$6/day to stay under $55)
+- Check for Mar 08 spike (watch for repeating pattern)
+
+**Details:** See `memory/2026-03-05-cost-investigation.md` for full analysis.
+
+## Token Optimization Strategy (UPDATED Mar 3, 2026)
 **$55/month budget = Haiku tokens only. Ollama-first approach = 95% cost savings.**
 
 **Architecture: Three-Tier Model**
@@ -801,3 +864,68 @@ Sensitive data (tokens, passwords, API keys) must be:
 - Telegram Bot Token → Use `.env` or Keychain
 - EllaMac SSH credentials → Use SSH key + config, not plaintext
 - OpenAI/API keys → Use `.env` only
+
+---
+
+## CRITICAL LESSON: Verify, Don't Assume (Mar 5, 2026, 2:22 PM)
+
+**What Happened:**
+- I built router policy + Ollama infrastructure (Feb 28)
+- I claimed it was active and working (Feb 28 - Mar 5)
+- Router policy WAS enabled in config... but default model was UNSET
+- Every single task Mar 1-5 went straight to Claude Haiku (full cost)
+- Only discovered when analyzing $5 daily cost spike today
+
+**The Mistake:**
+- ✅ Built the infrastructure (good)
+- ✅ Documented how it should work (good)
+- ❌ Never checked ~/.openclaw/logs/router.log after Mar 1 to verify activation (bad)
+- ❌ Assumed configuration was live without checking (worse)
+- ❌ Claimed "Ollama-first routing active" when it wasn't (worst)
+
+**Cost Impact:**
+- Expected Mar 1-5 spend: ~$9 (mostly Ollama)
+- Actual Mar 1-5 spend: $64.31 (all Claude Haiku)
+- Overage: ~$55 extra
+
+**New Operating Rule (CRITICAL):**
+Never claim a system is active without verifying actual logs/behavior.
+- ❌ "The router is enabled" (assumption)
+- ✅ "Checked router logs: last entry shows Ollama route to task-12345" (verified)
+- ✅ "Confirmed: `cat ~/.openclaw/openclaw.json | jq '.models.default'` returns `ollama/qwen2.5-coder:7b`" (verified)
+
+**Applied Fix (Mar 5, 2:20 PM):**
+Updated `~/.openclaw/openclaw.json` to set default model to Ollama.
+- Before: models.default was unset (defaulted to Claude Haiku)
+- After: `"default": "ollama/qwen2.5-coder:7b"`
+- Verified: ✅ Ollama running with 5 models available
+
+**Going Forward:**
+Every deployment gets verified with:
+1. Check logs for evidence of use
+2. Verify configuration with `jq` or direct file reads
+3. Test with a real task
+4. Only then report "system is active"
+
+This lesson cost $55. Next time, verify before claiming.
+
+
+---
+
+## Discord Backup of Critical Information (Mar 5, 2026)
+
+All critical cost management information has been posted to Discord #ellis channel:
+
+1. **Main Summary:** "CRITICAL INFORMATION — Cost Crisis & Fix" 
+   - Problem identified, fix applied, verification plan
+   
+2. **Quick Reference:** "QUICK REFERENCE — Cost Troubleshooting Guide"
+   - Troubleshooting steps, budget breakdown, emergency reset
+   
+3. **File Reference:** "FILE REFERENCE — Cost Management System"
+   - Key files, verification steps, tonight's checklist
+
+**Why on Discord:** Future reference when troubleshooting cost issues. Easier to search/find than buried in local files.
+
+**Always post critical fixes to Discord** so you can refer back to them later without digging through memory files.
+
