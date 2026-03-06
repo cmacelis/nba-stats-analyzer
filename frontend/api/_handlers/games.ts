@@ -4,22 +4,13 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { bdlGet } from '../_lib.js';
+import { AdapterFactory } from '../_adapters/AdapterFactory.js';
 
 export async function gamesHandler(req: VercelRequest, res: VercelResponse) {
-  const today = new Date();
-  const end   = new Date(today);
-  end.setDate(today.getDate() + 3);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
   try {
-    const data = await bdlGet('/games', {
-      start_date: fmt(today),
-      end_date:   fmt(end),
-      per_page:   25,
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const games = (data?.data ?? []).filter((g: any) => g.status !== 'Final');
+    const league = (req as any).league || 'nba';
+    const adapter = AdapterFactory.get(league);
+    const games = await adapter.games();
     res.json({ data: games });
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

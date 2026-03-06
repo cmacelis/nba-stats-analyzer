@@ -4,22 +4,18 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { searchPlayers, findNbaPersonId, buildNbaPhotoUrl, BdlPlayer } from '../_lib.js';
+import { AdapterFactory } from '../_adapters/AdapterFactory.js';
 
 export async function playersHandler(req: VercelRequest, res: VercelResponse) {
   try {
     const search = (req.query.search as string) || '';
     if (!search) return res.status(400).json({ error: 'search query param is required' });
 
-    const result = await searchPlayers(search);
-    const enriched = await Promise.all(
-      result.data.map(async (p: BdlPlayer) => {
-        const fullName = `${p.first_name} ${p.last_name}`;
-        const personId = await findNbaPersonId(fullName).catch(() => null);
-        return { ...p, photo_url: personId != null ? buildNbaPhotoUrl(personId) : null };
-      })
-    );
-    res.json({ ...result, data: enriched });
+    const league = (req as any).league || 'nba';
+    const adapter = AdapterFactory.get(league);
+    const result = await adapter.playerSearch(search);
+    
+    res.json(result);
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = err as any;

@@ -35,7 +35,7 @@ export class NBAAdapter implements ILeagueAdapter {
   //   searchPlayers() → BDL envelope → enrich data[] with photo_url → { ...result, data: enriched }
 
   async playerSearch(_query: string): Promise<PlayerSearchResponse> {
-    const result = await searchPlayers(_query);
+    const result = await searchPlayers(_query, 'nba');
     const enriched = await Promise.all(
       result.data.map(async (p: BdlPlayer) => {
         const fullName = `${p.first_name} ${p.last_name}`;

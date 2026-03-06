@@ -1,6 +1,9 @@
 {
   "rewrites": [
     { "source": "/api/players/(.*)", "destination": "/api/players?_subpath=$1" },
-    { "source": "/api/research/(.*)", "destination": "/api/research?_subpath=$1" }
+    { "source": "/api/research/(.*)", "destination": "/api/research?_subpath=$1" },
+    { "source": "/api/wnba/players/(.*)", "destination": "/api/players?_subpath=$1" },
+    { "source": "/api/wnba/games", "destination": "/api/games" },
+    { "source": "/api/wnba/research/(.*)", "destination": "/api/research?_subpath=$1" }
   ]
 }

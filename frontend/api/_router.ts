@@ -38,10 +38,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let pathname = url.pathname;
   const method = req.method || 'GET';
 
-  // Normalize /api/nba/* to /api/* for internal routing
+  // Extract league from path: /api/{league}/...
+  let league = 'nba'; // default
+  const leagueMatch = pathname.match(/^\/api\/([a-z]+)(\/.*)?$/);
+  if (leagueMatch && ['nba', 'wnba'].includes(leagueMatch[1])) {
+    league = leagueMatch[1];
+    // Remove league prefix for internal routing
+    pathname = leagueMatch[2] ? `/api${leagueMatch[2]}` : '/api';
+  }
+
+  // Also handle /api/nba/* legacy normalization
   if (pathname.startsWith('/api/nba/')) {
+    league = 'nba';
     pathname = pathname.replace(/^\/api\/nba/, '/api');
   }
+
+  // Store league in request object for handlers to use
+  (req as any).league = league;
 
   try {
     // Route based on path pattern
