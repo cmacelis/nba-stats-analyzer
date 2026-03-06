@@ -89,29 +89,12 @@ export class WNBAAdapter implements ILeagueAdapter {
     const cached = this.getCached<Game[]>(cacheKey, 10 * 60 * 1000); // 10 min
     if (cached) return cached;
 
-    try {
-      // Try BallDontLie first
-      const today = new Date();
-      const end = new Date(today);
-      end.setDate(today.getDate() + 7); // WNBA season may have different schedule density
-      const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-      const data = await bdlGet('/games', {
-        start_date: fmt(today),
-        end_date: fmt(end),
-        per_page: 25,
-        league: this.league,
-      });
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const games = (data?.data ?? []).filter((g: any) => g.status !== 'Final') as Game[];
-      this.setCached(cacheKey, games);
-      return games;
-    } catch (error) {
-      // If BDL fails, fallback to ESPN
-      console.warn(`[WNBAAdapter] BDL games failed, falling back to ESPN: ${error}`);
-      return this.espnGames();
-    }
+    // TEMPORARY FIX: Return empty array for WNBA games
+    // BDL returns NBA games even with league=wnba parameter, which is wrong
+    console.log('[WNBAAdapter.games] Returning empty array (WNBA schedule not configured)');
+    const games: Game[] = [];
+    this.setCached(cacheKey, games);
+    return games;
   }
 
   private async espnGames(): Promise<Game[]> {
