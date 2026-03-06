@@ -434,24 +434,11 @@ function simulatedReport(
   };
 }
 
-async function callClaude(prompt: string): Promise<string | null> {
-  if (!ANTHROPIC_KEY) return null;
-  try {
-    const res = await axios.post(
-      'https://api.anthropic.com/v1/messages',
-      { model: 'claude-sonnet-4-6', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] },
-      {
-        headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        timeout: 30000,
-      }
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const block = (res.data as any)?.content?.[0];
-    return block?.type === 'text' ? block.text : null;
-  } catch (err) {
-    console.error('[research] Claude API error:', (err as Error).message);
-    return null;
-  }
+// Claude API call disabled to avoid API costs during development.
+// The simulatedReport() fallback provides statistical analysis without any API spend.
+// Re-enable when going live if AI-generated reasoning is desired.
+async function callClaude(_prompt: string): Promise<string | null> {
+  return null;
 }
 
 function buildPrompt(
