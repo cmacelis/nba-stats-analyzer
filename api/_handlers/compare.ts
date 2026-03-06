@@ -9,9 +9,15 @@ import { AdapterFactory } from '../_adapters/AdapterFactory.js';
 
 export async function compareHandler(req: VercelRequest, res: VercelResponse, id1: string, id2: string) {
   const season = parseInt(req.query.season as string) || BDL_SEASON;
+  
+  // Get league from query parameter, default to 'nba'
+  const league = ((req.query.league as string) || 'nba').toLowerCase();
+  if (!['nba', 'wnba'].includes(league)) {
+    return res.status(400).json({ error: 'Invalid league. Must be "nba" or "wnba"' });
+  }
 
   try {
-    const result = await AdapterFactory.get('nba').compare(parseInt(id1), parseInt(id2), season);
+    const result = await AdapterFactory.get(league).compare(parseInt(id1), parseInt(id2), season);
     res.json(result);
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -11,7 +11,13 @@ export async function playersHandler(req: VercelRequest, res: VercelResponse) {
     const search = (req.query.search as string) || '';
     if (!search) return res.status(400).json({ error: 'search query param is required' });
 
-    const result = await searchPlayers(search);
+    // Get league from query parameter, default to 'nba'
+    const league = ((req.query.league as string) || 'nba').toLowerCase();
+    if (!['nba', 'wnba'].includes(league)) {
+      return res.status(400).json({ error: 'Invalid league. Must be "nba" or "wnba"' });
+    }
+
+    const result = await searchPlayers(search, league);
     const enriched = await Promise.all(
       result.data.map(async (p: BdlPlayer) => {
         const fullName = `${p.first_name} ${p.last_name}`;

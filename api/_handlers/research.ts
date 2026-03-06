@@ -21,6 +21,12 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
 
     const prop         = (req.query.prop as string) || 'points';
     const forceRefresh = req.query.refresh === 'true';
+    
+    // Get league from query parameter, default to 'nba'
+    const league = ((req.query.league as string) || 'nba').toLowerCase();
+    if (!['nba', 'wnba'].includes(league)) {
+      return res.status(400).json({ error: 'Invalid league. Must be "nba" or "wnba"' });
+    }
 
     if (!forceRefresh) {
       const cached = getCachedReport(playerName, prop);
@@ -32,7 +38,7 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
 
     const [mentions, statContext] = await Promise.all([
       scrapePlayerMentions(playerName),
-      AdapterFactory.get('nba').playerStats(playerName, statKey),
+      AdapterFactory.get(league).playerStats(playerName, statKey),
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report    = await generateReport(playerName, prop, mentions, sentiment, statContext);

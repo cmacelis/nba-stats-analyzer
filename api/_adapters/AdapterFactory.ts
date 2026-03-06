@@ -12,6 +12,7 @@
 
 import type { ILeagueAdapter } from '../../frontend/src/adapters/types.js';
 import { NBAAdapter } from './NBAAdapter.js';
+import { WNBAAdapter } from './WNBAAdapter.js';
 
 type AdapterCtor = new () => ILeagueAdapter;
 
@@ -51,3 +52,4 @@ export const AdapterFactory = new AdapterRegistry();
 
 // ── Default registrations ────────────────────────────────────────────────────
 AdapterFactory.register('nba', NBAAdapter);
+AdapterFactory.register('wnba', WNBAAdapter);

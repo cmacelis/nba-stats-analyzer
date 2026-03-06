@@ -10,8 +10,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const search = (req.query.search as string) || '';
   if (!search) return res.status(400).json({ error: 'search query param is required' });
 
+  // Get league from query parameter, default to 'nba'
+  const league = ((req.query.league as string) || 'nba').toLowerCase();
+  if (!['nba', 'wnba'].includes(league)) {
+    return res.status(400).json({ error: 'Invalid league. Must be "nba" or "wnba"' });
+  }
+
   try {
-    const result = await AdapterFactory.get('nba').playerSearch(search);
+    const result = await AdapterFactory.get(league).playerSearch(search);
     res.json(result);
   } catch (err) {
     console.error('[players] error:', err);
