@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/players/(.*)", "destination": "/api/players?_subpath=$1" },
+    { "source": "/api/research/(.*)", "destination": "/api/research?_subpath=$1" }
+  ]
+}
