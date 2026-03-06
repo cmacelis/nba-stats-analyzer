@@ -10,7 +10,8 @@ export async function playerPhotoHandler(req: VercelRequest, res: VercelResponse
   const name = req.query.name as string;
   if (!name) return res.status(400).json({ error: 'name param required' });
   try {
-    const photo_url = await AdapterFactory.get('nba').photo(name);
+    const league = (req as any).league || 'nba';
+    const photo_url = await AdapterFactory.get(league).photo(name);
     res.json({ photo_url });
   } catch (err) {
     console.error('[photo] error:', (err as Error).message);

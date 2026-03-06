@@ -11,7 +11,8 @@ export async function compareHandler(req: VercelRequest, res: VercelResponse, id
   const season = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {
-    const result = await AdapterFactory.get('nba').compare(parseInt(id1), parseInt(id2), season);
+    const league = (req as any).league || 'nba';
+    const result = await AdapterFactory.get(league).compare(parseInt(id1), parseInt(id2), season);
     res.json(result);
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
