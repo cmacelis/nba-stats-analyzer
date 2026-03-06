@@ -27,6 +27,8 @@ import {
   BdlPlayer,
 } from '../_lib.js';
 
+import axios from 'axios';
+
 import { computeEdgeFeed } from '../edge.js';
 
 export class WNBAAdapter implements ILeagueAdapter {
@@ -89,35 +91,84 @@ export class WNBAAdapter implements ILeagueAdapter {
     const cached = this.getCached<Game[]>(cacheKey, 10 * 60 * 1000); // 10 min
     if (cached) return cached;
 
-    try {
-      // Try BallDontLie first
-      const today = new Date();
-      const end = new Date(today);
-      end.setDate(today.getDate() + 7); // WNBA season may have different schedule density
-      const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-      const data = await bdlGet('/games', {
-        start_date: fmt(today),
-        end_date: fmt(end),
-        per_page: 25,
-        league: this.league,
-      });
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const games = (data?.data ?? []).filter((g: any) => g.status !== 'Final') as Game[];
-      this.setCached(cacheKey, games);
-      return games;
-    } catch (error) {
-      // If BDL fails, fallback to ESPN
-      console.warn(`[WNBAAdapter] BDL games failed, falling back to ESPN: ${error}`);
-      return this.espnGames();
-    }
+    // For WNBA, use ESPN API directly since BDL doesn't reliably support WNBA
+    // and may return NBA games when league=wnba parameter is ignored
+    const games = await this.espnGames();
+    this.setCached(cacheKey, games);
+    return games;
   }
 
+  private espnCache: { games: Game[]; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
+
   private async espnGames(): Promise<Game[]> {
-    // ESPN fallback implementation
-    // For now, return empty array
-    return [];
+    // Check cache first
+    if (this.espnCache && Date.now() - this.espnCache.timestamp < this.CACHE_TTL) {
+      return this.espnCache.games;
+    }
+
+    try {
+      // Fetch WNBA scoreboard from ESPN API
+      const response = await axios.get('https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard', {
+        timeout: 10000,
+      });
+      
+      const data = response.data;
+      const events = data.events || [];
+      
+      // Map ESPN events to Game interface
+      const games: Game[] = events.map((event: any) => {
+        const competition = event.competitions?.[0];
+        const competitors = competition?.competitors || [];
+        
+        // Find home and away teams
+        const homeTeam = competitors.find((c: any) => c.homeAway === 'home');
+        const awayTeam = competitors.find((c: any) => c.homeAway === 'away');
+        
+        // Parse date
+        const gameDate = new Date(event.date);
+        const dateStr = gameDate.toISOString().split('T')[0];
+        
+        // Get status
+        const status = competition?.status?.type?.id;
+        let statusStr = 'Scheduled';
+        if (status === '2') statusStr = 'In Progress';
+        if (status === '3') statusStr = 'Final';
+        
+        return {
+          id: parseInt(event.id) || 0,
+          date: dateStr,
+          home_team: {
+            full_name: homeTeam?.team?.displayName || 'Unknown',
+            abbreviation: homeTeam?.team?.abbreviation || 'UNK'
+          },
+          visitor_team: {
+            full_name: awayTeam?.team?.displayName || 'Unknown',
+            abbreviation: awayTeam?.team?.abbreviation || 'UNK'
+          },
+          home_team_score: parseInt(homeTeam?.score || '0'),
+          visitor_team_score: parseInt(awayTeam?.score || '0'),
+          status: statusStr,
+          period: competition?.status?.period || 0,
+          time: competition?.status?.displayClock || undefined
+        };
+      });
+      
+      // Filter to only include scheduled or in-progress games (not final)
+      const filteredGames = games.filter(game => game.status !== 'Final');
+      
+      // Update cache
+      this.espnCache = {
+        games: filteredGames,
+        timestamp: Date.now()
+      };
+      
+      return filteredGames;
+    } catch (error) {
+      console.warn(`[WNBAAdapter] ESPN games fetch failed: ${error}`);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   // ─── playerStats ───────────────────────────────────────────────────────────
