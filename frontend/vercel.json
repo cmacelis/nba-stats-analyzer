@@ -2,8 +2,13 @@
   "rewrites": [
     { "source": "/api/players/(.*)", "destination": "/api/players?_subpath=$1" },
     { "source": "/api/research/(.*)", "destination": "/api/research?_subpath=$1" },
-    { "source": "/api/wnba/players/(.*)", "destination": "/api/players?_subpath=$1" },
-    { "source": "/api/wnba/games", "destination": "/api/games" },
-    { "source": "/api/wnba/research/(.*)", "destination": "/api/research?_subpath=$1" }
+    { "source": "/api/nba/players", "destination": "/api/players?league=nba" },
+    { "source": "/api/nba/players/(.*)", "destination": "/api/players?_subpath=$1&league=nba" },
+    { "source": "/api/nba/games", "destination": "/api/games?league=nba" },
+    { "source": "/api/nba/research/(.*)", "destination": "/api/research?_subpath=$1&league=nba" },
+    { "source": "/api/wnba/players", "destination": "/api/players?league=wnba" },
+    { "source": "/api/wnba/players/(.*)", "destination": "/api/players?_subpath=$1&league=wnba" },
+    { "source": "/api/wnba/games", "destination": "/api/games?league=wnba" },
+    { "source": "/api/wnba/research/(.*)", "destination": "/api/research?_subpath=$1&league=wnba" }
   ]
 }

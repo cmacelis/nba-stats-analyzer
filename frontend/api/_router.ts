@@ -38,8 +38,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let pathname = url.pathname;
   const method = req.method || 'GET';
 
-  // Extract league from path: /api/{league}/...
+  // Extract league from path OR query param: /api/{league}/... or ?league=...
   let league = 'nba'; // default
+  
+  // Check query parameter first (from vercel.json rewrites)
+  const queryLeague = req.query.league as string;
+  if (queryLeague && ['nba', 'wnba'].includes(queryLeague)) {
+    league = queryLeague;
+  }
+  
+  // Then check path (for direct calls not going through rewrites)
   const leagueMatch = pathname.match(/^\/api\/([a-z]+)(\/.*)?$/);
   if (leagueMatch && ['nba', 'wnba'].includes(leagueMatch[1])) {
     league = leagueMatch[1];
