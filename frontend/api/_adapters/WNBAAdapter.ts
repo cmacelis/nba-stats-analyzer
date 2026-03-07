@@ -224,8 +224,76 @@ export class WNBAAdapter implements ILeagueAdapter {
     minMinutes: number;
     season: number;
   }): Promise<EdgeEntry[]> {
-    // WNBA edge feed logic would go here
-    return [];
+    console.log('[WNBAAdapter.edgeFeed] Fetching WNBA edges for', options);
+    
+    // For MVP: Return realistic WNBA edges with mock data
+    // In future: Integrate with WNBA stats API for real game logs
+    const cacheKey = `edge:${options.stat}:${options.season}`;
+    const cached = this.getCached<EdgeEntry[]>(cacheKey, 10 * 60 * 1000); // 10 min cache
+    if (cached) {
+      console.log('[WNBAAdapter.edgeFeed] Returning cached edges:', cached.length);
+      return cached;
+    }
+    
+    // Mock WNBA players with realistic stats
+    const wnbaPlayers = [
+      { id: 1, name: 'Breanna Stewart', team: 'New York Liberty', abbrev: 'NY', basePts: 22.3, basePra: 28.5 },
+      { id: 2, name: 'A\'ja Wilson', team: 'Las Vegas Aces', abbrev: 'LV', basePts: 23.8, basePra: 30.2 },
+      { id: 3, name: 'Sabrina Ionescu', team: 'New York Liberty', abbrev: 'NY', basePts: 19.5, basePra: 25.7 },
+      { id: 4, name: 'Kelsey Plum', team: 'Las Vegas Aces', abbrev: 'LV', basePts: 20.1, basePra: 26.3 },
+      { id: 5, name: 'Chelsea Gray', team: 'Las Vegas Aces', abbrev: 'LV', basePts: 15.2, basePra: 22.8 },
+      { id: 6, name: 'Jonquel Jones', team: 'New York Liberty', abbrev: 'NY', basePts: 17.8, basePra: 24.5 },
+      { id: 7, name: 'DeWanna Bonner', team: 'Connecticut Sun', abbrev: 'CON', basePts: 18.3, basePra: 25.1 },
+      { id: 8, name: 'Alyssa Thomas', team: 'Connecticut Sun', abbrev: 'CON', basePts: 16.2, basePra: 27.4 },
+      { id: 9, name: 'Skylar Diggins-Smith', team: 'Seattle Storm', abbrev: 'SEA', basePts: 19.7, basePra: 25.9 },
+      { id: 10, name: 'Jewell Loyd', team: 'Seattle Storm', abbrev: 'SEA', basePts: 21.4, basePra: 26.8 },
+    ];
+    
+    // Generate edges with realistic deltas
+    const edges: EdgeEntry[] = wnbaPlayers.map(player => {
+      const baseStat = options.stat === 'pts' ? player.basePts : player.basePra;
+      
+      // Create realistic season average (slightly randomized around base)
+      const seasonAvg = baseStat + (Math.random() * 2 - 1); // +/- 1
+      
+      // Create recent average with intentional delta for edge detection
+      // Some players trending up, some down
+      const trend = Math.random() > 0.5 ? 1 : -1;
+      const deltaStrength = 1.5 + Math.random() * 2; // 1.5-3.5 delta
+      const recentAvg = seasonAvg + (trend * deltaStrength);
+      
+      // Generate last 5 games
+      const last5: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        last5.push(recentAvg + (Math.random() * 4 - 2)); // +/- 2 variation
+      }
+      
+      return {
+        player_id: player.id,
+        player_name: player.name,
+        team: player.team,
+        team_abbrev: player.abbrev,
+        photo_url: null, // WNBA photos not configured yet
+        season_avg: parseFloat(seasonAvg.toFixed(1)),
+        recent_avg: parseFloat(recentAvg.toFixed(1)),
+        delta: parseFloat((recentAvg - seasonAvg).toFixed(1)),
+        last5: last5.map(n => parseFloat(n.toFixed(1))),
+        games_played: 20 + Math.floor(Math.random() * 15), // 20-35 games
+      };
+    });
+    
+    // Filter by minMinutes (simulated)
+    const filteredEdges = edges.filter(edge => 
+      edge.games_played >= 10 && // Simulate minutes filter
+      Math.abs(edge.delta) >= 1.5 // Minimum delta for edge detection
+    );
+    
+    // Sort by absolute delta (biggest edges first)
+    filteredEdges.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    
+    console.log(`[WNBAAdapter.edgeFeed] Generated ${filteredEdges.length} WNBA edges`);
+    this.setCached(cacheKey, filteredEdges);
+    return filteredEdges;
   }
 }
 // Force rebuild

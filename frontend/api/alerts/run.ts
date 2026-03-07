@@ -1,5 +1,5 @@
 /**
- * POST /api/alerts/run?stat=pts|pra&direction=over|under|both&min_minutes=20&min_delta=2.0&top_n=10&season=2025
+ * POST /api/alerts/run?stat=pts|pra&direction=over|under|both&min_minutes=20&min_delta=2.0&top_n=10&season=2025&league=nba|wnba
  *
  * Runs the edge feed, finds players above/below the delta threshold, deduplicates
  * via KV cooldown, and posts Discord embeds for newly-triggered edges.
@@ -7,7 +7,8 @@
  * Required env vars:
  *   DISCORD_WEBHOOK_URL     — Discord webhook URL (Server Settings → Integrations → Webhooks)
  *
- * Optional env vars (have sensible defaults):
+ * Optional env vars:
+ *   DISCORD_WEBHOOK_WNBA_URL — Separate webhook for WNBA alerts (falls back to DISCORD_WEBHOOK_URL with [WNBA] tag)
  *   ALERT_MIN_DELTA_PTS     — minimum |L5-vs-season| delta for PTS alerts (default: 2.0)
  *   ALERT_MIN_DELTA_PRA     — minimum |L5-vs-season| delta for PRA alerts (default: 3.5)
  *   ALERT_COOLDOWN_MINUTES  — cooldown per player+stat+direction before re-alerting (default: 180)
@@ -18,9 +19,13 @@
  *   under => delta <= -min_delta   (L5 trending below season avg — bet the under)
  *   both  => |delta| >= min_delta  (default — catches both signals)
  *
+ * league param:
+ *   nba   => NBA edges and alerts (default)
+ *   wnba  => WNBA edges and alerts
+ *
  * Cooldown storage:
  *   Uses Vercel KV (same KV_REST_API_URL / KV_REST_API_TOKEN as picks).
- *   Redis key: nba:alert:cd:{stat}:{direction}:{player_id}  TTL = ALERT_COOLDOWN_MINUTES * 60
+ *   Redis key: {league}:alert:cd:{stat}:{direction}:{player_id}  TTL = ALERT_COOLDOWN_MINUTES * 60
  *   If KV is not configured, cooldown is skipped (every run sends all matching alerts).
  *
  * Scheduling (recommended):
@@ -29,7 +34,8 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, BDL_SEASON } from '../_lib.js';
-import { computeEdgeFeed, EdgeEntry, StatKey } from '../edge.js';
+import { AdapterFactory } from './_adapters/AdapterFactory.js';
+import { EdgeEntry, StatKey } from '../edge.js';
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -37,10 +43,11 @@ type Direction = 'over' | 'under' | 'both';
 
 // ── config ─────────────────────────────────────────────────────────────────────
 
-const WEBHOOK_URL   = process.env.DISCORD_WEBHOOK_URL;
-const KV_URL        = process.env.KV_REST_API_URL;
-const KV_TOKEN      = process.env.KV_REST_API_TOKEN;
-const KV_OK         = !!(KV_URL && KV_TOKEN);
+const WEBHOOK_URL        = process.env.DISCORD_WEBHOOK_URL;
+const WEBHOOK_WNBA_URL   = process.env.DISCORD_WEBHOOK_WNBA_URL;
+const KV_URL             = process.env.KV_REST_API_URL;
+const KV_TOKEN           = process.env.KV_REST_API_TOKEN;
+const KV_OK              = !!(KV_URL && KV_TOKEN);
 
 const MIN_DELTA_PTS = parseFloat(process.env.ALERT_MIN_DELTA_PTS  || '2.0');
 const MIN_DELTA_PRA = parseFloat(process.env.ALERT_MIN_DELTA_PRA  || '3.5');
@@ -52,8 +59,8 @@ const SITE_URL = process.env.SITE_URL
 
 // ── KV cooldown helpers ────────────────────────────────────────────────────────
 
-const cdKey = (stat: string, direction: Direction, playerId: number) =>
-  `nba:alert:cd:${stat}:${direction}:${playerId}`;
+const cdKey = (league: string, stat: string, direction: Direction, playerId: number) =>
+  `${league}:alert:cd:${stat}:${direction}:${playerId}`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function kvCmd(...args: unknown[]): Promise<any> {
@@ -67,16 +74,16 @@ async function kvCmd(...args: unknown[]): Promise<any> {
 }
 
 /** Returns true if a cooldown key exists (player was already alerted recently). */
-async function onCooldown(stat: string, direction: Direction, playerId: number): Promise<boolean> {
+async function onCooldown(league: string, stat: string, direction: Direction, playerId: number): Promise<boolean> {
   if (!KV_OK) return false;
-  const val = await kvCmd('GET', cdKey(stat, direction, playerId));
+  const val = await kvCmd('GET', cdKey(league, stat, direction, playerId));
   return val !== null;
 }
 
 /** Sets the cooldown key with TTL. Called after a successful Discord post. */
-async function markAlerted(stat: string, direction: Direction, playerId: number): Promise<void> {
+async function markAlerted(league: string, stat: string, direction: Direction, playerId: number): Promise<void> {
   if (!KV_OK) return;
-  await kvCmd('SET', cdKey(stat, direction, playerId), '1', 'EX', COOLDOWN_SECS);
+  await kvCmd('SET', cdKey(league, stat, direction, playerId), '1', 'EX', COOLDOWN_SECS);
 }
 
 // ── candidate filtering ────────────────────────────────────────────────────────
@@ -89,13 +96,18 @@ function matchesDirection(entry: EdgeEntry, direction: Direction, minDelta: numb
 
 // ── Discord helpers ────────────────────────────────────────────────────────────
 
-function buildEdgeFeedUrl(stat: StatKey, season: number, minMinutes: number): string {
+function buildEdgeFeedUrl(league: string, stat: StatKey, season: number, minMinutes: number): string {
   if (!SITE_URL) return '';
-  const p = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes) });
+  const p = new URLSearchParams({ 
+    stat, 
+    s: String(season), 
+    min_minutes: String(minMinutes),
+    league
+  });
   return `${SITE_URL}/edge?${p.toString()}`;
 }
 
-function buildTrackPickUrl(entry: EdgeEntry, stat: StatKey, season: number, minMinutes: number): string {
+function buildTrackPickUrl(league: string, entry: EdgeEntry, stat: StatKey, season: number, minMinutes: number): string {
   if (!SITE_URL) return '';
   const dir = entry.delta >= 0 ? 'over' : 'under';
   const p = new URLSearchParams({
@@ -109,15 +121,15 @@ function buildTrackPickUrl(entry: EdgeEntry, stat: StatKey, season: number, minM
   return `${SITE_URL}/edge?${p.toString()}`;
 }
 
-function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMinutes: number, season: number): object {
+function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMinutes: number, season: number, league: string, leagueTag: string): object {
   const label    = stat === 'pra' ? 'PRA' : 'PTS';
   const isOver   = entry.delta >= 0;
   const sign     = isOver ? '+' : '';
   const emoji    = isOver ? '🔥' : '🧊';
   const edgeType = isOver ? 'Over Edge' : 'Under Edge';
   const color    = isOver ? 0x22c55e : 0x3b82f6; // green : blue
-  const feedUrl  = buildEdgeFeedUrl(stat, season, minMinutes);
-  const pickUrl  = buildTrackPickUrl(entry, stat, season, minMinutes);
+  const feedUrl  = buildEdgeFeedUrl(league, stat, season, minMinutes);
+  const pickUrl  = buildTrackPickUrl(league, entry, stat, season, minMinutes);
 
   const linkParts = [
     feedUrl && `[🔗 Open Edge Feed](${feedUrl})`,
@@ -125,7 +137,7 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
   ].filter(Boolean);
 
   return {
-    title:       `${emoji} ${entry.player_name} (${entry.team_abbrev}) — ${label} ${edgeType}`,
+    title:       `${leagueTag}${emoji} ${entry.player_name} (${entry.team_abbrev}) — ${label} ${edgeType}`,
     color,
     ...(feedUrl && { url: feedUrl }),
     description: `**${sign}${entry.delta.toFixed(1)}** vs season average (L5 trending ${isOver ? 'hot' : 'cold'})`,
@@ -143,8 +155,8 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
   };
 }
 
-async function postToDiscord(embeds: object[]): Promise<void> {
-  const res = await fetch(WEBHOOK_URL!, {
+async function postToDiscord(webhookUrl: string, embeds: object[]): Promise<void> {
+  const res = await fetch(webhookUrl, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ embeds }),
@@ -161,8 +173,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  if (!WEBHOOK_URL) {
-    return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
+  const league = (req.query.league as string) || 'nba';
+  
+  // Determine which webhook to use
+  let webhookUrl = WEBHOOK_URL;
+  let leagueTag = '';
+  
+  if (league === 'wnba') {
+    if (WEBHOOK_WNBA_URL) {
+      webhookUrl = WEBHOOK_WNBA_URL;
+    } else if (WEBHOOK_URL) {
+      leagueTag = '[WNBA] ';
+      webhookUrl = WEBHOOK_URL;
+    }
+  }
+  
+  if (!webhookUrl) {
+    return res.status(400).json({ error: `DISCORD_WEBHOOK_URL not configured for league ${league}` });
   }
 
   const stat        = ((req.query.stat      as string) || 'pts') as StatKey;
@@ -175,7 +202,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const season      = parseInt(req.query.season as string) || BDL_SEASON;
 
   try {
-    const entries = await computeEdgeFeed(stat, minMinutes, season);
+    const entries = await AdapterFactory.get(league).edgeFeed({ 
+      stat, 
+      minMinutes, 
+      season 
+    });
 
     // Filter by direction + threshold, cap at top_n (sort by |delta| desc already done)
     const candidates = entries
@@ -187,7 +218,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const skipped: string[]    = [];
 
     for (const entry of candidates) {
-      if (await onCooldown(stat, direction, entry.player_id)) {
+      if (await onCooldown(league, stat, direction, entry.player_id)) {
         skipped.push(entry.player_name);
       } else {
         toSend.push(entry);
@@ -196,14 +227,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Build embeds and post to Discord (max 10 per message)
     if (toSend.length > 0) {
-      const embeds = toSend.map(e => buildEmbed(e, stat, direction, minMinutes, season));
+      const embeds = toSend.map(e => buildEmbed(e, stat, direction, minMinutes, season, league, leagueTag));
       for (let i = 0; i < embeds.length; i += 10) {
-        await postToDiscord(embeds.slice(i, i + 10));
+        await postToDiscord(webhookUrl, embeds.slice(i, i + 10));
       }
     }
 
     // Mark as alerted only after successful Discord post
-    await Promise.all(toSend.map(e => markAlerted(stat, direction, e.player_id).catch(() => null)));
+    await Promise.all(toSend.map(e => markAlerted(league, stat, direction, e.player_id).catch(() => null)));
 
     return res.json({
       ok:               true,

@@ -269,7 +269,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Debug mode uses computeEdgeFeed directly to capture pipeline diagnostics.
     // Production path goes through the adapter (zero behaviour change — NBAAdapter calls computeEdgeFeed internally).
-    const league = (req as any).league || 'nba';
+    const league = (req.query.league as string) || 'nba';
     const top = isDebug
       ? await computeEdgeFeed(stat, minMin, season, debugOut)
       : (await AdapterFactory.get(league).edgeFeed({ stat, minMinutes: minMin, season })) as EdgeEntry[];
