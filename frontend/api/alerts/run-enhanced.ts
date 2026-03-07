@@ -1,8 +1,10 @@
 /**
- * POST /api/alerts/run-enhanced?stat=pts|pra&direction=over|under|both&min_minutes=20&min_delta=2.0&top_n=10&season=2025&league=nba|wnba&check_user_rules=true
+ * POST /api/alerts/run-enhanced
  *
  * Extended alerts/run that also checks personalized user rules (Phase 5).
  * Stores matching alerts in Firestore for the Discord bot to send as DMs.
+ *
+ * Phase 6: skip-reason accounting, dedup, per-user rate limiting.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -22,17 +24,25 @@ const KV_URL             = process.env.KV_REST_API_URL;
 const KV_TOKEN           = process.env.KV_REST_API_TOKEN;
 const KV_OK              = !!(KV_URL && KV_TOKEN);
 
-const MIN_DELTA_PTS = parseFloat(process.env.ALERT_MIN_DELTA_PTS  || '2.0');
-const MIN_DELTA_PRA = parseFloat(process.env.ALERT_MIN_DELTA_PRA  || '3.5');
-const COOLDOWN_SECS = parseInt(process.env.ALERT_COOLDOWN_MINUTES || '180') * 60;
+const MIN_DELTA_PTS   = parseFloat(process.env.ALERT_MIN_DELTA_PTS  || '2.0');
+const MIN_DELTA_PRA   = parseFloat(process.env.ALERT_MIN_DELTA_PRA  || '3.5');
+const COOLDOWN_SECS   = parseInt(process.env.ALERT_COOLDOWN_MINUTES || '180') * 60;
+const USER_RATE_LIMIT = parseInt(process.env.ALERT_USER_RATE_LIMIT  || '10'); // per hour
+const RATE_LIMIT_TTL  = 3600; // 1 hour window
 
 const SITE_URL = process.env.SITE_URL
   || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
-// ── KV cooldown helpers ────────────────────────────────────────────────────────
+// ── KV helpers ───────────────────────────────────────────────────────────────
 
 const cdKey = (league: string, stat: string, direction: Direction, playerId: number) =>
   `${league}:alert:cd:${stat}:${direction}:${playerId}`;
+
+const dedupKey = (userId: string, ruleId: string, playerId: number) =>
+  `pending:dedup:${userId}:${ruleId}:${playerId}`;
+
+const rateKey = (userId: string) =>
+  `user:rate:${userId}`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function kvCmd(...args: unknown[]): Promise<any> {
@@ -54,6 +64,29 @@ async function onCooldown(league: string, stat: string, direction: Direction, pl
 async function markAlerted(league: string, stat: string, direction: Direction, playerId: number): Promise<void> {
   if (!KV_OK) return;
   await kvCmd('SET', cdKey(league, stat, direction, playerId), '1', 'EX', COOLDOWN_SECS);
+}
+
+async function isDuplicate(userId: string, ruleId: string, playerId: number): Promise<boolean> {
+  if (!KV_OK) return false;
+  const val = await kvCmd('GET', dedupKey(userId, ruleId, playerId));
+  return val !== null;
+}
+
+async function markDedup(userId: string, ruleId: string, playerId: number): Promise<void> {
+  if (!KV_OK) return;
+  await kvCmd('SET', dedupKey(userId, ruleId, playerId), '1', 'EX', COOLDOWN_SECS);
+}
+
+/** Returns true if user is over the hourly rate limit. Also increments the counter. */
+async function isRateLimited(userId: string): Promise<boolean> {
+  if (!KV_OK) return false;
+  const key = rateKey(userId);
+  const count = await kvCmd('INCR', key);
+  if (count === 1) {
+    // First alert this window — set TTL
+    await kvCmd('EXPIRE', key, RATE_LIMIT_TTL);
+  }
+  return count > USER_RATE_LIMIT;
 }
 
 // ── candidate filtering ────────────────────────────────────────────────────────
@@ -146,6 +179,11 @@ function numParam(req: VercelRequest, snake: string, camel: string): number | un
   return Number.isNaN(n) ? undefined : n;
 }
 
+// ── skip reason type ─────────────────────────────────────────────────────────
+
+type SkipReason = 'cooldown' | 'dedup' | 'rate_limit';
+interface DebugEntry { userId: string; ruleId: string; playerId: number; playerName: string; reason: SkipReason; key?: string }
+
 // ── handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -174,6 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const season      = numParam(req, 'season', 'season') ?? BDL_SEASON;
   const crRaw       = param(req, 'check_user_rules', 'checkUserRules');
   const checkUserRules = crRaw !== 'false';
+  const debug       = param(req, 'debug', 'debug') === '1';
 
   try {
     // Use AdapterFactory for league support (matches run.ts pattern)
@@ -183,39 +222,89 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(e => matchesDirection(e, direction, minDelta))
       .slice(0, topN);
 
+    // ── Channel alerts: cooldown check ──────────────────────────────────────
+
     const toSend:  EdgeEntry[] = [];
     const skipped: string[]    = [];
+    let skippedCooldown = 0;
 
     for (const entry of candidates) {
       if (await onCooldown(league, stat, direction, entry.player_id)) {
         skipped.push(entry.player_name);
+        skippedCooldown++;
       } else {
         toSend.push(entry);
       }
     }
 
-    // Check personalized user rules
-    let userRuleMatches: RuleMatch[] = [];
+    // ── Personal user rules: dedup + rate limit ─────────────────────────────
+
+    let rulesChecked    = 0;
+    let matchesFound    = 0;
+    let createdPending  = 0;
+    let skippedDedup    = 0;
+    let skippedRateLimit = 0;
+    const debugReasons: DebugEntry[] = [];
+    const triggeredRuleIds = new Set<string>();
+
     if (checkUserRules) {
       try {
-        userRuleMatches = await checkRulesAgainstEdges(entries, league as 'nba' | 'wnba', stat as 'pts' | 'pra', minMinutes);
+        const allMatches = await checkRulesAgainstEdges(entries, league as 'nba' | 'wnba', stat as 'pts' | 'pra', minMinutes);
+        rulesChecked = allMatches.length > 0 ? allMatches.length : 0; // total match attempts
+        matchesFound = allMatches.length;
 
-        // Store personalized alerts for Discord bot DMs
-        for (const match of userRuleMatches) {
+        // Track per-user rate limit state within this run
+        const userLimitHit = new Set<string>();
+
+        for (const match of allMatches) {
+          const { rule, entry } = match;
+          const playerId = entry.player_id;
+
+          // 1) Rate limit check (per user, per hour)
+          if (userLimitHit.has(rule.userId)) {
+            skippedRateLimit++;
+            if (debug) debugReasons.push({ userId: rule.userId, ruleId: rule.id, playerId, playerName: entry.player_name, reason: 'rate_limit', key: rateKey(rule.userId) });
+            continue;
+          }
+          const limited = await isRateLimited(rule.userId);
+          if (limited) {
+            userLimitHit.add(rule.userId);
+            skippedRateLimit++;
+            if (debug) debugReasons.push({ userId: rule.userId, ruleId: rule.id, playerId, playerName: entry.player_name, reason: 'rate_limit', key: rateKey(rule.userId) });
+            continue;
+          }
+
+          // 2) Dedup check (same user+rule+player combo)
+          const dup = await isDuplicate(rule.userId, rule.id, playerId);
+          if (dup) {
+            skippedDedup++;
+            if (debug) debugReasons.push({ userId: rule.userId, ruleId: rule.id, playerId, playerName: entry.player_name, reason: 'dedup', key: dedupKey(rule.userId, rule.id, playerId) });
+            continue;
+          }
+
+          // 3) Create pending alert
           try {
-            await storePendingAlert(match.rule, match.entry, stat as 'pts' | 'pra');
-            await updateRuleLastTriggered(match.rule.id);
+            await storePendingAlert(rule, entry, stat as 'pts' | 'pra');
+            await markDedup(rule.userId, rule.id, playerId);
+            createdPending++;
+            triggeredRuleIds.add(rule.id);
           } catch (error) {
-            console.error(`[Personal Alert] Failed for user ${match.rule.userId}:`, error);
+            console.error(`[Personal Alert] Failed for user ${rule.userId}:`, error);
           }
         }
+
+        // Update lastTriggered only for rules that actually created pending alerts
+        for (const ruleId of triggeredRuleIds) {
+          await updateRuleLastTriggered(ruleId).catch(() => {});
+        }
+
       } catch (error) {
         console.error('[Personal Rules] Error checking user rules:', error);
-        // Continue with channel alerts even if personal rules fail
       }
     }
 
-    // Post channel alerts to Discord
+    // ── Post channel alerts to Discord ──────────────────────────────────────
+
     if (toSend.length > 0) {
       const embeds = toSend.map(e => buildEmbed(e, stat, direction, minMinutes, season, league, leagueTag));
       for (let i = 0; i < embeds.length; i += 10) {
@@ -225,18 +314,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await Promise.all(toSend.map(e => markAlerted(league, stat, direction, e.player_id).catch(() => null)));
 
+    // ── Response ────────────────────────────────────────────────────────────
+
     return res.json({
       ok:               true,
+      // Legacy fields (backward compatible)
       sent:             toSend.map(e => ({ name: e.player_name, delta: e.delta })),
       skipped,
       total_candidates: candidates.length,
-      user_rule_matches: userRuleMatches.map(m => ({
-        userId: m.rule.userId, playerName: m.entry.player_name,
-        delta: m.entry.delta, ruleId: m.rule.id,
-      })),
+      // Phase 6: skip-reason counters
+      skipped_cooldown:   skippedCooldown,
+      skipped_dedup:      skippedDedup,
+      skipped_rate_limit: skippedRateLimit,
+      rules_checked:      rulesChecked,
+      matches_found:      matchesFound,
+      created_pending:    createdPending,
+      pending_written:    createdPending,
+      // Config echo
       stat, direction, min_delta: minDelta, season, league,
       kv_configured:      KV_OK,
       user_rules_checked: checkUserRules,
+      user_rate_limit:    USER_RATE_LIMIT,
+      // Debug details (only when debug=1)
+      ...(debug && debugReasons.length > 0 && { debug_reasons: debugReasons }),
     });
   } catch (err) {
     console.error('[alerts/run-enhanced] error:', (err as Error).message);
