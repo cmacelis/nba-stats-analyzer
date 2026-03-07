@@ -95,20 +95,13 @@ export class WNBAAdapter implements ILeagueAdapter {
       return cached;
     }
 
-    // TEMPORARY FIX: Return empty array until ESPN integration is fully tested
-    // This prevents WNBA endpoint from returning NBA games
-    console.log('[WNBAAdapter.games] Returning empty array (WNBA schedule not configured)');
-    const games: Game[] = [];
-    this.setCached(cacheKey, games);
-    console.log('[WNBAAdapter.games] Set empty array in cache');
-    return games;
-    
-    // TODO: Uncomment when ESPN integration is ready
     // For WNBA, use ESPN API directly since BDL doesn't reliably support WNBA
     // and may return NBA games when league=wnba parameter is ignored
-    // const games = await this.espnGames();
-    // this.setCached(cacheKey, games);
-    // return games;
+    console.log('[WNBAAdapter.games] Fetching WNBA schedule from ESPN API');
+    const games = await this.espnGames();
+    this.setCached(cacheKey, games);
+    console.log(`[WNBAAdapter.games] Fetched ${games.length} WNBA games from ESPN`);
+    return games;
   }
 
   private espnCache: { games: Game[]; timestamp: number } | null = null;
