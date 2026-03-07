@@ -151,7 +151,7 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
       { name: 'L5 Scores',   value: entry.last5.join(' · '),              inline: false },
       ...(linkParts.length ? [{ name: '\u200b', value: linkParts.join('  ·  '), inline: false }] : []),
     ],
-    footer: { text: `NBA Edge Detector · ${new Date().toUTCString()}` },
+    footer: { text: `${league.toUpperCase()} Edge Detector · ${new Date().toUTCString()}` },
   };
 }
 
@@ -245,6 +245,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       direction,
       min_delta:        minDelta,
       season,
+      league,
       kv_configured:    KV_OK,
     });
   } catch (err) {
