@@ -11,7 +11,7 @@ export async function playersHandler(req: VercelRequest, res: VercelResponse) {
     const search = (req.query.search as string) || '';
     if (!search) return res.status(400).json({ error: 'search query param is required' });
 
-    const league = (req as any).league || 'nba';
+    const league = (req.query.league as string) || 'nba';
     const adapter = AdapterFactory.get(league);
     const result = await adapter.playerSearch(search);
     

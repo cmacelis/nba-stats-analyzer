@@ -8,7 +8,7 @@ import { AdapterFactory } from '../_adapters/AdapterFactory.js';
 
 export async function gamesHandler(req: VercelRequest, res: VercelResponse) {
   try {
-    const league = (req as any).league || 'nba';
+    const league = (req.query.league as string) || 'nba';
     
     // TEMPORARY FIX: Return empty array for WNBA games until ESPN integration is ready
     if (league === 'wnba') {

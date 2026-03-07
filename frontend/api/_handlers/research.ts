@@ -30,7 +30,7 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
     // Map prop string to StatKey ('points' → 'pts', anything else unknown → 'pts')
     const statKey: StatKey = prop === 'pra' ? 'pra' : 'pts';
 
-    const league = (req as any).league || 'nba';
+    const league = (req.query.league as string) || 'nba';
     const [mentions, statContext] = await Promise.all([
       scrapePlayerMentions(playerName),
       AdapterFactory.get(league).playerStats(playerName, statKey),

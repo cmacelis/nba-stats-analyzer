@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   
   try {
-    const league = (req as any).league || 'nba';
+    const league = (req.query.league as string) || 'nba';
     const games = await AdapterFactory.get(league).games();
     return res.json({ data: games });
   } catch (err) {
