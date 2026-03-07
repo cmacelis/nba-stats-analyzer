@@ -128,13 +128,31 @@ async function postToDiscord(webhookUrl: string, embeds: object[]): Promise<void
   }
 }
 
+// ── param helpers ─────────────────────────────────────────────────────────────
+
+/** Read a param from query then body, supporting both snake_case and camelCase. */
+function param(req: VercelRequest, snake: string, camel: string): string | undefined {
+  const q = req.query[snake] ?? req.query[camel];
+  const b = req.body?.[snake] ?? req.body?.[camel];
+  const v = b ?? q;  // body wins over query
+  return v !== undefined && v !== null ? String(v) : undefined;
+}
+
+/** Parse a numeric param; returns undefined only when nothing was provided. */
+function numParam(req: VercelRequest, snake: string, camel: string): number | undefined {
+  const raw = param(req, snake, camel);
+  if (raw === undefined) return undefined;
+  const n = Number(raw);
+  return Number.isNaN(n) ? undefined : n;
+}
+
 // ── handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const league = (req.query.league as string) || 'nba';
+  const league = param(req, 'league', 'league') ?? 'nba';
 
   // Determine webhook
   let webhookUrl = WEBHOOK_URL;
@@ -147,14 +165,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `DISCORD_WEBHOOK_URL not configured for league ${league}` });
   }
 
-  const stat        = ((req.query.stat      as string) || 'pts') as StatKey;
-  const rawDir      = (req.query.direction  as string) || 'both';
+  const stat        = (param(req, 'stat', 'stat') ?? 'pts') as StatKey;
+  const rawDir      = param(req, 'direction', 'direction') ?? 'both';
   const direction   = (['over', 'under', 'both'].includes(rawDir) ? rawDir : 'both') as Direction;
-  const minMinutes  = parseFloat(req.query.min_minutes as string) || 20;
-  const minDelta    = parseFloat(req.query.min_delta   as string) || (stat === 'pra' ? MIN_DELTA_PRA : MIN_DELTA_PTS);
-  const topN        = parseInt(req.query.top_n  as string) || 10;
-  const season      = parseInt(req.query.season as string) || BDL_SEASON;
-  const checkUserRules = (req.query.check_user_rules as string) !== 'false';
+  const minMinutes  = numParam(req, 'min_minutes', 'minMinutes') ?? 20;
+  const minDelta    = numParam(req, 'min_delta', 'minDelta') ?? (stat === 'pra' ? MIN_DELTA_PRA : MIN_DELTA_PTS);
+  const topN        = numParam(req, 'top_n', 'topN') ?? 10;
+  const season      = numParam(req, 'season', 'season') ?? BDL_SEASON;
+  const crRaw       = param(req, 'check_user_rules', 'checkUserRules');
+  const checkUserRules = crRaw !== 'false';
 
   try {
     // Use AdapterFactory for league support (matches run.ts pattern)
