@@ -34,7 +34,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, BDL_SEASON } from '../_lib.js';
-import { AdapterFactory } from './_adapters/AdapterFactory.js';
+import { AdapterFactory } from '../_adapters/AdapterFactory.js';
 import { EdgeEntry, StatKey } from '../edge.js';
 
 // ── types ──────────────────────────────────────────────────────────────────────
