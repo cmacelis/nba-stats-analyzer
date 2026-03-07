@@ -89,13 +89,18 @@ export class WNBAAdapter implements ILeagueAdapter {
   async games(): Promise<Game[]> {
     const cacheKey = 'games';
     const cached = this.getCached<Game[]>(cacheKey, 10 * 60 * 1000); // 10 min
-    if (cached) return cached;
+    console.log('[WNBAAdapter.games] Cache check - cached:', cached ? cached.length : 0, 'items');
+    if (cached) {
+      console.log('[WNBAAdapter.games] Returning cached data');
+      return cached;
+    }
 
     // TEMPORARY FIX: Return empty array until ESPN integration is fully tested
     // This prevents WNBA endpoint from returning NBA games
     console.log('[WNBAAdapter.games] Returning empty array (WNBA schedule not configured)');
     const games: Game[] = [];
     this.setCached(cacheKey, games);
+    console.log('[WNBAAdapter.games] Set empty array in cache');
     return games;
     
     // TODO: Uncomment when ESPN integration is ready

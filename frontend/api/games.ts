@@ -8,7 +8,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   try {
     const league = (req.query.league as string) || 'nba';
+    console.log('[api/games] league parameter:', league, 'query:', req.query);
     const games = await AdapterFactory.get(league).games();
+    console.log('[api/games] games returned:', games.length);
     return res.json({ data: games });
   } catch (err) {
     console.error('[api/games]', err);
