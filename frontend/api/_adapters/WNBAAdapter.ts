@@ -122,6 +122,7 @@ export class WNBAAdapter implements ILeagueAdapter {
       const data = response.data;
       console.log(`[WNBAAdapter.espnGames] ESPN API response status: ${response.status}, events: ${data.events?.length || 0}`);
       const events = data.events || [];
+      console.log(`[WNBAAdapter.espnGames] Raw events count: ${events.length}`);
       
       // Map ESPN events to Game interface
       const games: Game[] = events.map((event: any) => {
@@ -163,6 +164,7 @@ export class WNBAAdapter implements ILeagueAdapter {
       
       // Filter to only include scheduled or in-progress games (not final)
       const filteredGames = games.filter(game => game.status !== 'Final');
+      console.log(`[WNBAAdapter.espnGames] After filtering: ${filteredGames.length} games`);
       
       // Update cache
       this.espnCache = {
@@ -171,8 +173,13 @@ export class WNBAAdapter implements ILeagueAdapter {
       };
       
       return filteredGames;
-    } catch (error) {
+    } catch (error: any) {
       console.warn(`[WNBAAdapter] ESPN games fetch failed: ${error}`);
+      console.warn(`[WNBAAdapter] Error details: ${error.message}`);
+      if (error.response) {
+        console.warn(`[WNBAAdapter] ESPN API response status: ${error.response.status}`);
+        console.warn(`[WNBAAdapter] ESPN API response data: ${JSON.stringify(error.response.data)}`);
+      }
       // Return empty array as fallback
       return [];
     }
