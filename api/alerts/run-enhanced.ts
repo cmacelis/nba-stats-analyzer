@@ -198,21 +198,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Build embeds and post to Discord (max 10 per message)
-    if (toSend.length > 0) {
-      const embeds = toSend.map(e => buildEmbed(e, stat, direction, minMinutes, season));
-      for (let i = 0; i < embeds.length; i += 10) {
-        await postToDiscord(embeds.slice(i, i + 10));
-      }
-    }
-
-    // Mark as alerted only after successful Discord post
-    await Promise.all(toSend.map(e => markAlerted(stat, direction, e.player_id).catch(() => null)));
-
     // Check user rules if enabled
     let userRuleMatches: RuleMatch[] = [];
     if (checkUserRules) {
       userRuleMatches = await checkRulesAgainstEdges(entries, league, stat, minMinutes);
+      
+      // Filter out edges that match user rules from toSend (Phase 5: don't post to Discord channels)
+      const userMatchedPlayerIds = new Set(userRuleMatches.map(match => match.entry.player_id));
+      const filteredToSend = toSend.filter(entry => !userMatchedPlayerIds.has(entry.player_id));
+      
+      // Update skipped list with edges removed due to user rule matches
+      const removedByUserRules = toSend.filter(entry => userMatchedPlayerIds.has(entry.player_id));
+      removedByUserRules.forEach(entry => {
+        skipped.push(`${entry.player_name} (user rule match)`);
+      });
+      
+      // Replace toSend with filtered list
+      toSend.length = 0;
+      toSend.push(...filteredToSend);
       
       // Store personalized alerts for Discord bot and update lastTriggered
       for (const match of userRuleMatches) {
@@ -224,6 +227,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     }
+
+    // Build embeds and post to Discord (max 10 per message)
+    if (toSend.length > 0) {
+      const embeds = toSend.map(e => buildEmbed(e, stat, direction, minMinutes, season));
+      for (let i = 0; i < embeds.length; i += 10) {
+        await postToDiscord(embeds.slice(i, i + 10));
+      }
+    }
+
+    // Mark as alerted only after successful Discord post
+    await Promise.all(toSend.map(e => markAlerted(stat, direction, e.player_id).catch(() => null)));
+
+
 
     return res.json({
       ok:               true,
