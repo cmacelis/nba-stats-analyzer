@@ -31,6 +31,26 @@ export default {
           inline: false,
         },
         {
+          name: '🔔 Personalized Alerts (Phase 5)',
+          value: 'Create and manage custom edge alerts',
+          inline: false,
+        },
+        {
+          name: '/track',
+          value: 'Create a new personalized alert rule\n**Usage:** `/track league:nba stat:pts direction:over mindelta:2.0`',
+          inline: false,
+        },
+        {
+          name: '/rules',
+          value: 'List all your active alert rules\n**Usage:** `/rules`',
+          inline: false,
+        },
+        {
+          name: '/untrack',
+          value: 'Remove an alert rule by ID\n**Usage:** `/untrack ruleid:rule_abc123`',
+          inline: false,
+        },
+        {
           name: '/help',
           value: 'Show this help message',
           inline: false,

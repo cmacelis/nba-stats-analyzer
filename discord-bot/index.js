@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readdirSync } from 'fs';
+import { startAlertProcessor } from './alertProcessor.js';
 
 config();
 
@@ -75,6 +76,15 @@ client.once('ready', async () => {
   } catch (error) {
     console.error(`❌ Failed to register commands:`, error.message);
     console.error(error.stack);
+  }
+
+  // Start alert processor
+  console.log(`🔔 Starting alert processor...\n`);
+  try {
+    startAlertProcessor(client);
+    console.log(`✓ Alert processor started\n`);
+  } catch (error) {
+    console.error(`❌ Failed to start alert processor:`, error.message);
   }
 });
 
