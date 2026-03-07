@@ -5,8 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from '../../_lib.js';
-import { db } from '../_firebase.js';
-import { doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { getDocument, deleteDocument } from '../_firebase.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
@@ -16,15 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { ruleId, userId } = req.body;
     if (!ruleId || !userId) return res.status(400).json({ error: 'ruleId and userId are required' });
 
-    const ruleRef = doc(db, 'alert_rules', ruleId);
-    const ruleDoc = await getDoc(ruleRef);
+    const ruleDoc = await getDocument('alert_rules', ruleId);
+    if (!ruleDoc) return res.status(404).json({ error: 'Rule not found' });
+    if (ruleDoc.userId !== userId) return res.status(403).json({ error: 'Not authorized to delete this rule' });
 
-    if (!ruleDoc.exists()) return res.status(404).json({ error: 'Rule not found' });
-
-    const ruleData = ruleDoc.data();
-    if (ruleData.userId !== userId) return res.status(403).json({ error: 'Not authorized to delete this rule' });
-
-    await deleteDoc(ruleRef);
+    await deleteDocument('alert_rules', ruleId);
 
     return res.json({ success: true, message: 'Alert rule deleted' });
   } catch (error) {

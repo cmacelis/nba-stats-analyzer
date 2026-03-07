@@ -1,10 +1,10 @@
 /**
  * Helper functions for checking alert rules against edge entries.
+ * Uses Firestore REST API (no firebase SDK).
  */
 
 import { EdgeEntry } from '../../edge.js';
-import { db } from '../_firebase.js';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { queryDocuments, updateDocument } from '../_firebase.js';
 
 export interface AlertRule {
   id: string;
@@ -35,36 +35,31 @@ export function matchesRule(entry: EdgeEntry, rule: AlertRule, stat: 'pts' | 'pr
 
   if (rule.direction === 'over') return entry.delta >= rule.minDelta;
   if (rule.direction === 'under') return entry.delta <= -rule.minDelta;
-  return Math.abs(entry.delta) >= rule.minDelta; // both
+  return Math.abs(entry.delta) >= rule.minDelta;
 }
 
 /** Get all active alert rules for a specific league. */
 export async function getActiveRules(league: 'nba' | 'wnba'): Promise<AlertRule[]> {
   try {
-    const rulesRef = collection(db, 'alert_rules');
-    const q = query(rulesRef, where('league', '==', league), where('enabled', '==', true));
-    const querySnapshot = await getDocs(q);
-    const rules: AlertRule[] = [];
+    const docs = await queryDocuments('alert_rules', [
+      { field: 'league', op: 'EQUAL', value: league },
+      { field: 'enabled', op: 'EQUAL', value: true },
+    ]);
 
-    querySnapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      rules.push({
-        id: docSnap.id,
-        userId: data.userId,
-        league: data.league,
-        playerId: data.playerId || undefined,
-        playerName: data.playerName || undefined,
-        stat: data.stat,
-        direction: data.direction,
-        minDelta: data.minDelta,
-        minMinutes: data.minMinutes,
-        enabled: data.enabled !== false,
-        createdAt: data.createdAt,
-        lastTriggered: data.lastTriggered || undefined,
-      });
-    });
-
-    return rules;
+    return docs.map(d => ({
+      id: d.id as string,
+      userId: d.userId as string,
+      league: d.league as 'nba' | 'wnba',
+      playerId: (d.playerId as number) || undefined,
+      playerName: (d.playerName as string) || undefined,
+      stat: d.stat as 'pts' | 'pra',
+      direction: d.direction as 'over' | 'under' | 'both',
+      minDelta: d.minDelta as number,
+      minMinutes: d.minMinutes as number,
+      enabled: d.enabled !== false,
+      createdAt: d.createdAt as string,
+      lastTriggered: (d.lastTriggered as string) || undefined,
+    }));
   } catch (error) {
     console.error('[_checkRules] Error fetching rules:', error);
     return [];
@@ -74,8 +69,7 @@ export async function getActiveRules(league: 'nba' | 'wnba'): Promise<AlertRule[
 /** Update rule's lastTriggered timestamp. */
 export async function updateRuleLastTriggered(ruleId: string): Promise<void> {
   try {
-    const ruleRef = doc(db, 'alert_rules', ruleId);
-    await updateDoc(ruleRef, { lastTriggered: new Date().toISOString() });
+    await updateDocument('alert_rules', ruleId, { lastTriggered: new Date().toISOString() });
   } catch (error) {
     console.error(`[_checkRules] Error updating rule ${ruleId}:`, error);
   }

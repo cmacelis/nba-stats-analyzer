@@ -1,19 +1,140 @@
 /**
- * Shared Firebase initialization for all alert endpoints.
- * Prevents duplicate initializeApp() crashes in shared Vercel contexts.
+ * Firestore REST API helpers — zero dependencies (no firebase SDK needed).
+ * Uses the Firestore v1 REST API directly via fetch().
+ *
+ * Required env: FIREBASE_PROJECT_ID, FIREBASE_API_KEY
  */
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || '';
+const API_KEY    = process.env.FIREBASE_API_KEY || '';
 
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-};
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+// ── Firestore value converters ─────────────────────────────────────────────────
+
+type FsValue = { stringValue?: string; integerValue?: string; doubleValue?: number; booleanValue?: boolean; nullValue?: string; timestampValue?: string; mapValue?: { fields: Record<string, FsValue> }; arrayValue?: { values: FsValue[] } };
+
+/** Convert a JS value to Firestore REST value format. */
+export function toFsValue(v: unknown): FsValue {
+  if (v === null || v === undefined) return { nullValue: 'NULL_VALUE' };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsValue) } };
+  if (typeof v === 'object') {
+    const fields: Record<string, FsValue> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) fields[k] = toFsValue(val);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(v) };
+}
+
+/** Convert a Firestore REST value back to JS. */
+export function fromFsValue(v: FsValue): unknown {
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return parseInt(v.integerValue!, 10);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('nullValue' in v) return null;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('mapValue' in v) {
+    const obj: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v.mapValue!.fields)) obj[k] = fromFsValue(val);
+    return obj;
+  }
+  if ('arrayValue' in v) return (v.arrayValue!.values || []).map(fromFsValue);
+  return null;
+}
+
+/** Convert a Firestore document to a plain JS object with id. */
+export function docToObj(doc: { name: string; fields: Record<string, FsValue> }): Record<string, unknown> {
+  const id = doc.name.split('/').pop()!;
+  const obj: Record<string, unknown> = { id };
+  for (const [k, v] of Object.entries(doc.fields || {})) obj[k] = fromFsValue(v);
+  return obj;
+}
+
+// ── CRUD operations ────────────────────────────────────────────────────────────
+
+/** Add a document to a collection (auto-ID). */
+export async function addDocument(collection: string, data: Record<string, unknown>): Promise<string> {
+  const fields: Record<string, FsValue> = {};
+  for (const [k, v] of Object.entries(data)) fields[k] = toFsValue(v);
+
+  const res = await fetch(`${BASE}/${collection}?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Firestore add to ${collection} failed: ${res.status} ${await res.text()}`);
+  const doc = await res.json();
+  return doc.name.split('/').pop()!; // return doc ID
+}
+
+/** Get a single document by collection/docId. */
+export async function getDocument(collection: string, docId: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${BASE}/${collection}/${docId}?key=${API_KEY}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Firestore get ${collection}/${docId} failed: ${res.status}`);
+  return docToObj(await res.json());
+}
+
+/** Delete a document. */
+export async function deleteDocument(collection: string, docId: string): Promise<void> {
+  const res = await fetch(`${BASE}/${collection}/${docId}?key=${API_KEY}`, { method: 'DELETE' });
+  if (!res.ok && res.status !== 404) throw new Error(`Firestore delete ${collection}/${docId} failed: ${res.status}`);
+}
+
+/** Update specific fields on a document. */
+export async function updateDocument(collection: string, docId: string, data: Record<string, unknown>): Promise<void> {
+  const fields: Record<string, FsValue> = {};
+  const masks: string[] = [];
+  for (const [k, v] of Object.entries(data)) {
+    fields[k] = toFsValue(v);
+    masks.push(k);
+  }
+  const maskParams = masks.map(m => `updateMask.fieldPaths=${m}`).join('&');
+  const res = await fetch(`${BASE}/${collection}/${docId}?${maskParams}&key=${API_KEY}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Firestore update ${collection}/${docId} failed: ${res.status}`);
+}
+
+/** Query documents with structured query (WHERE clauses). */
+export async function queryDocuments(
+  collection: string,
+  filters: Array<{ field: string; op: string; value: unknown }>
+): Promise<Array<Record<string, unknown>>> {
+  const compositeFilter = {
+    compositeFilter: {
+      op: 'AND',
+      filters: filters.map(f => ({
+        fieldFilter: {
+          field: { fieldPath: f.field },
+          op: f.op,
+          value: toFsValue(f.value),
+        },
+      })),
+    },
+  };
+
+  const res = await fetch(`${BASE}:runQuery?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: compositeFilter,
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`Firestore query ${collection} failed: ${res.status}`);
+
+  const results = await res.json();
+  return results
+    .filter((r: { document?: unknown }) => r.document)
+    .map((r: { document: { name: string; fields: Record<string, FsValue> } }) => docToObj(r.document));
+}
