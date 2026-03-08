@@ -7,8 +7,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { BDL_SEASON } from '../_lib.js';
 import { computeEdgeFeed, type EdgeEntry, type StatKey } from '../edge.js';
 
-const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
-const SITE_URL    = process.env.SITE_URL
+const WEBHOOK_URL        = process.env.DISCORD_WEBHOOK_URL;
+const AFFILIATE_ENABLED  = process.env.AFFILIATE_ENABLED === 'true';
+const SITE_URL           = process.env.SITE_URL
   || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -73,6 +74,33 @@ function buildStatEmbed(
   };
 }
 
+/** Build Discord button components (action row with link buttons). */
+function buildButtons(): object[] {
+  if (AFFILIATE_ENABLED) {
+    // Future: sportsbook affiliate buttons go here when enabled
+    return [];
+  }
+
+  const buttons: object[] = [
+    { type: 2, style: 5, label: 'Join VIP Pro', url: 'https://edgedetector.ai/pricing', emoji: { name: '⭐' } },
+    { type: 2, style: 5, label: 'How it works', url: SITE_URL ? `${SITE_URL}/edge` : 'https://edgedetector.ai/edge', emoji: { name: '📖' } },
+  ];
+
+  return [{ type: 1, components: buttons }];
+}
+
+/** Build a "no picks" embed when edge feed returns empty. */
+function buildNoPicksEmbed(stat: StatKey, dateStr: string): object {
+  const label = stat === 'pra' ? 'PRA (Pts+Reb+Ast)' : 'PTS (Points)';
+  return {
+    title:       `📊 Today's ${label} Edges`,
+    color:       STAT_COLOR[stat],
+    description: `${dateStr}\n\nNo picks available yet. Check back after lineups lock.`,
+    footer:      { text: 'NBA Edge Detector' },
+    timestamp:   new Date().toISOString(),
+  };
+}
+
 export async function discordTodayHandler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   if (!WEBHOOK_URL) return res.status(400).json({ error: 'DISCORD_WEBHOOK_URL not configured' });
@@ -93,13 +121,17 @@ export async function discordTodayHandler(req: VercelRequest, res: VercelRespons
     );
 
     const embeds = stats.map((s, i) =>
-      buildStatEmbed(s, results[i], topN, season, minMinutes, dateStr)
+      results[i].length > 0
+        ? buildStatEmbed(s, results[i], topN, season, minMinutes, dateStr)
+        : buildNoPicksEmbed(s, dateStr)
     );
+
+    const components = buildButtons();
 
     const webhookRes = await fetch(WEBHOOK_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ embeds }),
+      body:    JSON.stringify({ embeds, ...(components.length > 0 && { components }) }),
     });
 
     if (!webhookRes.ok) {
@@ -110,7 +142,7 @@ export async function discordTodayHandler(req: VercelRequest, res: VercelRespons
     const posted = Object.fromEntries(
       stats.map((s, i) => [s, Math.min(results[i].length, topN)])
     );
-    return res.json({ ok: true, posted, season });
+    return res.json({ ok: true, posted, season, affiliate_enabled: AFFILIATE_ENABLED });
   } catch (err) {
     console.error('[discord/today] error:', (err as Error).message);
     return res.status(500).json({ error: 'Failed to post today digest', detail: (err as Error).message });
