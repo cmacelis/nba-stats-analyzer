@@ -2,138 +2,218 @@ import React from 'react';
 import {
   Box,
   Button,
+  Chip,
   Divider,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   Paper,
-  Step,
-  StepContent,
-  StepLabel,
-  Stepper,
   Typography,
+  useTheme,
 } from '@mui/material';
-import { BoltOutlined, CheckCircle, NotificationsActive, LockOpen } from '@mui/icons-material';
+import {
+  BoltOutlined,
+  CheckCircle,
+  LockOpen,
+  RemoveCircleOutline,
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
-// ── TODO: paste your Stripe Payment Link here ──────────────────────────────────
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/REPLACE_WITH_REAL_LINK';
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Stripe links (replace with real links when ready) ──────────────────────
+const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/REPLACE_MONTHLY';
+const STRIPE_LINK_ANNUAL  = 'https://buy.stripe.com/REPLACE_ANNUAL';
 
-const WHAT_YOU_GET = [
-  {
-    icon: <NotificationsActive color="primary" />,
-    primary: 'VIP Discord Alerts (#vip-alerts)',
-    secondary: 'Real-time over/under signals posted to a private channel — triggered when a player\'s L5 avg diverges meaningfully from their season avg.',
-  },
-  {
-    icon: <BoltOutlined color="primary" />,
-    primary: 'Full Edge Feed — Top 20+ edges with filters',
-    secondary: 'PTS and PRA sorted by Δ, filterable by minutes, stat, and season. Free tier is capped at 5.',
-  },
-  {
-    icon: <CheckCircle color="success" />,
-    primary: 'Track Bets & Signals + nightly settlement',
-    secondary: 'Log picks before games, add a sportsbook line to upgrade a signal to a bet. Settlement runs nightly and computes W/L/P automatically.',
-  },
-  {
-    icon: <CheckCircle color="success" />,
-    primary: 'Results dashboard + /results command',
-    secondary: 'See your 7-day and 30-day record (W-L-P, hit rate) on the web and on Discord with /results.',
-  },
+// ── Plan features ──────────────────────────────────────────────────────────
+
+const FREE_FEATURES = [
+  { text: 'Player comparison tool', included: true },
+  { text: 'Limited edge feed (top 5)', included: true },
+  { text: 'Basic matchup edge', included: true },
+  { text: 'Edge of the Day (daily free pick)', included: true },
+  { text: 'DM alert rules (/track)', included: false },
+  { text: 'VIP alerts channels', included: false },
+  { text: 'Full edge feed (20+)', included: false },
+  { text: 'Research access', included: false },
+  { text: 'Results dashboard', included: false },
 ];
 
-const HOW_IT_WORKS = [
-  'Click "Join VIP Pro" and complete checkout via Stripe.',
-  'We receive your confirmation and invite you to the private Discord server.',
-  'VIP role is assigned within 24 hours — you\'ll see #vip-alerts and the full Edge Feed immediately.',
+const VIP_FEATURES = [
+  { text: 'Player comparison tool', included: true },
+  { text: 'Full edge feed (20+ edges)', included: true },
+  { text: 'Advanced matchup edge', included: true },
+  { text: 'Edge of the Day (daily free pick)', included: true },
+  { text: 'DM alert rules (/track)', included: true },
+  { text: 'VIP alerts channels', included: true },
+  { text: 'Research access', included: true },
+  { text: 'Results dashboard', included: true },
 ];
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 const Pricing: React.FC = () => {
-  return (
-    <Box sx={{ p: 3, maxWidth: 640, mx: 'auto' }}>
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const cardSx = {
+    p: 3,
+    borderRadius: 3,
+    flex: 1,
+    minWidth: 280,
+    maxWidth: 420,
+    display: 'flex',
+    flexDirection: 'column' as const,
+  };
 
+  return (
+    <Box sx={{ p: 3, maxWidth: 960, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mb: 1 }}>
-          <BoltOutlined color="primary" sx={{ fontSize: 36 }} />
-          <Typography variant="h3" fontWeight={800}>VIP Pro</Typography>
-        </Box>
+      <Box sx={{ textAlign: 'center', mb: 5 }}>
+        <Typography variant="h3" fontWeight={800} gutterBottom>
+          Pricing
+        </Typography>
         <Typography variant="h6" color="text.secondary" fontWeight={400}>
-          Automated VIP Discord alerts + full Edge Feed + tracking &amp; results
+          Free tools for everyone. VIP Pro for serious edge hunters.
         </Typography>
       </Box>
 
-      {/* What you get */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Typography variant="overline" color="primary" fontWeight={700} sx={{ mb: 2, display: 'block' }}>
-          What you get
-        </Typography>
-        <List disablePadding>
-          {WHAT_YOU_GET.map((item, i) => (
-            <React.Fragment key={item.primary}>
-              <ListItem disableGutters alignItems="flex-start" sx={{ py: 1.5 }}>
-                <ListItemIcon sx={{ mt: 0.25, minWidth: 36 }}>
-                  {item.icon}
+      {/* Cards */}
+      <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'stretch' }}>
+
+        {/* ── Free Card ───────────────────────────────────────────── */}
+        <Paper variant="outlined" sx={cardSx}>
+          <Typography variant="overline" color="text.secondary" fontWeight={700}>
+            Free
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+            <Typography variant="h3" fontWeight={800}>$0</Typography>
+            <Typography variant="body2" color="text.secondary">/forever</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Compare players, browse edges, get a free pick daily.
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <List dense disablePadding sx={{ flex: 1 }}>
+            {FREE_FEATURES.map((f) => (
+              <ListItem key={f.text} disableGutters sx={{ py: 0.5 }}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  {f.included
+                    ? <CheckCircle fontSize="small" color="success" />
+                    : <RemoveCircleOutline fontSize="small" sx={{ color: 'text.disabled' }} />}
                 </ListItemIcon>
                 <ListItemText
-                  primary={item.primary}
-                  secondary={item.secondary}
-                  primaryTypographyProps={{ fontWeight: 700, variant: 'body1' }}
-                  secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                  primary={f.text}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    color: f.included ? 'text.primary' : 'text.disabled',
+                  }}
                 />
               </ListItem>
-              {i < WHAT_YOU_GET.length - 1 && <Divider component="li" />}
-            </React.Fragment>
-          ))}
-        </List>
-      </Paper>
+            ))}
+          </List>
 
-      {/* How it works */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Typography variant="overline" color="primary" fontWeight={700} sx={{ mb: 2, display: 'block' }}>
-          How it works
-        </Typography>
-        <Stepper orientation="vertical" nonLinear sx={{ ml: -1 }}>
-          {HOW_IT_WORKS.map((step, i) => (
-            <Step key={i} active>
-              <StepLabel>
-                <Typography variant="body2" fontWeight={600}>Step {i + 1}</Typography>
-              </StepLabel>
-              <StepContent>
-                <Typography variant="body2" color="text.secondary">{step}</Typography>
-              </StepContent>
-            </Step>
-          ))}
-        </Stepper>
-      </Paper>
+          <Button
+            variant="outlined"
+            fullWidth
+            sx={{ mt: 3, borderRadius: 2, fontWeight: 700 }}
+            onClick={() => navigate('/edge')}
+          >
+            Get Started
+          </Button>
+        </Paper>
 
-      {/* CTA */}
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <Button
-          variant="contained"
-          size="large"
-          href={STRIPE_PAYMENT_LINK}
-          target="_blank"
-          rel="noopener noreferrer"
-          startIcon={<LockOpen />}
-          sx={{ px: 5, py: 1.5, fontWeight: 800, fontSize: '1.05rem', borderRadius: 3 }}
+        {/* ── VIP Pro Card ────────────────────────────────────────── */}
+        <Paper
+          variant="outlined"
+          sx={{
+            ...cardSx,
+            border: `2px solid ${theme.palette.primary.main}`,
+            position: 'relative',
+          }}
         >
-          Join VIP Pro
-        </Button>
+          <Chip
+            label="Founder Pricing"
+            color="primary"
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: -12,
+              right: 16,
+              fontWeight: 700,
+              fontSize: '0.7rem',
+            }}
+          />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <BoltOutlined color="primary" />
+            <Typography variant="overline" color="primary" fontWeight={700}>
+              VIP Pro
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 0.5 }}>
+            <Typography variant="h3" fontWeight={800}>$19</Typography>
+            <Typography variant="body2" color="text.secondary">/month</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Or <strong>$199/year</strong>{' '}
+            <Typography component="span" variant="body2" color="success.main" fontWeight={700}>
+              (save 13%)
+            </Typography>
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <List dense disablePadding sx={{ flex: 1 }}>
+            {VIP_FEATURES.map((f) => (
+              <ListItem key={f.text} disableGutters sx={{ py: 0.5 }}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <CheckCircle fontSize="small" color="success" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={f.text}
+                  primaryTypographyProps={{ variant: 'body2' }}
+                />
+              </ListItem>
+            ))}
+          </List>
+
+          <Box sx={{ mt: 3, display: 'flex', gap: 1.5 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              href={STRIPE_LINK_MONTHLY}
+              target="_blank"
+              rel="noopener noreferrer"
+              startIcon={<LockOpen />}
+              sx={{ borderRadius: 2, fontWeight: 700 }}
+            >
+              Monthly
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              href={STRIPE_LINK_ANNUAL}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ borderRadius: 2, fontWeight: 700 }}
+            >
+              Annual
+            </Button>
+          </Box>
+        </Paper>
       </Box>
 
       {/* Disclaimer */}
       <Typography
         variant="caption"
         color="text.disabled"
-        sx={{ display: 'block', textAlign: 'center', lineHeight: 1.6 }}
+        sx={{ display: 'block', textAlign: 'center', mt: 4, lineHeight: 1.6 }}
       >
         This tool provides statistical insights and tracking. It is not financial advice.
-        Past results don't guarantee future performance.
-        Payments processed securely via Stripe.
+        Past results don't guarantee future performance. Payments processed securely via Stripe.
       </Typography>
-
     </Box>
   );
 };
