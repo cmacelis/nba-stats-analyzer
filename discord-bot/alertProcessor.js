@@ -1,162 +1,169 @@
 /**
  * Alert Processor for Discord Bot
- * 
- * Polls Firestore for pending alerts and sends DMs to users.
- * This runs as a background task in the bot.
+ *
+ * Polls Firestore via REST API (no firebase SDK / no gRPC) for pending alerts
+ * and sends DMs to users every 30 seconds.
  */
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+// Lazy-loaded after dotenv.config() has run (ES module imports execute before body).
+let PROJECT_ID, API_KEY, BASE;
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-};
+// ── Firestore REST helpers ──────────────────────────────────────────────────
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+function fromFsValue(v) {
+  if (!v) return null;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return parseInt(v.integerValue, 10);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('nullValue' in v) return null;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('mapValue' in v) {
+    const obj = {};
+    for (const [k, val] of Object.entries(v.mapValue.fields || {})) obj[k] = fromFsValue(val);
+    return obj;
+  }
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fromFsValue);
+  return null;
+}
 
-/**
- * Get unprocessed pending alerts from Firestore.
- */
-async function getUnprocessedAlerts(limit = 10) {
-  try {
-    const alertsRef = collection(db, 'pending_alerts');
-    const q = query(alertsRef, where('processed', '==', false));
-    
-    const querySnapshot = await getDocs(q);
-    const alerts = [];
+function docToObj(doc) {
+  const id = doc.name.split('/').pop();
+  const obj = { id };
+  for (const [k, v] of Object.entries(doc.fields || {})) obj[k] = fromFsValue(v);
+  return obj;
+}
 
-    querySnapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      alerts.push({
-        id: docSnap.id,
-        userId: data.userId,
-        ruleId: data.ruleId,
-        playerName: data.playerName,
-        teamAbbrev: data.teamAbbrev,
-        stat: data.stat,
-        delta: data.delta,
-        seasonAvg: data.seasonAvg,
-        recentAvg: data.recentAvg,
-        direction: data.direction,
-        minDelta: data.minDelta,
-        league: data.league,
-        createdAt: data.createdAt.toDate ? data.createdAt.toDate() : data.createdAt,
-      });
-    });
+/** Query pending_alerts where processed == false, limit 25. */
+async function fetchPendingAlerts() {
+  const url = `${BASE}:runQuery?key=${API_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'pending_alerts' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'processed' },
+            op: 'EQUAL',
+            value: { booleanValue: false },
+          },
+        },
+        limit: 25,
+      },
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Firestore query failed: ${res.status} ${text.slice(0, 200)}`);
+  }
+  const results = await res.json();
+  return results.filter(r => r.document).map(r => docToObj(r.document));
+}
 
-    // Sort by creation date (oldest first)
-    alerts.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    
-    return alerts.slice(0, limit);
-  } catch (error) {
-    console.error('[Alert Processor] Error fetching alerts:', error);
-    return [];
+/** Delete a document by ID. */
+async function deleteAlert(docId) {
+  const res = await fetch(`${BASE}/pending_alerts/${docId}?key=${API_KEY}`, { method: 'DELETE' });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Firestore delete failed: ${res.status}`);
   }
 }
 
-/**
- * Remove processed alert from Firestore.
- */
-async function removeAlert(alertId) {
-  try {
-    const alertRef = doc(db, 'pending_alerts', alertId);
-    await deleteDoc(alertRef);
-  } catch (error) {
-    console.error(`[Alert Processor] Error removing alert ${alertId}:`, error);
+/** Mark a document as error with reason. */
+async function markError(docId, reason) {
+  const fields = {
+    status:    { stringValue: 'error' },
+    processed: { booleanValue: true },
+    error:     { stringValue: reason },
+    errorAt:   { stringValue: new Date().toISOString() },
+  };
+  const masks = Object.keys(fields).map(m => `updateMask.fieldPaths=${m}`).join('&');
+  const res = await fetch(`${BASE}/pending_alerts/${docId}?${masks}&key=${API_KEY}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) {
+    console.error(`[processor] markError ${docId} failed: ${res.status}`);
   }
 }
 
-/**
- * Send personalized alert to user via DM.
- */
-async function sendAlertToUser(client, alert) {
-  try {
-    const user = await client.users.fetch(alert.userId);
-    if (!user) {
-      console.warn(`[Alert Processor] User ${alert.userId} not found`);
-      return false;
-    }
+// ── DM sending ──────────────────────────────────────────────────────────────
 
-    const sign = alert.delta >= 0 ? '+' : '';
-    const emoji = alert.delta >= 0 ? '🔥' : '🧊';
-    const direction = alert.delta >= 0 ? 'Over' : 'Under';
-    const color = alert.delta >= 0 ? 0x22c55e : 0x3b82f6;
+async function sendAlertDM(client, alert) {
+  const user = await client.users.fetch(alert.userId);
+  if (!user) throw new Error(`User ${alert.userId} not found`);
 
-    const embed = {
-      title: `${emoji} ${alert.playerName} (${alert.teamAbbrev}) — ${alert.stat.toUpperCase()} ${direction} Edge`,
-      color,
-      description: `**${sign}${alert.delta.toFixed(1)}** vs season average (L5 trending ${alert.delta >= 0 ? 'hot' : 'cold'})`,
-      fields: [
-        { name: 'Season Avg', value: alert.seasonAvg.toFixed(1), inline: true },
-        { name: 'L5 Avg', value: alert.recentAvg.toFixed(1), inline: true },
-        { name: 'Δ', value: `${sign}${alert.delta.toFixed(1)}`, inline: true },
-        { name: 'Your Rule', value: `${alert.direction} ${alert.stat.toUpperCase()} ≥ ${alert.minDelta}`, inline: true },
-        { name: 'League', value: alert.league.toUpperCase(), inline: true },
-        { name: 'Rule ID', value: alert.ruleId, inline: true },
-      ],
-      footer: { text: 'Edge Detector Personal Alert' },
-      timestamp: new Date().toISOString(),
-    };
+  const sign = alert.delta >= 0 ? '+' : '';
+  const emoji = alert.delta >= 0 ? '\u{1F525}' : '\u{1F9CA}';
+  const direction = alert.delta >= 0 ? 'Over' : 'Under';
+  const color = alert.delta >= 0 ? 0x22c55e : 0x3b82f6;
 
-    await user.send({
-      content: `🔔 **Personal Alert Triggered!**`,
-      embeds: [embed],
-    });
+  const embed = {
+    title: `${emoji} ${alert.playerName} (${alert.teamAbbrev}) \u2014 ${(alert.stat || 'pts').toUpperCase()} ${direction} Edge`,
+    color,
+    description: `**${sign}${Number(alert.delta).toFixed(1)}** vs season average (L5 trending ${alert.delta >= 0 ? 'hot' : 'cold'})`,
+    fields: [
+      { name: 'Season Avg', value: Number(alert.seasonAvg).toFixed(1), inline: true },
+      { name: 'L5 Avg',     value: Number(alert.recentAvg).toFixed(1), inline: true },
+      { name: '\u0394',     value: `${sign}${Number(alert.delta).toFixed(1)}`, inline: true },
+      { name: 'Your Rule',  value: `${alert.direction || 'both'} ${(alert.stat || 'pts').toUpperCase()} \u2265 ${alert.minDelta}`, inline: true },
+      { name: 'League',     value: (alert.league || 'nba').toUpperCase(), inline: true },
+      { name: 'Rule ID',    value: String(alert.ruleId || ''), inline: true },
+    ],
+    footer: { text: 'Edge Detector Personal Alert' },
+    timestamp: new Date().toISOString(),
+  };
 
-    console.log(`[Alert Processor] Sent alert to ${user.tag} (${alert.userId})`);
-    return true;
-  } catch (error) {
-    if (error.code === 50007) {
-      console.log(`[Alert Processor] User ${alert.userId} has DMs disabled`);
-    } else {
-      console.error(`[Alert Processor] Failed to send alert to ${alert.userId}:`, error.message);
-    }
-    return false;
-  }
+  await user.send({
+    content: '\u{1F514} **Personal Alert Triggered!**',
+    embeds: [embed],
+  });
+
+  return user.tag;
 }
 
-/**
- * Main alert processing loop.
- */
+// ── Main polling loop ───────────────────────────────────────────────────────
+
 export async function startAlertProcessor(client) {
-  console.log('[Alert Processor] Started');
+  // Init env vars now (after dotenv.config() has run in index.js)
+  PROJECT_ID = process.env.FIREBASE_PROJECT_ID || '';
+  API_KEY    = process.env.FIREBASE_API_KEY || '';
+  BASE       = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-  // Poll for alerts every 30 seconds
+  console.log(`[processor] Started — polling every 30s (project=${PROJECT_ID})`);
+
+  if (!PROJECT_ID || !API_KEY) {
+    console.error('[processor] FIREBASE_PROJECT_ID or FIREBASE_API_KEY not set — processor disabled');
+    return;
+  }
+
   setInterval(async () => {
     try {
-      const alerts = await getUnprocessedAlerts(10);
-
-      if (alerts.length === 0) return;
-
-      console.log(`[Alert Processor] Processing ${alerts.length} pending alerts`);
+      const alerts = await fetchPendingAlerts();
+      console.log(`[processor] pending_alerts fetched: ${alerts.length}`);
 
       for (const alert of alerts) {
-        const success = await sendAlertToUser(client, alert);
-        
-        // Always remove the alert after attempting to send (success or failure)
-        await removeAlert(alert.id);
-        
-        if (success) {
-          console.log(`[Alert Processor] ✓ Alert ${alert.id} processed`);
-        } else {
-          console.log(`[Alert Processor] ✗ Alert ${alert.id} failed (removed)`);
+        try {
+          const tag = await sendAlertDM(client, alert);
+          await deleteAlert(alert.id);
+          console.log(`[processor] \u2713 sent ${alert.id} to ${tag}`);
+        } catch (dmErr) {
+          const reason = dmErr.code === 50007
+            ? 'User has DMs disabled'
+            : dmErr.message || String(dmErr);
+          console.error(`[processor] \u2717 DM failed ${alert.id} user=${alert.userId}: ${reason}`);
+          await markError(alert.id, reason).catch(() => {});
         }
 
-        // Rate limiting: wait 1 second between DMs to avoid Discord spam
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Rate limit: 1s between DMs
+        await new Promise(r => setTimeout(r, 1000));
       }
-    } catch (error) {
-      console.error('[Alert Processor] Error in main loop:', error);
+    } catch (err) {
+      console.error('[processor] poll error:', err.message);
     }
-  }, 30000); // 30 second interval
+  }, 30000);
 }
 
 export default { startAlertProcessor };

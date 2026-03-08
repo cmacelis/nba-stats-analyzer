@@ -1,5 +1,12 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { checkRateLimit } from '../index.js';
+
+/** Hard timeout for external API calls (10s). */
+function withTimeout(promise, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), ms)),
+  ]);
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -51,15 +58,10 @@ export default {
         .setRequired(false)),
 
   async execute(interaction) {
-    // Rate limit check
-    if (!checkRateLimit(interaction.user.id)) {
-      return interaction.reply({
-        content: '⏳ Please wait a moment before using another command.',
-        ephemeral: true,
-      });
-    }
-
     await interaction.deferReply({ ephemeral: true });
+
+    const userId = interaction.user.id;
+    const tag = interaction.user.tag;
 
     try {
       const league = interaction.options.getString('league');
@@ -70,36 +72,29 @@ export default {
       const playerId = interaction.options.getInteger('playerid');
       const playerName = interaction.options.getString('playername');
 
-      // Build request body
-      const ruleData = {
-        userId: interaction.user.id,
-        league,
-        stat,
-        direction,
-        minDelta,
-        minMinutes,
-      };
+      console.log(`[track] user=${tag} (${userId}) league=${league} stat=${stat} dir=${direction} delta=${minDelta} min=${minMinutes}`);
 
-      // Add optional fields if provided
+      const ruleData = { userId, league, stat, direction, minDelta, minMinutes };
       if (playerId) ruleData.playerId = playerId;
       if (playerName) ruleData.playerName = playerName;
 
-      // Call the API
-      const response = await fetch(`${process.env.API_BASE_URL}/api/alerts/rules/track`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(ruleData),
-      });
+      const response = await withTimeout(
+        fetch(`${process.env.API_BASE_URL}/api/alerts/rules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ruleData),
+        })
+      );
 
       const result = await response.json();
 
       if (!response.ok) {
+        console.error(`[track] API error: ${response.status}`, result);
         throw new Error(result.error || 'Failed to create alert rule');
       }
 
-      // Build success message
+      console.log(`[track] success: ruleId=${result.id}`);
+
       let message = `✅ **Alert rule created!**\n`;
       message += `**Rule ID:** ${result.id}\n`;
       message += `**League:** ${league.toUpperCase()}\n`;
@@ -107,7 +102,7 @@ export default {
       message += `**Direction:** ${direction}\n`;
       message += `**Min Delta:** ${minDelta}\n`;
       message += `**Min Minutes:** ${minMinutes}\n`;
-      
+
       if (playerId) {
         message += `**Player ID:** ${playerId}\n`;
         if (playerName) message += `**Player:** ${playerName}\n`;
@@ -120,7 +115,7 @@ export default {
       await interaction.editReply({ content: message });
 
     } catch (error) {
-      console.error('[track command] error:', error);
+      console.error(`[track] FAILED user=${tag} (${userId}):`, error.message);
       await interaction.editReply({
         content: `❌ Failed to create alert rule: ${error.message}`,
       });
