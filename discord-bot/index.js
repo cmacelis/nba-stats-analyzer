@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readdirSync } from 'fs';
 import { startAlertProcessor } from './alertProcessor.js';
+import { startEdgeOfDay } from './edgeOfDay.js';
 
 config();
 
@@ -102,6 +103,13 @@ client.once('ready', async () => {
     console.log(`✓ Alert processor started\n`);
   } catch (error) {
     console.error(`❌ Failed to start alert processor:`, error.message);
+  }
+
+  // Start Edge of the Day scheduler
+  try {
+    startEdgeOfDay(client);
+  } catch (error) {
+    console.error(`❌ Failed to start edge-of-day:`, error.message);
   }
 });
 
