@@ -4,7 +4,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { listPicks, KV_OK } from '../picks.js';
+import { listPicks, KV_OK } from '../_picks.js';
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const SITE_URL    = process.env.SITE_URL

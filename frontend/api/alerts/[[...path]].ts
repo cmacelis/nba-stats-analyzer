@@ -190,6 +190,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
+  // Detect legacy /api/alerts/run path → skip user rules, return legacy response shape
+  const pathname = new URL(req.url!, `https://${req.headers.host}`).pathname;
+  const isLegacy = pathname.endsWith('/alerts/run') && !pathname.endsWith('/alerts/run-enhanced');
+
   const league = param(req, 'league', 'league') ?? 'nba';
 
   // Determine webhook
@@ -211,7 +215,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const topN        = numParam(req, 'top_n', 'topN') ?? 10;
   const season      = numParam(req, 'season', 'season') ?? BDL_SEASON;
   const crRaw       = param(req, 'check_user_rules', 'checkUserRules');
-  const checkUserRules = crRaw !== 'false';
+  const checkUserRules = isLegacy ? false : crRaw !== 'false';
   const debug       = param(req, 'debug', 'debug') === '1';
 
   try {
@@ -315,6 +319,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await Promise.all(toSend.map(e => markAlerted(league, stat, direction, e.player_id).catch(() => null)));
 
     // ── Response ────────────────────────────────────────────────────────────
+
+    if (isLegacy) {
+      // Legacy /api/alerts/run response shape (no Phase 6 counters)
+      return res.json({
+        ok:               true,
+        sent:             toSend.map(e => ({ name: e.player_name, delta: e.delta })),
+        skipped,
+        total_candidates: candidates.length,
+        stat, direction, min_delta: minDelta, season, league,
+        kv_configured:    KV_OK,
+      });
+    }
 
     return res.json({
       ok:               true,
