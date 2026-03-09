@@ -204,7 +204,7 @@ const Pricing: React.FC = () => {
           </Box>
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, textAlign: 'center', lineHeight: 1.5 }}>
-            After purchase, DM <strong>@cmacelis</strong> on Discord with your receipt email + Discord username to receive the VIP Pro role.
+            After purchase, DM <strong>@AlterEeeeGo</strong> on Discord with your receipt email + Discord username to receive the VIP Pro role.
           </Typography>
         </Paper>
       </Box>
