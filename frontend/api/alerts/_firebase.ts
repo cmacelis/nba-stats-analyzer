@@ -72,6 +72,19 @@ export async function addDocument(collection: string, data: Record<string, unkno
   return doc.name.split('/').pop()!; // return doc ID
 }
 
+/** Create or overwrite a document with a specific ID. */
+export async function setDocument(collection: string, docId: string, data: Record<string, unknown>): Promise<void> {
+  const fields: Record<string, FsValue> = {};
+  for (const [k, v] of Object.entries(data)) fields[k] = toFsValue(v);
+
+  const res = await fetch(`${BASE}/${collection}/${docId}?key=${API_KEY}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Firestore set ${collection}/${docId} failed: ${res.status}`);
+}
+
 /** Get a single document by collection/docId. */
 export async function getDocument(collection: string, docId: string): Promise<Record<string, unknown> | null> {
   const res = await fetch(`${BASE}/${collection}/${docId}?key=${API_KEY}`);

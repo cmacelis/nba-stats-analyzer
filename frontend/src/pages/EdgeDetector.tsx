@@ -36,6 +36,7 @@ import { AddCircleOutline, BoltOutlined, LockOutlined, TrendingDown, TrendingUp 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
+import { useAuth } from '../contexts/AuthContext';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -363,6 +364,8 @@ const EdgeRow: React.FC<{
 const EdgeDetector: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const isVip = user?.vipActive === true;
 
   // Read URL params set by Discord "Open Edge Feed" / "Track this pick" links
   const urlStat        = searchParams.get('stat')        as 'pts' | 'pra' | null;
@@ -406,8 +409,9 @@ const EdgeDetector: React.FC = () => {
     return positiveOnly ? entries.filter(e => e.delta > 0) : entries;
   }, [data, positiveOnly]);
 
-  const freeRows    = rows.slice(0, FREE_LIMIT);
-  const lockedCount = Math.max(0, rows.length - FREE_LIMIT);
+  const visibleLimit = isVip ? rows.length : FREE_LIMIT;
+  const freeRows    = rows.slice(0, visibleLimit);
+  const lockedCount = isVip ? 0 : Math.max(0, rows.length - FREE_LIMIT);
 
   const handleCompare = (entry: EdgeEntry) => {
     const params = new URLSearchParams({

@@ -209,11 +209,20 @@ const Pricing: React.FC = () => {
         </Paper>
       </Box>
 
+      {/* Website access note */}
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ display: 'block', textAlign: 'center', mt: 3, lineHeight: 1.6 }}
+      >
+        Want VIP access on the website without Discord? Sign in with the email you used for purchase.
+      </Typography>
+
       {/* Disclaimer */}
       <Typography
         variant="caption"
         color="text.disabled"
-        sx={{ display: 'block', textAlign: 'center', mt: 4, lineHeight: 1.6 }}
+        sx={{ display: 'block', textAlign: 'center', mt: 2, lineHeight: 1.6 }}
       >
         This tool provides statistical insights and tracking. It is not financial advice.
         Past results don't guarantee future performance. Payments processed securely via Stripe.
