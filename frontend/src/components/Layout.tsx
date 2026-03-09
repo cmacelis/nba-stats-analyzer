@@ -11,7 +11,7 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import { VolumeUp, VolumeOff, Brightness4, Brightness7 } from '@mui/icons-material';
+import { VolumeUp, VolumeOff, Brightness4, Brightness7, BoltOutlined } from '@mui/icons-material';
 import { useSound } from '../contexts/SoundContext';
 import { fadeIn } from '../utils/animations';
 import { useThemeMode } from '../contexts/ThemeContext';
@@ -118,6 +118,41 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               }}
             >
               Edge Feed
+            </Button>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/pricing"
+              onMouseEnter={handleButtonHover}
+              onClick={handleButtonClick}
+              sx={{
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.05)'
+                }
+              }}
+            >
+              Pricing
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              component={RouterLink}
+              to="/pricing"
+              onMouseEnter={handleButtonHover}
+              onClick={handleButtonClick}
+              startIcon={<BoltOutlined />}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 700,
+                borderColor: 'rgba(255,255,255,0.5)',
+                '&:hover': {
+                  borderColor: '#fff',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                }
+              }}
+            >
+              Join VIP Pro
             </Button>
             <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
               <IconButton 
