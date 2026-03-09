@@ -20,9 +20,9 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-// ── Stripe links (replace with real links when ready) ──────────────────────
-const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/REPLACE_MONTHLY';
-const STRIPE_LINK_ANNUAL  = 'https://buy.stripe.com/REPLACE_ANNUAL';
+// ── Stripe Payment Links ───────────────────────────────────────────────────
+const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/bJe6oH3yx3NT1fS5qx97G02';
+const STRIPE_LINK_ANNUAL  = 'https://buy.stripe.com/dRmcN5c53esxf6IbOV97G03';
 
 // ── Plan features ──────────────────────────────────────────────────────────
 
@@ -179,7 +179,7 @@ const Pricing: React.FC = () => {
             ))}
           </List>
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 1.5 }}>
+          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             <Button
               variant="contained"
               fullWidth
@@ -187,9 +187,9 @@ const Pricing: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               startIcon={<LockOpen />}
-              sx={{ borderRadius: 2, fontWeight: 700 }}
+              sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
             >
-              Monthly
+              Join VIP Pro — $19/mo
             </Button>
             <Button
               variant="outlined"
@@ -197,11 +197,15 @@ const Pricing: React.FC = () => {
               href={STRIPE_LINK_ANNUAL}
               target="_blank"
               rel="noopener noreferrer"
-              sx={{ borderRadius: 2, fontWeight: 700 }}
+              sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
             >
-              Annual
+              Join VIP Pro Annual — $199/yr
             </Button>
           </Box>
+
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, textAlign: 'center', lineHeight: 1.5 }}>
+            After purchase, DM <strong>@cmacelis</strong> on Discord with your receipt email + Discord username to receive the VIP Pro role.
+          </Typography>
         </Paper>
       </Box>
 
