@@ -61,7 +61,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               }
             }}
           >
-            NBA Edge Detector
+            EdgeDetector.ai
           </Typography>
           <Stack direction="row" spacing={2} alignItems="center">
             <Button 
