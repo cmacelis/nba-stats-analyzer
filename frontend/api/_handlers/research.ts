@@ -27,7 +27,8 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
       if (cached) return res.json({ ...cached, cached: true });
     }
 
-    // Map prop string to StatKey ('points' → 'pts', anything else unknown → 'pts')
+    // Pass the original prop name ('points', 'rebounds', 'assists') — fetchStatContext
+    // accepts both long and short keys via PROP_STAT.
     const statKey: StatKey = prop === 'pra' ? 'pra' : 'pts';
 
     const league = (req.query.league as string) || 'nba';
@@ -37,7 +38,7 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report    = await generateReport(playerName, prop, mentions, sentiment, statContext);
-    res.json({ ...report, statContext, cached: false });
+    res.json({ ...report, statContext, cached: false, _v: 'fb345e9+prop-fix' });
   } catch (err) {
     console.error('[research] error:', err);
     if (!res.headersSent) {

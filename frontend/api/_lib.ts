@@ -375,8 +375,10 @@ export async function getBatchSeasonAverages(playerIds: number[], season: number
 
 export async function fetchStatContext(playerName: string, propType: string): Promise<StatContext | null> {
   try {
+    console.log('[fetchStatContext] name=%s propType=%s', playerName, propType);
     const player = await findPlayer(playerName);
-    if (!player) return null;
+    if (!player) { console.log('[fetchStatContext] player not found'); return null; }
+    console.log('[fetchStatContext] player id=%d', player.id);
 
     // Only fetch recent games (last ~4 weeks) — enough for L5/L10 calc.
     // BDL ignores direction=desc and returns oldest first, so start_date
@@ -404,6 +406,7 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
       return db.localeCompare(da);
     });
     const playedLogs = rawLogs.filter(g => parseMins(g['min'] as string | number) >= 10);
+    console.log('[fetchStatContext] rawLogs=%d playedLogs=%d avgData=%s', rawLogs.length, playedLogs.length, !!avgData?.data?.[0]);
 
     // Use dedicated season averages if available; otherwise estimate from recent logs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -413,15 +416,17 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
       const avg = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0) / n;
       avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), games_played: n };
     }
-    if (!avgRow) return null;
+    if (!avgRow) { console.log('[fetchStatContext] no avgRow → null'); return null; }
 
     const statKey = PROP_STAT[propType];
+    console.log('[fetchStatContext] propType=%s statKey=%s PROP_STAT keys=%s', propType, statKey, Object.keys(PROP_STAT).join(','));
     let seasonAvg: number;
     if (propType === 'combined') {
       seasonAvg = (Number(avgRow.pts) || 0) + (Number(avgRow.reb) || 0) + (Number(avgRow.ast) || 0);
     } else if (statKey) {
       seasonAvg = Number(avgRow[statKey]) || 0;
     } else {
+      console.log('[fetchStatContext] no statKey for propType=%s → null', propType);
       return null;
     }
 
