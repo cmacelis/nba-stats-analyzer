@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -10,6 +10,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import { funnelEvent } from '../lib/analytics';
 
 interface Props {
   open: boolean;
@@ -20,6 +21,11 @@ const SignInModal: React.FC<Props> = ({ open, onClose }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Track sign-in modal open as a funnel event
+  useEffect(() => {
+    if (open) funnelEvent('sign-in-start');
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

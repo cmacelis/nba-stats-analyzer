@@ -1,5 +1,9 @@
+import { inject } from '@vercel/analytics';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
+// ── Vercel Web Analytics (auto-tracks all page views + route changes) ───────
+inject();
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CssBaseline from '@mui/material/CssBaseline';
 import { SoundProvider } from './contexts/SoundContext';

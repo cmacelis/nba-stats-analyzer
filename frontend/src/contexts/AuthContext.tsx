@@ -5,6 +5,8 @@ interface AuthUser {
   vipActive: boolean;
   vipPlan: string | null;
   vipCurrentPeriodEnd: string | null;
+  discordConnected: boolean;
+  discordUsername: string | null;
 }
 
 interface AuthContextValue {
@@ -38,6 +40,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           vipActive: data.vipActive,
           vipPlan: data.vipPlan,
           vipCurrentPeriodEnd: data.vipCurrentPeriodEnd,
+          discordConnected: data.discordConnected ?? false,
+          discordUsername: data.discordUsername ?? null,
         });
       } else {
         setUser(null);

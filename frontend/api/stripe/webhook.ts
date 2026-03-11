@@ -13,7 +13,12 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import { getUserByEmail, getOrCreateUser, updateUserByEmail } from '../_auth.js';
+import {
+  getUserByEmail,
+  getOrCreateUser,
+  updateUserByEmail,
+  assignDiscordVipRole,
+} from '../_auth.js';
 
 // Disable Vercel's automatic body parsing so we can verify the raw signature
 export const config = { api: { bodyParser: false } };
@@ -106,6 +111,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   await updateUserByEmail(lowerEmail, updates);
   console.log(`[stripe] checkout completed for ${lowerEmail}, VIP activated`);
+
+  // Best-effort: assign Discord VIP role if user has connected Discord
+  if (updates.vipActive) {
+    await tryAssignDiscordRole(lowerEmail);
+  }
 }
 
 async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
@@ -121,6 +131,11 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
   });
 
   console.log(`[stripe] subscription ${sub.id} updated for ${email}, active=${isActive}`);
+
+  // Best-effort: assign Discord VIP role when subscription becomes active
+  if (isActive) {
+    await tryAssignDiscordRole(email);
+  }
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
@@ -161,4 +176,25 @@ function extractPeriodEnd(sub: Stripe.Subscription): string | null {
   const periodEnd = (sub as any).current_period_end;
   if (typeof periodEnd === 'number') return new Date(periodEnd * 1000).toISOString();
   return null;
+}
+
+/**
+ * Best-effort Discord VIP role assignment.
+ * Looks up user's discordUserId; if connected, assigns the VIP Pro role.
+ * Never throws — logs and continues.
+ */
+async function tryAssignDiscordRole(email: string): Promise<void> {
+  try {
+    const user = await getUserByEmail(email);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const discordUserId = (user as any)?.discordUserId;
+    if (!discordUserId) return;
+
+    const ok = await assignDiscordVipRole(discordUserId);
+    if (ok) {
+      console.log(`[stripe] Discord VIP role assigned for ${email}`);
+    }
+  } catch (err) {
+    console.error(`[stripe] Discord role assign error for ${email}:`, (err as Error).message);
+  }
 }

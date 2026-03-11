@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Button,
@@ -19,6 +19,7 @@ import {
   RemoveCircleOutline,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { funnelEvent } from '../lib/analytics';
 
 // ── Stripe Payment Links ───────────────────────────────────────────────────
 const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/bJe6oH3yx3NT1fS5qx97G02';
@@ -54,6 +55,11 @@ const VIP_FEATURES = [
 const Pricing: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+
+  // Track pricing page view as a funnel event
+  useEffect(() => {
+    funnelEvent('pricing-view');
+  }, []);
   const cardSx = {
     p: 3,
     borderRadius: 3,
@@ -188,6 +194,7 @@ const Pricing: React.FC = () => {
               rel="noopener noreferrer"
               startIcon={<LockOpen />}
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
+              onClick={() => funnelEvent('vip-cta-click', { plan: 'monthly' })}
             >
               Join VIP Pro — $19/mo
             </Button>
@@ -198,6 +205,7 @@ const Pricing: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
+              onClick={() => funnelEvent('vip-cta-click', { plan: 'annual' })}
             >
               Join VIP Pro Annual — $199/yr
             </Button>

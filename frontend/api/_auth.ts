@@ -163,6 +163,68 @@ export async function validateAndConsumeMagicLink(
   return doc.email as string;
 }
 
+// ── Discord: role assignment helper ──────────────────────────────────────────
+
+const DISCORD_API = 'https://discord.com/api/v10';
+
+/**
+ * Assign the VIP Pro role to a Discord user in the guild.
+ * Best-effort — logs errors but never throws.
+ */
+export async function assignDiscordVipRole(discordUserId: string): Promise<boolean> {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const guildId = process.env.DISCORD_GUILD_ID || '1475350412331581502';
+  const roleId = process.env.DISCORD_VIP_ROLE_ID || '1479925861158224025';
+
+  if (!botToken) {
+    console.warn('[discord] DISCORD_BOT_TOKEN not set — skipping role assignment');
+    return false;
+  }
+
+  try {
+    const res = await fetch(
+      `${DISCORD_API}/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`,
+      {
+        method: 'PUT',
+        headers: { Authorization: `Bot ${botToken}` },
+      },
+    );
+    if (res.ok || res.status === 204) {
+      console.log(`[discord] VIP role assigned to user ${discordUserId}`);
+      return true;
+    }
+    const text = await res.text().catch(() => '');
+    console.error(`[discord] role assign failed ${res.status}: ${text.slice(0, 200)}`);
+    return false;
+  } catch (err) {
+    console.error('[discord] role assign error:', (err as Error).message);
+    return false;
+  }
+}
+
+/**
+ * Sign a short-lived JWT for Discord OAuth state parameter (10 min TTL).
+ */
+export async function signShortJwt(payload: Record<string, unknown>): Promise<string> {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('10m')
+    .sign(jwtSecret());
+}
+
+/**
+ * Verify a short-lived state JWT. Returns payload or null.
+ */
+export async function verifyShortJwt(token: string): Promise<Record<string, unknown> | null> {
+  try {
+    const { payload } = await jwtVerify(token, jwtSecret());
+    return payload as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 // ── Email (Resend) ───────────────────────────────────────────────────────────
 
 export async function sendMagicLinkEmail(
