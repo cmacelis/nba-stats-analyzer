@@ -250,6 +250,16 @@ export async function computeEdgeFeed(
     gameMap.get(pid)!.push(g);
   }
 
+  // Sort each player's games by date DESCENDING (newest first).
+  // BDL's sort=date&direction=desc is unreliable — often returns ascending.
+  for (const [, games] of gameMap) {
+    games.sort((a, b) => {
+      const da = a.game?.date || '';
+      const db = b.game?.date || '';
+      return db.localeCompare(da);
+    });
+  }
+
   if (debugOut) {
     debugOut.grouped_players_with_logs = [...gameMap.values()].filter(gs => gs.length >= 3).length;
     const sampleEntry = players.find(p => gameMap.has(p.id));

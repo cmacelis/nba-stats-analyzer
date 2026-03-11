@@ -388,6 +388,12 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     ]);
 
     const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
+    // Sort by date DESCENDING (newest first) — BDL's sort param is unreliable.
+    rawLogs.sort((a, b) => {
+      const da = (a['game'] as Record<string, string>)?.date || '';
+      const db = (b['game'] as Record<string, string>)?.date || '';
+      return db.localeCompare(da);
+    });
     const playedLogs = rawLogs.filter(g => parseMins(g['min'] as string | number) >= 10);
 
     // Use dedicated season averages if available; otherwise estimate from recent logs
