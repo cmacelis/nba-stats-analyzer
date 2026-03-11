@@ -222,3 +222,27 @@ export const useUpcomingGames = () => {
     staleTime: 5 * 60 * 1000,
   });
 };
+
+// ── Server-side prediction ───────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const usePrediction = (
+  p1Id: string,
+  p2Id: string,
+  home: 1 | 2 | null,
+  season: number,
+) => {
+  return useQuery({
+    queryKey: ['prediction', p1Id, p2Id, home, season],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const params: Record<string, any> = { p1: p1Id, p2: p2Id, season };
+      if (home) params.home = home;
+      const res = await api.get('/api/predict', { params });
+      return res.data;
+    },
+    enabled: !!p1Id && !!p2Id,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+};

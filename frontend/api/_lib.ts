@@ -371,6 +371,193 @@ export async function getBatchSeasonAverages(playerIds: number[], season: number
   return result;
 }
 
+// ── Standings (GOAT tier) ─────────────────────────────────────────────────────
+
+export interface StandingRecord {
+  team_id:          number;
+  team_abbr:        string;
+  wins:             number;
+  losses:           number;
+  win_pct:          number;
+  home_wins:        number;
+  home_losses:      number;
+  road_wins:        number;
+  road_losses:      number;
+  conference_rank:  number;
+}
+
+function parseRecord(rec: string): { w: number; l: number } {
+  const [w, l] = (rec || '0-0').split('-').map(Number);
+  return { w: w || 0, l: l || 0 };
+}
+
+export async function getStandings(season: number): Promise<Map<number, StandingRecord>> {
+  const ck = `standings:${season}`;
+  const hit = getCached<Map<number, StandingRecord>>(ck);
+  if (hit) return hit;
+
+  try {
+    const data = await bdlGet('/standings', { season });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = data?.data ?? [];
+    const result = new Map<number, StandingRecord>();
+    for (const r of rows) {
+      const teamId = r.team?.id ?? r.team_id;
+      if (!teamId) continue;
+      const home = parseRecord(r.home_record);
+      const road = parseRecord(r.road_record);
+      result.set(teamId, {
+        team_id:         teamId,
+        team_abbr:       r.team?.abbreviation ?? '',
+        wins:            r.wins ?? 0,
+        losses:          r.losses ?? 0,
+        win_pct:         (r.wins ?? 0) / Math.max(1, (r.wins ?? 0) + (r.losses ?? 0)),
+        home_wins:       home.w,
+        home_losses:     home.l,
+        road_wins:       road.w,
+        road_losses:     road.l,
+        conference_rank: r.conference_rank ?? 0,
+      });
+    }
+    setCached(ck, result, CACHE_SEASON_AVG);
+    return result;
+  } catch (err) {
+    console.warn('[standings] error:', (err as Error).message);
+    return new Map();
+  }
+}
+
+// ── Advanced stats (GOAT tier) ───────────────────────────────────────────────
+
+export interface AdvancedStats {
+  off_rating:  number;
+  def_rating:  number;
+  net_rating:  number;
+  pace:        number;
+  ts_pct:      number;
+  efg_pct:     number;
+  usg_pct:     number;
+  pie:         number;
+}
+
+export async function getPlayerAdvancedStats(
+  playerIds: number[],
+  season: number,
+): Promise<Map<number, AdvancedStats>> {
+  const result = new Map<number, AdvancedStats>();
+  if (playerIds.length === 0) return result;
+
+  const ck = `advstats:${playerIds.sort().join(',')}:${season}`;
+  const hit = getCached<Map<number, AdvancedStats>>(ck);
+  if (hit) return hit;
+
+  const CHUNK = 25;
+  const chunks: number[][] = [];
+  for (let i = 0; i < playerIds.length; i += CHUNK) chunks.push(playerIds.slice(i, i + CHUNK));
+
+  try {
+    const responses = await Promise.all(
+      chunks.map(chunk => {
+        const sp = new URLSearchParams();
+        sp.append('season', String(season));
+        sp.append('season_type', 'regular');
+        sp.append('type', 'advanced');
+        for (const id of chunk) sp.append('player_ids[]', String(id));
+        return axios.get(`${BDL_BASE}/season_averages/general?${sp.toString()}`, {
+          headers: { Authorization: BDL_KEY },
+          timeout: 15000,
+        }).then(r => r.data).catch(err => {
+          console.warn('[advstats] chunk failed:', (err as Error).message);
+          return { data: [] };
+        });
+      }),
+    );
+
+    for (const resp of responses) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows: any[] = resp?.data ?? [];
+      for (const row of rows) {
+        const pid = row.player_id ?? row.player?.id;
+        const s = row.stats ?? row;
+        if (pid) {
+          result.set(pid, {
+            off_rating: s.off_rating ?? 0,
+            def_rating: s.def_rating ?? 0,
+            net_rating: s.net_rating ?? 0,
+            pace:       s.pace       ?? 100,
+            ts_pct:     s.ts_pct     ?? 0,
+            efg_pct:    s.efg_pct    ?? 0,
+            usg_pct:    s.usg_pct    ?? 0,
+            pie:        s.pie        ?? 0,
+          });
+        }
+      }
+    }
+    setCached(ck, result, CACHE_SEASON_AVG);
+    return result;
+  } catch (err) {
+    console.warn('[advstats] error:', (err as Error).message);
+    return result;
+  }
+}
+
+// ── Recent form (game logs) ──────────────────────────────────────────────────
+
+export interface RecentForm {
+  recentPts:   number;
+  recentAst:   number;
+  recentReb:   number;
+  avgMins:     number;
+  gamesPlayed: number;
+}
+
+export async function getRecentForm(
+  playerId: number,
+  season: number,
+  numGames = 5,
+): Promise<RecentForm | null> {
+  const ck = `form:${playerId}:${season}:${numGames}`;
+  const hit = getCached<RecentForm>(ck);
+  if (hit) return hit;
+
+  try {
+    const threeWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const data = await bdlGet('/stats', {
+      'player_ids[]': playerId,
+      'seasons[]':    season,
+      start_date:     threeWeeksAgo,
+      per_page:       25,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = data?.data ?? [];
+    if (rows.length === 0) return null;
+
+    // Sort descending by game date (BDL ignores direction param)
+    rows.sort((a, b) => {
+      const da = (a.game as Record<string, string>)?.date || '';
+      const db = (b.game as Record<string, string>)?.date || '';
+      return db.localeCompare(da);
+    });
+
+    const recent = rows.slice(0, numGames).filter(r => parseMins(r.min) > 5);
+    if (recent.length === 0) return null;
+
+    const n = recent.length;
+    const form: RecentForm = {
+      recentPts:   recent.reduce((s, r) => s + (r.pts || 0), 0) / n,
+      recentAst:   recent.reduce((s, r) => s + (r.ast || 0), 0) / n,
+      recentReb:   recent.reduce((s, r) => s + (r.reb || 0), 0) / n,
+      avgMins:     recent.reduce((s, r) => s + parseMins(r.min), 0) / n,
+      gamesPlayed: n,
+    };
+    setCached(ck, form, 60 * 60 * 1000); // 1h cache
+    return form;
+  } catch (err) {
+    console.warn('[form] error player', playerId, (err as Error).message);
+    return null;
+  }
+}
+
 // ── Stat context (research) ──────────────────────────────────────────────────
 
 export async function fetchStatContext(playerName: string, propType: string): Promise<StatContext | null> {

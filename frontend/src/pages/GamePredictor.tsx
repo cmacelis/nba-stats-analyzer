@@ -28,10 +28,11 @@ import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
-import { usePlayerStatsWithFallback, usePlayerPhoto } from '../hooks/useNbaData';
+import { usePlayerStatsWithFallback, usePlayerPhoto, usePrediction } from '../hooks/useNbaData';
 import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
+import SportsScoreIcon from '@mui/icons-material/SportsScore';
 
 function confidenceColor(conf: string): 'success' | 'warning' | 'default' {
   if (conf === 'high') return 'success';
@@ -120,10 +121,23 @@ const GamePredictor: React.FC = () => {
   const resolvedPhoto1 = player1?.photoUrl ?? fetchedPhoto1 ?? undefined;
   const resolvedPhoto2 = player2?.photoUrl ?? fetchedPhoto2 ?? undefined;
 
-  const prediction = useMemo(() => {
+  // Server-side 5-factor prediction (preferred)
+  const { data: serverPrediction, isLoading: predLoading } = usePrediction(
+    player1?.id.toString() ?? '',
+    player2?.id.toString() ?? '',
+    homeTeam,
+    season,
+  );
+
+  // Client-side fallback if server unavailable
+  const clientPrediction = useMemo(() => {
+    if (serverPrediction) return null; // server wins
     if (!hasStats1 || !hasStats2) return null;
     return predictGame(rawStats1 as RawPlayerStats, rawStats2 as RawPlayerStats, homeTeam);
-  }, [rawStats1, rawStats2, homeTeam, hasStats1, hasStats2]);
+  }, [rawStats1, rawStats2, homeTeam, hasStats1, hasStats2, serverPrediction]);
+
+  const prediction = serverPrediction ?? clientPrediction;
+  const isServerPrediction = !!serverPrediction;
 
   // Track prediction events in localStorage for the /performance dashboard
   useEffect(() => {
@@ -145,7 +159,7 @@ const GamePredictor: React.FC = () => {
     [rawStats2],
   );
 
-  const isLoading = loading1 || loading2;
+  const isLoading = loading1 || loading2 || (!!player1 && !!player2 && predLoading);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -321,8 +335,105 @@ const GamePredictor: React.FC = () => {
                 color={confidenceColor(prediction.confidence)}
                 size="small"
               />
+              <Chip
+                label={isServerPrediction ? 'BDL GOAT' : 'Basic Stats'}
+                size="small"
+                variant="outlined"
+                color={isServerPrediction ? 'success' : 'default'}
+                icon={<SportsScoreIcon />}
+              />
             </Box>
           </Paper>
+
+          {/* Factor Breakdown (server prediction only) */}
+          {isServerPrediction && prediction.factors && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Factor Breakdown
+              </Typography>
+              <Grid container spacing={2}>
+                {[
+                  {
+                    label: 'Team Record',
+                    weight: '35%',
+                    val1: prediction.factors.teamRecord.team1,
+                    val2: prediction.factors.teamRecord.team2,
+                    edge: prediction.factors.teamRecord.edge,
+                  },
+                  {
+                    label: 'Star Net Rating',
+                    weight: '20%',
+                    val1: typeof prediction.factors.starNetRating.team1 === 'number' ? prediction.factors.starNetRating.team1.toFixed(1) : prediction.factors.starNetRating.team1,
+                    val2: typeof prediction.factors.starNetRating.team2 === 'number' ? prediction.factors.starNetRating.team2.toFixed(1) : prediction.factors.starNetRating.team2,
+                    edge: prediction.factors.starNetRating.edge,
+                  },
+                  {
+                    label: 'Home Court',
+                    weight: '15%',
+                    val1: prediction.factors.homeCourt.team
+                      ? `${prediction.factors.homeCourt.team} (+${Math.abs(prediction.factors.homeCourt.bonus).toFixed(1)})`
+                      : 'Neutral',
+                    val2: '',
+                    edge: prediction.factors.homeCourt.bonus > 0 ? 1 as const
+                      : prediction.factors.homeCourt.bonus < 0 ? 2 as const
+                      : 'tie' as const,
+                  },
+                  {
+                    label: 'Recent Form (L5)',
+                    weight: '15%',
+                    val1: typeof prediction.factors.recentForm.team1 === 'number' ? prediction.factors.recentForm.team1.toFixed(1) : prediction.factors.recentForm.team1,
+                    val2: typeof prediction.factors.recentForm.team2 === 'number' ? prediction.factors.recentForm.team2.toFixed(1) : prediction.factors.recentForm.team2,
+                    edge: prediction.factors.recentForm.edge,
+                  },
+                  {
+                    label: 'Star Efficiency',
+                    weight: '15%',
+                    val1: typeof prediction.factors.starEfficiency.team1 === 'number' ? prediction.factors.starEfficiency.team1.toFixed(1) : prediction.factors.starEfficiency.team1,
+                    val2: typeof prediction.factors.starEfficiency.team2 === 'number' ? prediction.factors.starEfficiency.team2.toFixed(1) : prediction.factors.starEfficiency.team2,
+                    edge: prediction.factors.starEfficiency.edge,
+                  },
+                ].map((factor) => (
+                  <Grid item xs={12} sm={6} md={4} key={factor.label}>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderLeft: 4,
+                        borderColor:
+                          factor.edge === 1
+                            ? 'primary.main'
+                            : factor.edge === 2
+                              ? 'secondary.main'
+                              : 'divider',
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {factor.label} ({factor.weight})
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          fontWeight={factor.edge === 1 ? 'bold' : 'normal'}
+                          color={factor.edge === 1 ? 'primary.main' : 'text.primary'}
+                        >
+                          {factor.val1 || '—'}
+                        </Typography>
+                        {factor.val2 !== '' && (
+                          <Typography
+                            variant="body2"
+                            fontWeight={factor.edge === 2 ? 'bold' : 'normal'}
+                            color={factor.edge === 2 ? 'secondary.main' : 'text.primary'}
+                          >
+                            {factor.val2 || '—'}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          )}
 
           {/* Stat Breakdown */}
           <Paper sx={{ p: 3, mb: 3 }}>
@@ -340,7 +451,7 @@ const GamePredictor: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {prediction.advantages.map(adv => (
+                  {prediction.advantages.map((adv: { label: string; team1Value: number; team2Value: number; winner: 1 | 2 | 'tie'; higherIsBetter: boolean }) => (
                     <TableRow key={adv.label}>
                       <TableCell>{adv.label}</TableCell>
                       <TableCell
@@ -453,7 +564,7 @@ const GamePredictor: React.FC = () => {
         color="text.secondary"
         sx={{ mt: 2, display: 'block', textAlign: 'center' }}
       >
-        Note: Predictions use the most recent available season averages (auto-fallback if needed) and are for entertainment purposes only.
+        Note: Predictions use team records, advanced stats, recent form, and pace data. For entertainment purposes only.
       </Typography>
 
       <Snackbar
