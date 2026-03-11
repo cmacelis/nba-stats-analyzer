@@ -15,7 +15,8 @@ const PlayerComparison = React.lazy(() => import('./pages/PlayerComparison'));
 const GamePredictor = React.lazy(() => import('./pages/GamePredictor'));
 const PerformanceDashboard = React.lazy(() => import('./pages/PerformanceDashboard'));
 const EdgeDetector = React.lazy(() => import('./pages/EdgeDetector'));
-const Pricing      = React.lazy(() => import('./pages/Pricing'));
+const Pricing          = React.lazy(() => import('./pages/Pricing'));
+const NbaPropAnalyzer  = React.lazy(() => import('./pages/NbaPropAnalyzer'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -63,6 +64,10 @@ const router = createBrowserRouter([
       {
         path: 'pricing',
         element: <Pricing />
+      },
+      {
+        path: 'nba-prop-analyzer',
+        element: <NbaPropAnalyzer />
       }
     ]
   }

@@ -15,7 +15,8 @@ type FunnelEvent =
   | 'vip-cta-click'
   | 'edge-feed-view'
   | 'compare-view'
-  | 'matchup-view';
+  | 'matchup-view'
+  | 'prop-analyzer-view';
 
 export function funnelEvent(
   event: FunnelEvent,
