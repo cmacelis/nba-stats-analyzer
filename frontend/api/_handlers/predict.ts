@@ -97,8 +97,8 @@ export async function predictHandler(req: VercelRequest, res: VercelResponse) {
       getBatchSeasonAverages([p1Id, p2Id], season),
       getRecentForm(p1Id, season),
       getRecentForm(p2Id, season),
-      bdlGet('/players/' + p1Id).catch(() => null),
-      bdlGet('/players/' + p2Id).catch(() => null),
+      bdlGet('/players/' + p1Id).then(r => r?.data ?? r).catch(() => null),
+      bdlGet('/players/' + p2Id).then(r => r?.data ?? r).catch(() => null),
     ]);
 
     const team1Id = player1Data?.team?.id;
