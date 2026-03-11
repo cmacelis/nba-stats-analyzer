@@ -257,31 +257,48 @@ const BDL_PROP_MAP: Record<string, string> = {
   player_points_rebounds_assists: 'pra',
 };
 
+/** Vendor preference rank — lower = better.  DraftKings > FanDuel > Caesars > others */
+const VENDOR_RANK: Record<string, number> = {
+  draftkings: 0, fanduel: 1, caesars: 2, fanatics: 3, betmgm: 4,
+};
+function vendorScore(v: string): number { return VENDOR_RANK[v] ?? 99; }
+
 export async function getPlayerProps(gameId: number): Promise<Map<string, PlayerProp>> {
   const ck = `props:${gameId}`;
   const hit = getCached<Map<string, PlayerProp>>(ck);
   if (hit) return hit;
 
   try {
-    const data = await bdlGetV2('/odds/player_props', { game_id: gameId, per_page: 100 });
+    // BDL returns all rows regardless of per_page (tested: 2805 for one game)
+    const data = await bdlGetV2('/odds/player_props', { game_id: gameId, per_page: 5000 });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows: any[] = data?.data ?? [];
     const m = new Map<string, PlayerProp>();
     for (const o of rows) {
+      // Only accept over_under markets — skip milestone/alt lines entirely.
+      // Milestone markets are "will they score ≥X?" with a single odds value,
+      // not the primary sportsbook line.
+      if (o.market?.type !== 'over_under') continue;
+
       const sk = BDL_PROP_MAP[o.prop_type];
       if (!sk) continue;
+
+      const overOdds  = o.market?.over_odds  ?? 0;
+      const underOdds = o.market?.under_odds ?? 0;
+      // Must have real odds on both sides
+      if (!overOdds && !underOdds) continue;
+
       const mk = `${o.player_id}:${sk}`;
       const existing = m.get(mk);
-      // Prefer draftkings → fanduel → first vendor
-      if (!existing || o.vendor === 'draftkings' ||
-          (o.vendor === 'fanduel' && existing.vendor !== 'draftkings')) {
+      // Keep entry from best-ranked vendor
+      if (!existing || vendorScore(o.vendor) < vendorScore(existing.vendor)) {
         m.set(mk, {
           player_id:  o.player_id,
           vendor:     o.vendor,
           prop_type:  sk,
           line_value: parseFloat(o.line_value),
-          over_odds:  o.market?.over_odds ?? 0,
-          under_odds: o.market?.under_odds ?? 0,
+          over_odds:  overOdds,
+          under_odds: underOdds,
         });
       }
     }
