@@ -374,15 +374,20 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     const player = await findPlayer(playerName);
     if (!player) return null;
 
+    // Only fetch recent games (last ~4 weeks) — enough for L5/L10 calc.
+    // BDL ignores direction=desc and returns oldest first, so start_date
+    // ensures we get recent games within per_page limit.
+    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 10);
+
     // Fetch season avg, game logs, AND today's real prop lines in parallel
     const [avgData, logsData, allProps] = await Promise.all([
       bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }).catch(() => ({ data: [] })),
       bdlGet('/stats', {
         'player_ids[]': player.id,
         'seasons[]': BDL_SEASON,
-        per_page: 15,
-        sort: 'date',
-        direction: 'desc',
+        per_page: 25,
+        start_date: fourWeeksAgo,
       }),
       getAllTodaysProps().catch(() => new Map<string, PlayerProp>()),
     ]);
