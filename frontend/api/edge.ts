@@ -204,34 +204,52 @@ export async function computeEdgeFeed(
     return { status, message: err?.message ?? String(err), url: `${BDL_BASE}${path}`, body_preview: bodyStr };
   }
 
-  // Batch season averages (GOAT tier) + game logs for L5 in parallel
+  // Batch season averages (GOAT tier) + recent game logs in parallel
   let statsUpstreamErr: UpstreamError | null = null;
 
-  const statsParams = {
-    'player_ids[]': ids,
-    'seasons[]':    [season],
-    per_page:       100,
-    sort:           'date',
-    direction:      'desc',
-  };
+  // Only fetch recent games (last ~3 weeks) — enough for L5 calc.
+  // BDL's sort=date&direction=desc is unreliable, and batch queries with
+  // many player_ids cap at per_page=100 total rows.  By using start_date
+  // we limit the data to recent games, and by chunking player IDs (~20 per
+  // chunk) we ensure each chunk fits in one page.
+  const threWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)
+    .toISOString().slice(0, 10);
 
-  const STATS_PAGES = 3; // Reduced: only need recent games now
-  const [seasonAvgMap, ...statsResults] = await Promise.all([
+  const CHUNK = 20; // ~20 players × ~10 games each ≈ 200, fits in per_page=100 comfortably
+  const idChunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) idChunks.push(ids.slice(i, i + CHUNK));
+
+  const [seasonAvgMap, ...statsChunkResults] = await Promise.all([
     getBatchSeasonAverages(ids, season).catch(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return new Map<number, Record<string, any>>();
     }),
-    ...Array.from({ length: STATS_PAGES }, (_, i) =>
-      bdlBatch('/stats', { ...statsParams, page: i + 1 })
-        .catch((err: unknown) => {
-          if (i === 0) statsUpstreamErr = captureErr(err, '/stats');
-          return { data: [] };
-        }),
+    ...idChunks.map(chunk =>
+      bdlBatch('/stats', {
+        'player_ids[]': chunk,
+        'seasons[]':    [season],
+        per_page:       100,
+        start_date:     threWeeksAgo,
+      }).catch((err: unknown) => {
+        if (!statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
+        return { data: [] };
+      }),
     ),
   ]);
 
+  // Flatten + deduplicate by row ID
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = statsResults.flatMap(r => r?.data ?? []);
+  const statsResData: any[] = [];
+  const seenIds = new Set<number>();
+  for (const r of statsChunkResults) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const g of (r?.data ?? []) as any[]) {
+      const rid = g.id;
+      if (rid && seenIds.has(rid)) continue;
+      if (rid) seenIds.add(rid);
+      statsResData.push(g);
+    }
+  }
 
   if (debugOut) {
     debugOut.season_averages_count        = seasonAvgMap.size;
