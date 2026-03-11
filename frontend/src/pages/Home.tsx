@@ -139,7 +139,14 @@ const Home: React.FC = () => {
 
         <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2.5 }}>
           <Chip label="NBA" color="primary" size="small" />
-          <Chip label="WNBA Expanding" variant="outlined" size="small" />
+          <Chip
+            label="WNBA Live"
+            variant="outlined"
+            size="small"
+            component={RouterLink}
+            to="/wnba-prop-analyzer"
+            clickable
+          />
         </Stack>
 
         <Typography

@@ -191,12 +191,12 @@ export interface EdgeFeedResponse {
   generated_at: string;
 }
 
-export const useEdgeFeed = (stat: string, minMinutes: number, season: number) => {
+export const useEdgeFeed = (stat: string, minMinutes: number, season: number, league: string = 'nba') => {
   return useQuery<EdgeFeedResponse>({
-    queryKey: ['edge', stat, minMinutes, season],
+    queryKey: ['edge', stat, minMinutes, season, league],
     queryFn: async () => {
       const response = await api.get('/api/edge', {
-        params: { stat, min_minutes: minMinutes, season },
+        params: { stat, min_minutes: minMinutes, season, league },
       });
       return response.data;
     },

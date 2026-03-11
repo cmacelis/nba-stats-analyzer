@@ -16,7 +16,8 @@ type FunnelEvent =
   | 'edge-feed-view'
   | 'compare-view'
   | 'matchup-view'
-  | 'prop-analyzer-view';
+  | 'prop-analyzer-view'
+  | 'wnba-analyzer-view';
 
 export function funnelEvent(
   event: FunnelEvent,

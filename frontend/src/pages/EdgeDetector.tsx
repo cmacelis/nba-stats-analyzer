@@ -32,7 +32,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { AddCircleOutline, BoltOutlined, LockOutlined, TrendingDown, TrendingUp } from '@mui/icons-material';
+import { AddCircleOutline, BoltOutlined, LockOutlined, SportsBasketball, TrendingDown, TrendingUp } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
@@ -375,6 +375,10 @@ const EdgeDetector: React.FC = () => {
   const trackStat      = searchParams.get('track_stat')  as 'pts' | 'pra' | null;
   const trackDirection = searchParams.get('track_direction') as 'over' | 'under' | null;
 
+  // Read league from URL (?league=wnba) or default to 'nba'
+  const urlLeague = searchParams.get('league') as 'nba' | 'wnba' | null;
+
+  const [league,       setLeague]       = useState<'nba' | 'wnba'>(urlLeague ?? 'nba');
   const [stat,         setStat]         = useState<'pts' | 'pra'>(urlStat ?? 'pts');
   const [minMinutes,   setMinMinutes]   = useState(urlMinMinutes ? parseInt(urlMinMinutes, 10) : 20);
   const [season,       setSeason]       = useState(urlSeason ? parseInt(urlSeason, 10) : 2025);
@@ -386,7 +390,7 @@ const EdgeDetector: React.FC = () => {
   // Prevent double-open if data re-fetches while modal is already open
   const deepLinkHandled = useRef(false);
 
-  const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season);
+  const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season, league);
 
   // Auto-open TrackModal when arriving via Discord "Track this pick" deep link
   useEffect(() => {
@@ -399,7 +403,7 @@ const EdgeDetector: React.FC = () => {
     setTrackedInitialStat(trackStat ?? undefined);
     setTrackedInitialDirection(trackDirection ?? undefined);
     // Clean track_* params from URL so a refresh doesn't re-open the modal
-    const clean = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes) });
+    const clean = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes), league });
     navigate(`/edge?${clean.toString()}`, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, trackPlayerId]);
@@ -439,6 +443,20 @@ const EdgeDetector: React.FC = () => {
 
       {/* Filters */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'center' }}>
+        <ToggleButtonGroup
+          exclusive
+          value={league}
+          onChange={(_, v) => v && setLeague(v)}
+          size="small"
+        >
+          <ToggleButton value="nba" sx={{ fontWeight: 700, px: 2 }}>
+            <SportsBasketball sx={{ fontSize: 16, mr: 0.5 }} /> NBA
+          </ToggleButton>
+          <ToggleButton value="wnba" sx={{ fontWeight: 700, px: 2 }}>
+            <SportsBasketball sx={{ fontSize: 16, mr: 0.5 }} /> WNBA
+          </ToggleButton>
+        </ToggleButtonGroup>
+
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Stat</InputLabel>
           <Select value={stat} label="Stat" onChange={e => setStat(e.target.value as 'pts' | 'pra')}>
@@ -567,7 +585,7 @@ const EdgeDetector: React.FC = () => {
       )}
 
       <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
-        {STAT_OPTIONS.find(o => o.value === stat)?.label} · min {minMinutes} min/game · via BallDontLie · refreshes every 10 min
+        {league.toUpperCase()} · {STAT_OPTIONS.find(o => o.value === stat)?.label} · min {minMinutes} min/game · refreshes every 10 min
       </Typography>
 
       {/* Track modal */}
