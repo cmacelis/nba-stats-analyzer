@@ -44,15 +44,28 @@ interface ActivePlayer {
 }
 
 let _playerCache: { data: ActivePlayer[]; ts: number } | null = null;
-const PLAYER_TTL = 24 * 60 * 60 * 1000;
+const PLAYER_TTL = 4 * 60 * 60 * 1000; // 4 hours (was 24h — too stale)
 
 async function getActivePlayers(): Promise<ActivePlayer[]> {
   const now = Date.now();
   if (_playerCache && now - _playerCache.ts < PLAYER_TTL) return _playerCache.data;
-  const raw = await bdlBatch('/players/active', { per_page: 30 });
-  const data: ActivePlayer[] = raw?.data ?? [];
-  _playerCache = { data, ts: Date.now() };
-  return data;
+
+  // Paginate through ALL active players via BDL cursor (524 players ÷ 100/page ≈ 6 pages)
+  const all: ActivePlayer[] = [];
+  let cursor: number | null = null;
+  for (let page = 0; page < 8; page++) {
+    const params: Record<string, string | number> = { per_page: 100 };
+    if (cursor) params.cursor = cursor;
+    const raw = await bdlBatch('/players/active', params);
+    const data: ActivePlayer[] = raw?.data ?? [];
+    all.push(...data);
+    cursor = raw?.meta?.next_cursor ?? null;
+    if (!cursor || data.length === 0) break;
+  }
+
+  console.log(`[edge] fetched ${all.length} active players`);
+  _playerCache = { data: all, ts: Date.now() };
+  return all;
 }
 
 // ── stat helpers ──────────────────────────────────────────────────────────────
@@ -117,17 +130,41 @@ export interface EdgeDebugInfo {
  * Returns entries sorted by |delta| descending, capped at 20.
  * Pass a debugOut object to collect pipeline stage counts.
  */
+/**
+ * Deterministic daily shuffle — same seed per 4-hour window so the feed is
+ * stable within a window but rotates across the day.  Uses a simple hash-based
+ * Fisher-Yates shuffle seeded by the epoch day segment.
+ */
+function dailyShuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  const seed = Math.floor(Date.now() / (4 * 60 * 60 * 1000)); // changes every 4h
+  let s = seed;
+  const rng = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export async function computeEdgeFeed(
   stat: StatKey,
   minMin: number,
   season: number,
   debugOut?: EdgeDebugInfo,
 ): Promise<EdgeEntry[]> {
-  const players = await getActivePlayers();
-  const ids     = players.map(p => p.id);
+  const allPlayers = await getActivePlayers();
+
+  // Sample up to 150 players per call (rotating via daily shuffle) to keep
+  // API calls manageable while covering a wide cross-section of the league.
+  const SAMPLE_SIZE = 150;
+  const players = allPlayers.length > SAMPLE_SIZE
+    ? dailyShuffle(allPlayers).slice(0, SAMPLE_SIZE)
+    : allPlayers;
+  const ids = players.map(p => p.id);
 
   if (debugOut) {
-    debugOut.active_players_count      = players.length;
+    debugOut.active_players_count      = allPlayers.length;
     debugOut.active_player_ids_sample  = ids.slice(0, 5);
   }
 
@@ -143,12 +180,11 @@ export async function computeEdgeFeed(
     return { status, message: err?.message ?? String(err), url: `${BDL_BASE}${path}`, body_preview: bodyStr };
   }
 
-  // Season averages endpoint only accepts a single player_id — not batch-compatible.
-  // Instead, compute the season baseline directly from game logs:
+  // Compute season baseline directly from game logs (BDL /season_averages only
+  // accepts a single player_id — not batch-compatible).
   //   season_avg = mean of ALL fetched games for the player
   //   recent_avg = mean of the 5 most recent games
-  // Two pages fetched in parallel (200 games = ~6-7 per player for 30 players).
-  // Games are returned date-desc globally; per-player grouping preserves that order.
+  // Fetch 5 pages in parallel (500 game logs) for the 150-player sample.
   let statsUpstreamErr: UpstreamError | null = null;
 
   const statsParams = {
@@ -159,15 +195,19 @@ export async function computeEdgeFeed(
     direction:      'desc',
   };
 
-  const [res1, res2] = await Promise.all([
-    bdlBatch('/stats', { ...statsParams, page: 1 })
-      .catch((err: unknown) => { statsUpstreamErr = captureErr(err, '/stats'); return { data: [] }; }),
-    bdlBatch('/stats', { ...statsParams, page: 2 })
-      .catch(() => ({ data: [] })), // page 2 optional; page 1 error is the critical one
-  ]);
+  const STATS_PAGES = 5;
+  const statsResults = await Promise.all(
+    Array.from({ length: STATS_PAGES }, (_, i) =>
+      bdlBatch('/stats', { ...statsParams, page: i + 1 })
+        .catch((err: unknown) => {
+          if (i === 0) statsUpstreamErr = captureErr(err, '/stats');
+          return { data: [] };
+        }),
+    ),
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = [...(res1?.data ?? []), ...(res2?.data ?? [])];
+  const statsResData: any[] = statsResults.flatMap(r => r?.data ?? []);
 
   if (debugOut) {
     debugOut.season_averages_count        = 0; // removed — computed from logs

@@ -33,38 +33,81 @@ async function setLastPostedDate(dateStr) {
   if (!res.ok) console.error(`[edge-of-day] Failed to update Firestore: ${res.status}`);
 }
 
+// ── Player cooldown (avoid repeating same player) ────────────────────────────
+
+const COOLDOWN_DAYS = 5;
+
+async function getRecentPlayers() {
+  try {
+    const res = await fetch(`${FS_BASE}/meta/edge_of_day?key=${API_KEY}`);
+    if (!res.ok) return [];
+    const doc = await res.json();
+    const arr = doc.fields?.recentPlayers?.arrayValue?.values;
+    if (!Array.isArray(arr)) return [];
+    return arr.map(v => v.stringValue).filter(Boolean);
+  } catch { return []; }
+}
+
+async function addRecentPlayer(playerName) {
+  const existing = await getRecentPlayers();
+  // Keep last COOLDOWN_DAYS players (FIFO)
+  const updated = [...existing, playerName].slice(-COOLDOWN_DAYS);
+  const values = updated.map(s => ({ stringValue: s }));
+  const fields = { recentPlayers: { arrayValue: { values } } };
+  const res = await fetch(
+    `${FS_BASE}/meta/edge_of_day?updateMask.fieldPaths=recentPlayers&key=${API_KEY}`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) }
+  );
+  if (!res.ok) console.error(`[edge-of-day] Failed to update recentPlayers: ${res.status}`);
+}
+
 // ── Fetch best edge pick ────────────────────────────────────────────────────
 
+/**
+ * Pick the best edge player that hasn't been posted in the last COOLDOWN_DAYS.
+ * Walks the ranked list instead of always taking data[0].
+ */
 async function fetchBestEdge() {
   const stat = STAT;
   const season = SEASON;
   const minMin = MIN_MINUTES;
+  const cooldown = await getRecentPlayers();
+
+  /** Find first non-cooldown player in a response's data array. */
+  function pickFromData(data, statLabel) {
+    if (!data || data.length === 0) return null;
+    // Try non-cooldown first
+    const fresh = data.find(p => !cooldown.includes(p.player_name));
+    if (fresh) return { ...fresh, stat: statLabel };
+    // If all in cooldown (unlikely), fall through
+    return null;
+  }
 
   // Try primary stat
   let res = await fetch(`${API_BASE}/api/edge?stat=${stat}&min_minutes=${minMin}&season=${season}`);
   if (!res.ok) throw new Error(`Edge API ${stat} failed: ${res.status}`);
   let body = await res.json();
-
-  if (body.data && body.data.length > 0) {
-    return { ...body.data[0], stat };
-  }
+  let pick = pickFromData(body.data, stat);
+  if (pick) return pick;
 
   // Fallback: alternate stat
   const altStat = stat === 'pts' ? 'pra' : 'pts';
   res = await fetch(`${API_BASE}/api/edge?stat=${altStat}&min_minutes=${minMin}&season=${season}`);
   if (!res.ok) throw new Error(`Edge API ${altStat} failed: ${res.status}`);
   body = await res.json();
-
-  if (body.data && body.data.length > 0) {
-    return { ...body.data[0], stat: altStat };
-  }
+  pick = pickFromData(body.data, altStat);
+  if (pick) return pick;
 
   // Fallback: lower min_minutes
   res = await fetch(`${API_BASE}/api/edge?stat=${stat}&min_minutes=10&season=${season}`);
   if (!res.ok) throw new Error(`Edge API ${stat}/10min failed: ${res.status}`);
   body = await res.json();
+  pick = pickFromData(body.data, stat);
+  if (pick) return pick;
 
+  // Last resort: take data[0] even if on cooldown (better than nothing)
   if (body.data && body.data.length > 0) {
+    console.log(`[edge-of-day] all players on cooldown, using best available`);
     return { ...body.data[0], stat };
   }
 
@@ -148,8 +191,9 @@ async function postEdgeOfDay(client) {
 
   await channel.send({ embeds: [embed], components });
 
-  // Mark as posted
+  // Mark as posted + add player to cooldown
   await setLastPostedDate(etDate);
+  await addRecentPlayer(pick.player_name);
 
   const dir = pick.delta >= 0 ? 'OVER' : 'UNDER';
   console.log(`[edge-of-day] posted ${etDate} player=${pick.player_name} stat=${pick.stat} delta=${pick.delta.toFixed(1)} pick=${dir}`);
