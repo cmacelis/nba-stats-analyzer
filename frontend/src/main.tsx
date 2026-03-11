@@ -18,6 +18,7 @@ const EdgeDetector = React.lazy(() => import('./pages/EdgeDetector'));
 const Pricing          = React.lazy(() => import('./pages/Pricing'));
 const NbaPropAnalyzer   = React.lazy(() => import('./pages/NbaPropAnalyzer'));
 const WnbaPropAnalyzer  = React.lazy(() => import('./pages/WnbaPropAnalyzer'));
+const StartHere         = React.lazy(() => import('./pages/StartHere'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -73,6 +74,10 @@ const router = createBrowserRouter([
       {
         path: 'wnba-prop-analyzer',
         element: <WnbaPropAnalyzer />
+      },
+      {
+        path: 'start-here',
+        element: <StartHere />
       }
     ]
   }

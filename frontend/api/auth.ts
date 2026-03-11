@@ -322,7 +322,7 @@ async function handleDiscordCallback(req: VercelRequest, res: VercelResponse) {
   }
 
   const suffix = roleAssigned ? 'connected' : 'connected_no_role';
-  return res.redirect(302, `${baseUrl}/?discord=${suffix}`);
+  return res.redirect(302, `${baseUrl}/start-here?discord=${suffix}`);
 }
 
 // ── GET _subpath=discord/status ─────────────────────────────────────────────
@@ -345,5 +345,6 @@ async function handleDiscordStatus(req: VercelRequest, res: VercelResponse) {
     connected: !!doc.discordUserId,
     discordUserId: doc.discordUserId || null,
     discordUsername: doc.discordUsername || null,
+    vipActive: user.vipActive,
   });
 }

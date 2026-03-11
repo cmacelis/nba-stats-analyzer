@@ -32,7 +32,7 @@ export default {
 
       // Then fetch data
       const response = await axios.get(`${API_BASE}/api/research/${encodeURIComponent(playerName)}`, {
-        timeout: 5000,
+        timeout: 25000,
       });
 
       const data = response.data;
