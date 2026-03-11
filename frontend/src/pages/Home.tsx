@@ -60,8 +60,8 @@ const FEATURES = [
   },
   {
     icon: Psychology,
-    title: 'AI Research',
-    description: 'AI-powered edge signals and deeper statistical analysis.',
+    title: 'Deep Analysis',
+    description: 'AI-powered edge signals with context on why a player is trending.',
     link: '/compare',
   },
 ] as const;
@@ -134,12 +134,12 @@ const Home: React.FC = () => {
             mb: 2,
           }}
         >
-          Find statistical edges in player props before the market adjusts.
+          Spot player prop edges before the market adjusts.
         </Typography>
 
         <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2.5 }}>
           <Chip label="NBA" color="primary" size="small" />
-          <Chip label="WNBA Coming Soon" variant="outlined" size="small" />
+          <Chip label="WNBA Expanding" variant="outlined" size="small" />
         </Stack>
 
         <Typography
@@ -195,8 +195,11 @@ const Home: React.FC = () => {
 
       {/* ── LIVE EDGE PREVIEW ───────────────────────────────────────────── */}
       <Box sx={{ maxWidth: 800, mx: 'auto', mb: { xs: 6, md: 8 } }}>
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
           Live Edge Feed
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          Delta compares recent performance to season baseline.
         </Typography>
 
         {edgeLoading && (
@@ -458,8 +461,11 @@ const Home: React.FC = () => {
               <BoltOutlined sx={{ color: 'secondary.main' }} />
               <Chip label="VIP Pro" color="secondary" size="small" />
             </Stack>
-            <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-              Unlock the Full Edge Feed
+            <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>
+              Act Faster With Less Noise
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Personalized alerts, deeper signal access, and the full edge feed.
             </Typography>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
