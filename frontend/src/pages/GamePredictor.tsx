@@ -2,11 +2,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControl,
   Grid,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -20,11 +20,10 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowBack, ArrowForward, ContentCopy, Remove } from '@mui/icons-material';
-import { useSearchParams } from 'react-router-dom';
+import { ArrowBack, ArrowForward, ContentCopy, Remove, CompareArrows, KeyboardArrowUp } from '@mui/icons-material';
+import { useSearchParams, Link as RouterLink } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
@@ -34,10 +33,10 @@ import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
 
-function confidenceColor(conf: string): 'success' | 'warning' | 'error' {
+function confidenceColor(conf: string): 'success' | 'warning' | 'default' {
   if (conf === 'high') return 'success';
   if (conf === 'medium') return 'warning';
-  return 'error';
+  return 'default';
 }
 
 function lastName(name: string): string {
@@ -150,15 +149,19 @@ const GamePredictor: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
         <Typography variant="h4">
           Matchup Edge
         </Typography>
-        <Tooltip title="Copy shareable link">
-          <IconButton size="small" onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}>
-            <ContentCopy fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ContentCopy fontSize="small" />}
+          onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}
+          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+        >
+          Share
+        </Button>
       </Box>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         Select each team's star player to predict the game outcome.
@@ -205,9 +208,9 @@ const GamePredictor: React.FC = () => {
           onChange={(_e, val: string | null) => setHomeCourtValue(val)}
           size="small"
         >
-          <ToggleButton value="1">{player1?.name ?? 'Team 1'}</ToggleButton>
+          <ToggleButton value="1">{player1?.team || 'Team 1'}</ToggleButton>
           <ToggleButton value="neutral">Neutral</ToggleButton>
-          <ToggleButton value="2">{player2?.name ?? 'Team 2'}</ToggleButton>
+          <ToggleButton value="2">{player2?.team || 'Team 2'}</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
@@ -408,6 +411,40 @@ const GamePredictor: React.FC = () => {
             stats2={mappedStats2}
             isLoading={false}
           />
+
+          {/* Post-Prediction CTAs */}
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1, mb: 2 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              component={RouterLink}
+              to="/edge"
+              size="small"
+              sx={{ textTransform: 'none' }}
+            >
+              View Edge Feed →
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<CompareArrows />}
+              component={RouterLink}
+              to={`/compare?p1=${player1.id}&p2=${player2.id}`}
+              size="small"
+              sx={{ textTransform: 'none' }}
+            >
+              Full Player Comparison
+            </Button>
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<KeyboardArrowUp />}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              sx={{ textTransform: 'none', color: 'text.secondary' }}
+            >
+              New Matchup
+            </Button>
+          </Box>
         </>
       )}
 
