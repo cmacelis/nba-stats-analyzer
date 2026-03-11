@@ -38,7 +38,7 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report    = await generateReport(playerName, prop, mentions, sentiment, statContext);
-    res.json({ ...report, statContext, cached: false, _v: 'fb345e9+prop-fix' });
+    res.json({ ...report, statContext, cached: false });
   } catch (err) {
     console.error('[research] error:', err);
     if (!res.headersSent) {
