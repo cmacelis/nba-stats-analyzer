@@ -179,7 +179,7 @@ export async function sendMagicLinkEmail(
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
   const link = `${baseUrl}/api/auth?token=${token}`;
-  const from = process.env.EMAIL_FROM || 'EdgeDetector.ai <onboarding@resend.dev>';
+  const from = process.env.EMAIL_FROM || 'EdgeDetector <no-reply@edgedetector.ai>';
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -189,6 +189,7 @@ export async function sendMagicLinkEmail(
     },
     body: JSON.stringify({
       from,
+      reply_to: 'support@edgedetector.ai',
       to: email,
       subject: 'Your EdgeDetector.ai sign-in link',
       html: [
@@ -198,6 +199,8 @@ export async function sendMagicLinkEmail(
         '<p style="color:#666;font-size:14px">This link expires in 15 minutes. If you didn\'t request this, ignore this email.</p>',
         '</div>',
       ].join(''),
+      headers: [{ name: 'List-Unsubscribe', value: '<mailto:support@edgedetector.ai>' }],
+      tags: [{ name: 'category', value: 'magic_link' }],
     }),
   });
 
