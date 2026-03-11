@@ -130,7 +130,9 @@ function buildEmbed(pick) {
     fields: [
       {
         name:   `Pick: ${pick.player_name} \u2014 ${label} ${dir}`,
-        value:  `Season Avg: **${pick.season_avg.toFixed(1)}** | L5 Avg: **${pick.recent_avg.toFixed(1)}** | \u0394: **${sign}${pick.delta.toFixed(1)}**`,
+        value:  pick.prop_line
+          ? `Line: **${pick.prop_line}** (${pick.line_source || 'sportsbook'}) | L5 Avg: **${pick.recent_avg.toFixed(1)}** | \u0394: **${sign}${pick.delta.toFixed(1)}**`
+          : `Season Avg: **${pick.season_avg.toFixed(1)}** | L5 Avg: **${pick.recent_avg.toFixed(1)}** | \u0394: **${sign}${pick.delta.toFixed(1)}**`,
         inline: false,
       },
       { name: 'Team',     value: pick.team_abbrev,                    inline: true },

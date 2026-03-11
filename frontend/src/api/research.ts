@@ -14,6 +14,9 @@ export interface StatContext {
   streak: number;        // +N = N consecutive overs, -N = N consecutive unders
   recentGames: number[]; // last 10 values, most recent first
   gamesPlayed: number;
+  lineSource?: string | null;   // 'draftkings' | 'fanduel' | 'season_avg'
+  overOdds?:   number | null;
+  underOdds?:  number | null;
 }
 
 export interface ResearchReport {

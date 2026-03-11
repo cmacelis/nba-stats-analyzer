@@ -143,7 +143,9 @@ function StatContextRow({ ctx, propType }: { ctx: StatContext; propType: PropTyp
       {/* Key metrics row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1.5 }}>
         <Box>
-          <Typography variant="caption" color="text.secondary" display="block">Line</Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            Line{ctx.lineSource && ctx.lineSource !== 'season_avg' ? ` (${ctx.lineSource})` : ''}
+          </Typography>
           <Typography variant="body2" fontWeight={700}>{ctx.propLine}</Typography>
         </Box>
         <Box>

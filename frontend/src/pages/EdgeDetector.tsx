@@ -113,7 +113,7 @@ const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes
   const [pickStat,   setPickStat]   = useState<'pts' | 'reb' | 'ast' | 'pra'>(stat as 'pts' | 'pra');
   const [direction,  setDirection]  = useState<'over' | 'under'>(initialDirection ?? (entry.delta > 0 ? 'over' : 'under'));
   const [tier,       setTier]       = useState<'high' | 'medium' | 'low'>(autoTier(entry.delta));
-  const [line,       setLine]       = useState('');
+  const [line,       setLine]       = useState(entry.prop_line ? String(entry.prop_line) : '');
   const [notes,      setNotes]      = useState('');
   const [toast,      setToast]      = useState<string | null>(null);
 
@@ -234,7 +234,7 @@ const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes
             type="number"
             value={line}
             onChange={e => setLine(e.target.value)}
-            placeholder={entry.season_avg.toFixed(1)}
+            placeholder={entry.prop_line ? `${entry.prop_line} (${entry.line_source})` : entry.season_avg.toFixed(1)}
             InputProps={{
               startAdornment: <InputAdornment position="start">O/U</InputAdornment>,
               endAdornment: line.trim() ? (
@@ -313,7 +313,13 @@ const EdgeRow: React.FC<{
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <PlayerAvatar name={entry.player_name} photoUrl={entry.photo_url ?? undefined} size={36} />
           <Box>
-            <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.2 }}>{entry.player_name}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.2 }}>{entry.player_name}</Typography>
+              {entry.has_game_today && (
+                <Chip size="small" label="LIVE" color="success"
+                  sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, '& .MuiChip-label': { px: 0.5 } }} />
+              )}
+            </Box>
             <Typography variant="caption" color="text.secondary">{entry.team_abbrev} · {entry.games_played}G</Typography>
           </Box>
         </Box>
@@ -323,6 +329,15 @@ const EdgeRow: React.FC<{
       </TableCell>
       <TableCell align="center" sx={{ fontWeight: 600 }}>
         <Tooltip title={`Last 5 avg ${statLabel}`}><span>{entry.recent_avg.toFixed(1)}</span></Tooltip>
+      </TableCell>
+      <TableCell align="center">
+        {entry.prop_line ? (
+          <Tooltip title={`${entry.line_source} line`}>
+            <Typography variant="body2" fontWeight={600} color="primary.main">{entry.prop_line}</Typography>
+          </Tooltip>
+        ) : (
+          <Typography variant="body2" color="text.disabled">—</Typography>
+        )}
       </TableCell>
       <TableCell align="center">
         <Chip size="small"
@@ -437,7 +452,7 @@ const EdgeDetector: React.FC = () => {
         <Typography variant="h4" fontWeight={700}>Edge Feed</Typography>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Players ranked by momentum discrepancy — season average vs last 5 games.
+        Players ranked by edge — recent performance vs sportsbook lines (or season average).
         Click a row to compare; click <AddCircleOutline sx={{ fontSize: 14, verticalAlign: 'middle' }} /> to track a pick.
       </Typography>
 
@@ -516,6 +531,7 @@ const EdgeDetector: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Player</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Season {statLabel}</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>L5 {statLabel}</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>Line</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Δ</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Trend</TableCell>
                 <TableCell sx={{ width: 44 }} />
@@ -547,6 +563,7 @@ const EdgeDetector: React.FC = () => {
                   </TableCell>
                   <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.400', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 44, height: 22, bgcolor: 'grey.400', borderRadius: 3, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 50, height: 24, bgcolor: 'grey.400', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell />

@@ -7,7 +7,12 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
-import { applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON } from './_lib.js';
+import {
+  applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON,
+  getTodaysGames, getAllTodaysProps, getBatchSeasonAverages,
+  getPlayerIdsPlayingToday,
+  type PlayerProp, type TodayGame,
+} from './_lib.js';
 import { AdapterFactory } from './_adapters/AdapterFactory.js';
 
 const BDL_KEY = process.env.BALL_DONT_LIE_API_KEY;
@@ -100,6 +105,11 @@ export interface EdgeEntry {
   delta: number;
   last5: number[];
   games_played: number;
+  prop_line?:      number | null;
+  line_source?:    string | null;
+  over_odds?:      number | null;
+  under_odds?:     number | null;
+  has_game_today?: boolean;
 }
 
 interface UpstreamError {
@@ -155,12 +165,26 @@ export async function computeEdgeFeed(
 ): Promise<EdgeEntry[]> {
   const allPlayers = await getActivePlayers();
 
-  // Sample up to 150 players per call (rotating via daily shuffle) to keep
-  // API calls manageable while covering a wide cross-section of the league.
-  const SAMPLE_SIZE = 150;
-  const players = allPlayers.length > SAMPLE_SIZE
-    ? dailyShuffle(allPlayers).slice(0, SAMPLE_SIZE)
-    : allPlayers;
+  // Fetch today's games + props in parallel (non-fatal)
+  const [todaysGames, allProps] = await Promise.all([
+    getTodaysGames().catch(() => [] as TodayGame[]),
+    getAllTodaysProps().catch(() => new Map<string, PlayerProp>()),
+  ]);
+
+  const playingToday = getPlayerIdsPlayingToday(allPlayers, todaysGames);
+
+  // Player selection: prefer today's players; supplement with shuffle sample
+  const todaysPlayers = allPlayers.filter(p => playingToday.has(p.id));
+  let players: ActivePlayer[];
+  if (todaysPlayers.length >= 10) {
+    const extras = dailyShuffle(allPlayers.filter(p => !playingToday.has(p.id))).slice(0, 50);
+    players = [...todaysPlayers, ...extras];
+  } else {
+    const SAMPLE_SIZE = 150;
+    players = allPlayers.length > SAMPLE_SIZE
+      ? dailyShuffle(allPlayers).slice(0, SAMPLE_SIZE)
+      : allPlayers;
+  }
   const ids = players.map(p => p.id);
 
   if (debugOut) {
@@ -180,11 +204,7 @@ export async function computeEdgeFeed(
     return { status, message: err?.message ?? String(err), url: `${BDL_BASE}${path}`, body_preview: bodyStr };
   }
 
-  // Compute season baseline directly from game logs (BDL /season_averages only
-  // accepts a single player_id — not batch-compatible).
-  //   season_avg = mean of ALL fetched games for the player
-  //   recent_avg = mean of the 5 most recent games
-  // Fetch 5 pages in parallel (500 game logs) for the 150-player sample.
+  // Batch season averages (GOAT tier) + game logs for L5 in parallel
   let statsUpstreamErr: UpstreamError | null = null;
 
   const statsParams = {
@@ -195,23 +215,27 @@ export async function computeEdgeFeed(
     direction:      'desc',
   };
 
-  const STATS_PAGES = 5;
-  const statsResults = await Promise.all(
-    Array.from({ length: STATS_PAGES }, (_, i) =>
+  const STATS_PAGES = 3; // Reduced: only need recent games now
+  const [seasonAvgMap, ...statsResults] = await Promise.all([
+    getBatchSeasonAverages(ids, season).catch(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return new Map<number, Record<string, any>>();
+    }),
+    ...Array.from({ length: STATS_PAGES }, (_, i) =>
       bdlBatch('/stats', { ...statsParams, page: i + 1 })
         .catch((err: unknown) => {
           if (i === 0) statsUpstreamErr = captureErr(err, '/stats');
           return { data: [] };
         }),
     ),
-  );
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const statsResData: any[] = statsResults.flatMap(r => r?.data ?? []);
 
   if (debugOut) {
-    debugOut.season_averages_count        = 0; // removed — computed from logs
-    debugOut.season_averages_empty_reason = null;
+    debugOut.season_averages_count        = seasonAvgMap.size;
+    debugOut.season_averages_empty_reason = seasonAvgMap.size === 0 ? 'empty' : null;
     debugOut.season_averages_error        = null;
     debugOut.stats_logs_count_total       = statsResData.length;
     debugOut.stats_error                  = statsUpstreamErr;
@@ -244,27 +268,57 @@ export async function computeEdgeFeed(
   const entries: EdgeEntry[] = [];
   for (const p of players) {
     const games = gameMap.get(p.id) ?? [];
-    if (games.length < 3) continue;
+    const seasonRow = seasonAvgMap.get(p.id);
 
-    // season_avg = mean of ALL fetched games (season-to-date baseline from logs)
-    const allVals   = games.map(g => gameVal(g, stat));
-    const seasonAvg = Math.round((allVals.reduce((a, b) => a + b, 0) / allVals.length) * 10) / 10;
+    // Need either batch season avg OR enough game logs
+    if (!seasonRow && games.length < 3) continue;
 
-    // recent_avg = mean of 5 most recent games (array is date-desc)
-    const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
+    // Season avg from batch endpoint (preferred) or computed from logs
+    let seasonAvg: number;
+    if (seasonRow) {
+      seasonAvg = stat === 'pra'
+        ? (Number(seasonRow.pts) || 0) + (Number(seasonRow.reb) || 0) + (Number(seasonRow.ast) || 0)
+        : Number(seasonRow.pts) || 0;
+    } else {
+      const allVals = games.map(g => gameVal(g, stat));
+      seasonAvg = Math.round((allVals.reduce((a, b) => a + b, 0) / allVals.length) * 10) / 10;
+    }
+    if (seasonAvg <= 0) continue;
+
+    // Recent avg from game logs (L5)
+    const recentVals = games.slice(0, 5).map(g => gameVal(g, stat));
+    if (recentVals.length < 3) {
+      // If we have season avg but no recent logs, skip (no delta to compute)
+      continue;
+    }
+
+    const last5Vals = recentVals.map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
+    // Real prop line lookup
+    const propStatKey = stat === 'pra' ? 'pra' : 'pts';
+    const realProp = allProps.get(`${p.id}:${propStatKey}`) ?? null;
+
+    // Delta is recent vs real prop line (if available), otherwise vs season avg
+    const baseline = realProp ? realProp.line_value : seasonAvg;
+    const delta = Math.round((recentAvg - baseline) * 10) / 10;
+
     entries.push({
-      player_id:    p.id,
-      player_name:  `${p.first_name} ${p.last_name}`,
-      team:         p.team?.full_name    ?? '—',
-      team_abbrev:  p.team?.abbreviation ?? '—',
-      photo_url:    null,
-      season_avg:   seasonAvg,
-      recent_avg:   recentAvg,
-      delta:        Math.round((recentAvg - seasonAvg) * 10) / 10,
-      last5:        last5Vals,
-      games_played: games.length,
+      player_id:      p.id,
+      player_name:    `${p.first_name} ${p.last_name}`,
+      team:           p.team?.full_name    ?? '—',
+      team_abbrev:    p.team?.abbreviation ?? '—',
+      photo_url:      null,
+      season_avg:     Math.round(seasonAvg * 10) / 10,
+      recent_avg:     recentAvg,
+      delta,
+      last5:          last5Vals,
+      games_played:   seasonRow?.games_played ?? games.length,
+      prop_line:      realProp?.line_value ?? null,
+      line_source:    realProp?.vendor ?? null,
+      over_odds:      realProp?.over_odds ?? null,
+      under_odds:     realProp?.under_odds ?? null,
+      has_game_today: playingToday.has(p.id),
     });
   }
 
@@ -272,7 +326,12 @@ export async function computeEdgeFeed(
     debugOut.final_candidates_before_sort = entries.length;
   }
 
-  entries.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  // Sort: today's players first, then by |delta| descending
+  entries.sort((a, b) => {
+    if (a.has_game_today && !b.has_game_today) return -1;
+    if (!a.has_game_today && b.has_game_today) return 1;
+    return Math.abs(b.delta) - Math.abs(a.delta);
+  });
   const result = entries.slice(0, 20);
 
   if (debugOut) {

@@ -11,11 +11,30 @@ import axios from 'axios';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const VERSION    = '2026-02-23-research-hotfix-1';
-export const BDL_BASE   = 'https://api.balldontlie.io/v1';
-export const BDL_SEASON = 2025;
+export const BDL_BASE    = 'https://api.balldontlie.io/v1';
+export const BDL_BASE_V2 = 'https://api.balldontlie.io/v2';
+export const BDL_SEASON  = 2025;
 
 const BDL_KEY       = process.env.BALL_DONT_LIE_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+
+// ── Tiered in-memory cache ───────────────────────────────────────────────────
+
+interface CacheEntry<T> { data: T; expiresAt: number }
+const _cache = new Map<string, CacheEntry<unknown>>();
+
+function getCached<T>(key: string): T | null {
+  const e = _cache.get(key);
+  if (!e || e.expiresAt < Date.now()) { _cache.delete(key); return null; }
+  return e.data as T;
+}
+function setCached<T>(key: string, data: T, ttlMs: number): void {
+  _cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+const CACHE_GAMES      = 60 * 60 * 1000;       // 1h
+const CACHE_PROPS      = 10 * 60 * 1000;       // 10min
+const CACHE_SEASON_AVG = 4 * 60 * 60 * 1000;   // 4h
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 
@@ -40,6 +59,16 @@ export function applyCors(req: VercelRequest, res: VercelResponse): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function bdlGet(path: string, params: Record<string, unknown> = {}): Promise<any> {
   const res = await axios.get(`${BDL_BASE}${path}`, {
+    params,
+    headers: { Authorization: BDL_KEY },
+    timeout: 10000,
+  });
+  return res.data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function bdlGetV2(path: string, params: Record<string, unknown> = {}): Promise<any> {
+  const res = await axios.get(`${BDL_BASE_V2}${path}`, {
     params,
     headers: { Authorization: BDL_KEY },
     timeout: 10000,
@@ -95,6 +124,9 @@ export interface StatContext {
   streak:      number;
   recentGames: number[];
   gamesPlayed: number;
+  lineSource?: string | null;   // 'draftkings' | 'fanduel' | 'season_avg'
+  overOdds?:   number | null;
+  underOdds?:  number | null;
 }
 
 const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
@@ -172,12 +204,161 @@ export async function getSeasonAverages(playerId: number, season: number): Promi
   };
 }
 
+// ── Today's games + player props (GOAT tier) ─────────────────────────────────
+
+export interface TodayGame {
+  id: number;
+  date: string;
+  status: string;
+  home_team: { id: number; abbreviation: string; full_name: string };
+  visitor_team: { id: number; abbreviation: string; full_name: string };
+}
+
+export async function getTodaysGames(): Promise<TodayGame[]> {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const ck = `games:${today}`;
+  const hit = getCached<TodayGame[]>(ck);
+  if (hit) return hit;
+
+  const data = await bdlGet('/games', { 'dates[]': today, per_page: 25 });
+  const games: TodayGame[] = data?.data ?? [];
+  setCached(ck, games, CACHE_GAMES);
+  return games;
+}
+
+export function getPlayerIdsPlayingToday(
+  players: Array<{ id: number; team?: { id: number } }>,
+  todaysGames: TodayGame[],
+): Set<number> {
+  const teamIds = new Set<number>();
+  for (const g of todaysGames) {
+    teamIds.add(g.home_team.id);
+    teamIds.add(g.visitor_team.id);
+  }
+  const out = new Set<number>();
+  for (const p of players) { if (p.team && teamIds.has(p.team.id)) out.add(p.id); }
+  return out;
+}
+
+export interface PlayerProp {
+  player_id:  number;
+  vendor:     string;
+  prop_type:  string;        // internal key: 'pts','reb','ast','pra', etc.
+  line_value: number;
+  over_odds:  number;
+  under_odds: number;
+}
+
+const BDL_PROP_MAP: Record<string, string> = {
+  points:   'pts',
+  rebounds: 'reb',
+  assists:  'ast',
+  threes:   'fg3m',
+  player_points_rebounds_assists: 'pra',
+};
+
+export async function getPlayerProps(gameId: number): Promise<Map<string, PlayerProp>> {
+  const ck = `props:${gameId}`;
+  const hit = getCached<Map<string, PlayerProp>>(ck);
+  if (hit) return hit;
+
+  try {
+    const data = await bdlGetV2('/odds/player_props', { game_id: gameId, per_page: 100 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = data?.data ?? [];
+    const m = new Map<string, PlayerProp>();
+    for (const o of rows) {
+      const sk = BDL_PROP_MAP[o.prop_type];
+      if (!sk) continue;
+      const mk = `${o.player_id}:${sk}`;
+      const existing = m.get(mk);
+      // Prefer draftkings → fanduel → first vendor
+      if (!existing || o.vendor === 'draftkings' ||
+          (o.vendor === 'fanduel' && existing.vendor !== 'draftkings')) {
+        m.set(mk, {
+          player_id:  o.player_id,
+          vendor:     o.vendor,
+          prop_type:  sk,
+          line_value: parseFloat(o.line_value),
+          over_odds:  o.market?.over_odds ?? 0,
+          under_odds: o.market?.under_odds ?? 0,
+        });
+      }
+    }
+    setCached(ck, m, CACHE_PROPS);
+    return m;
+  } catch (err) {
+    console.warn('[props] getPlayerProps error game', gameId, (err as Error).message);
+    return new Map();
+  }
+}
+
+export async function getAllTodaysProps(): Promise<Map<string, PlayerProp>> {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const ck = `allprops:${today}`;
+  const hit = getCached<Map<string, PlayerProp>>(ck);
+  if (hit) return hit;
+
+  const games = await getTodaysGames();
+  if (games.length === 0) return new Map();
+
+  const maps = await Promise.all(games.map(g => getPlayerProps(g.id)));
+  const merged = new Map<string, PlayerProp>();
+  for (const m of maps) { for (const [k, v] of m) merged.set(k, v); }
+  setCached(ck, merged, CACHE_PROPS);
+  return merged;
+}
+
+// ── Batch season averages (GOAT tier) ────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getBatchSeasonAverages(playerIds: number[], season: number): Promise<Map<number, Record<string, any>>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = new Map<number, Record<string, any>>();
+  if (playerIds.length === 0) return result;
+
+  const CHUNK = 25;
+  const chunks: number[][] = [];
+  for (let i = 0; i < playerIds.length; i += CHUNK) chunks.push(playerIds.slice(i, i + CHUNK));
+
+  const responses = await Promise.all(
+    chunks.map(chunk => {
+      const sp = new URLSearchParams();
+      sp.append('season', String(season));
+      sp.append('season_type', 'regular');
+      sp.append('type', 'base');
+      for (const id of chunk) sp.append('player_ids[]', String(id));
+      return axios.get(`${BDL_BASE}/season_averages/general?${sp.toString()}`, {
+        headers: { Authorization: BDL_KEY },
+        timeout: 15000,
+      }).then(r => r.data).catch(err => {
+        console.warn('[savg] batch chunk failed:', (err as Error).message);
+        return { data: [] };
+      });
+    }),
+  );
+
+  for (const resp of responses) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = resp?.data ?? [];
+    for (const row of rows) {
+      const pid = row.player_id ?? row.player?.id;
+      const stats = row.stats ?? row;
+      if (pid) result.set(pid, { ...stats, games_played: stats.games_played ?? row.games_played });
+    }
+  }
+  return result;
+}
+
+// ── Stat context (research) ──────────────────────────────────────────────────
+
 export async function fetchStatContext(playerName: string, propType: string): Promise<StatContext | null> {
   try {
     const player = await findPlayer(playerName);
     if (!player) return null;
 
-    const [avgData, logsData] = await Promise.all([
+    // Fetch season avg, game logs, AND today's real prop lines in parallel
+    const [avgData, logsData, allProps] = await Promise.all([
       bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }).catch(() => ({ data: [] })),
       bdlGet('/stats', {
         'player_ids[]': player.id,
@@ -186,6 +367,7 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
         sort: 'date',
         direction: 'desc',
       }),
+      getAllTodaysProps().catch(() => new Map<string, PlayerProp>()),
     ]);
 
     const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
@@ -221,18 +403,27 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
 
     if (values.length < 3) return null;
 
+    // Look up real sportsbook prop line; fall back to season avg
+    const internalStat = statKey ?? (propType === 'combined' ? 'pra' : null);
+    const propKey = internalStat ? `${player.id}:${internalStat}` : null;
+    const realProp = propKey ? (allProps.get(propKey) ?? null) : null;
+    const propLine = realProp ? realProp.line_value : Math.round(seasonAvg * 10) / 10;
+
     const recentAvg5  = values.slice(0, 5).reduce((a, b) => a + b, 0) / Math.min(5, values.length);
     const recentAvg10 = values.reduce((a, b) => a + b, 0) / values.length;
 
     return {
-      propLine:    Math.round(seasonAvg   * 10) / 10,
+      propLine,
       recentAvg5:  Math.round(recentAvg5  * 10) / 10,
       recentAvg10: Math.round(recentAvg10 * 10) / 10,
       stdDev:      Math.round(calcStdDev(values) * 10) / 10,
-      overHitRate: Math.round((values.filter(v => v > seasonAvg).length / values.length) * 100) / 100,
-      streak:      calcStreak(values, seasonAvg),
+      overHitRate: Math.round((values.filter(v => v > propLine).length / values.length) * 100) / 100,
+      streak:      calcStreak(values, propLine),
       recentGames: values,
       gamesPlayed: Number(avgRow.games_played) || values.length,
+      lineSource:  realProp ? realProp.vendor : 'season_avg',
+      overOdds:    realProp?.over_odds ?? null,
+      underOdds:   realProp?.under_odds ?? null,
     };
   } catch (err) {
     console.error('[research] fetchStatContext error:', (err as Error).message);
@@ -422,10 +613,10 @@ function simulatedReport(
   return {
     playerName, propType, prediction, confidence,
     reasoning: ctx
-      ? `Simulated: L5 avg ${r1(ctx.recentAvg5)} vs line ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)}), hit rate ${Math.round(ctx.overHitRate * 100)}% over last 10.`
+      ? `Simulated: L5 avg ${r1(ctx.recentAvg5)} vs ${ctx.lineSource && ctx.lineSource !== 'season_avg' ? ctx.lineSource + ' line' : 'line'} ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)}), hit rate ${Math.round(ctx.overHitRate * 100)}% over last 10.`
       : `Simulated: insufficient data for ${playerName} ${propType}.`,
     keyFactors: ctx ? [
-      `L5 avg: ${r1(ctx.recentAvg5)} vs line ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)})`,
+      `L5 avg: ${r1(ctx.recentAvg5)} vs ${ctx.lineSource && ctx.lineSource !== 'season_avg' ? ctx.lineSource + ' line' : 'line'} ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)})`,
       `Over hit rate L10: ${Math.round(ctx.overHitRate * 100)}%`,
       `Consistency: ${consistencyLabel(ctx.stdDev)} (σ=${r1(ctx.stdDev)})`,
       streakLabel(ctx.streak),
@@ -491,7 +682,13 @@ function buildPrompt(
     ? `Score: ${(sentiment.overall_score * 100).toFixed(0)}% | Volume: ${sentiment.volume} | Keywords: ${sentiment.keywords.join(', ')}`
     : 'No sentiment data';
   const top = mentions.slice(0, 5).map(m => `- ${m.content} (${m.source})`).join('\n');
-  return `You are an expert NBA prop betting analyst focused on finding edges.\nPlayer: ${playerName} | Prop: ${propType} | Line: ${r1(ctx.propLine)}\nLast 10 games: ${games}\nHit rate L10: ${Math.round(ctx.overHitRate * 100)}% | L5 avg: ${r1(ctx.recentAvg5)} (${sign(d5)}) | L10 avg: ${r1(ctx.recentAvg10)} (${sign(d10)})\nStd dev: ${r1(ctx.stdDev)} (${consistencyLabel(ctx.stdDev)}) | Streak: ${streakLabel(ctx.streak)}\nSentiment: ${st}\n${top}\nRespond ONLY with valid JSON:\n{"prediction":"over"|"under"|"neutral","confidence":0-100,"reasoning":"<2-3 sentences>","key_factors":["..."],"sentiment_weight":"<e.g. Low (10%)>","stat_weight":"<e.g. Primary (90%)>"}`;
+  const lineLabel = ctx.lineSource && ctx.lineSource !== 'season_avg'
+    ? `${r1(ctx.propLine)} (${ctx.lineSource})`
+    : `${r1(ctx.propLine)} (est. from season avg)`;
+  const oddsStr = ctx.overOdds != null && ctx.underOdds != null
+    ? ` | Over ${ctx.overOdds > 0 ? '+' : ''}${ctx.overOdds} / Under ${ctx.underOdds > 0 ? '+' : ''}${ctx.underOdds}`
+    : '';
+  return `You are an expert NBA prop betting analyst focused on finding edges.\nPlayer: ${playerName} | Prop: ${propType} | Line: ${lineLabel}${oddsStr}\nLast 10 games: ${games}\nHit rate L10: ${Math.round(ctx.overHitRate * 100)}% | L5 avg: ${r1(ctx.recentAvg5)} (${sign(d5)}) | L10 avg: ${r1(ctx.recentAvg10)} (${sign(d10)})\nStd dev: ${r1(ctx.stdDev)} (${consistencyLabel(ctx.stdDev)}) | Streak: ${streakLabel(ctx.streak)}\nSentiment: ${st}\n${top}\nRespond ONLY with valid JSON:\n{"prediction":"over"|"under"|"neutral","confidence":0-100,"reasoning":"<2-3 sentences>","key_factors":["..."],"sentiment_weight":"<e.g. Low (10%)>","stat_weight":"<e.g. Primary (90%)>"}`;
 }
 
 // ── NBA headshots ─────────────────────────────────────────────────────────────

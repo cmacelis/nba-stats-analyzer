@@ -182,6 +182,11 @@ export interface EdgeEntry {
   delta: number;
   last5: number[];
   games_played: number;
+  prop_line?:      number | null;
+  line_source?:    string | null;
+  over_odds?:      number | null;
+  under_odds?:     number | null;
+  has_game_today?: boolean;
 }
 
 export interface EdgeFeedResponse {
