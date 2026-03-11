@@ -133,6 +133,10 @@ const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
   points:   'pts',
   rebounds: 'reb',
   assists:  'ast',
+  // Adapter also passes short keys (StatKey format) — accept both
+  pts: 'pts',
+  reb: 'reb',
+  ast: 'ast',
 };
 
 function parseMins(min: string | number): number {
