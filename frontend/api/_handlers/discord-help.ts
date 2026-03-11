@@ -19,7 +19,7 @@ export async function discordHelpHandler(req: VercelRequest, res: VercelResponse
     || 'Set SITE_URL env var to enable deep links.';
 
   const embed = {
-    title:       '📖 NBA Edge Detector — VIP Alerts Room',
+    title:       '📖 EdgeDetector.ai — VIP Alerts Room',
     color:       0x6366f1, // indigo
     description: 'Automated alerts for NBA player **prop betting edges** — last-5-game average vs season average. Pin this message for quick reference.',
     fields: [
@@ -76,7 +76,7 @@ export async function discordHelpHandler(req: VercelRequest, res: VercelResponse
         inline: false,
       },
     ],
-    footer:    { text: 'NBA Edge Detector · pin this message · re-run /help after config changes' },
+    footer:    { text: 'EdgeDetector.ai · pin this message · re-run /help after config changes' },
     timestamp: new Date().toISOString(),
   };
 

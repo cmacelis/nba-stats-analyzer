@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test — verifies the NBA Edge Detector API is routing correctly.
+# Smoke test — verifies the EdgeDetector.ai API is routing correctly.
 # Run: bash frontend/scripts/smoke-test.sh [optional-base-url]
 #
 # If no URL is provided, tests the production deployment.

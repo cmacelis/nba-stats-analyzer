@@ -114,7 +114,7 @@ export function formatAlertData(match, stat, edgeFeedUrl) {
         { name: 'League', value: rule.league.toUpperCase(), inline: true },
         { name: 'Min Minutes', value: `${rule.minMinutes}`, inline: true },
       ],
-      footer: { text: 'Edge Detector Personal Alert' },
+      footer: { text: 'EdgeDetector.ai Alert' },
       timestamp: new Date().toISOString(),
     },
   };

@@ -66,7 +66,7 @@ export async function discordResultsHandler(req: VercelRequest, res: VercelRespo
           ? [{ name: '\u200b', value: `[📈 Dashboard](${dashboardUrl})`, inline: false }]
           : []),
       ],
-      footer:    { text: 'NBA Edge Detector · bets only · pushes excluded from hit rate' },
+      footer:    { text: 'EdgeDetector.ai · bets only · pushes excluded from hit rate' },
       timestamp: new Date().toISOString(),
     };
 

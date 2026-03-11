@@ -139,7 +139,7 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
       { name: 'L5 Scores',   value: entry.last5.join(' · '),              inline: false },
       ...(linkParts.length ? [{ name: '\u200b', value: linkParts.join('  ·  '), inline: false }] : []),
     ],
-    footer: { text: `NBA Edge Detector · ${new Date().toUTCString()}` },
+    footer: { text: `EdgeDetector.ai [NBA] · ${new Date().toUTCString()}` },
   };
 }
 

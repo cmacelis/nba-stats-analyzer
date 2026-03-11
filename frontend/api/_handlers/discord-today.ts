@@ -69,7 +69,7 @@ function buildStatEmbed(
       ...playerFields,
       ...(feedUrl ? [{ name: '\u200b', value: `[🔗 Full Edge Feed](${feedUrl})`, inline: false }] : []),
     ],
-    footer:    { text: `NBA Edge Detector · min ${minMinutes} min/game · via BallDontLie` },
+    footer:    { text: `EdgeDetector.ai [NBA] · min ${minMinutes} min/game · via BallDontLie` },
     timestamp: new Date().toISOString(),
   };
 }
@@ -96,7 +96,7 @@ function buildNoPicksEmbed(stat: StatKey, dateStr: string): object {
     title:       `📊 Today's ${label} Edges`,
     color:       STAT_COLOR[stat],
     description: `${dateStr}\n\nNo picks available yet. Check back after lineups lock.`,
-    footer:      { text: 'NBA Edge Detector' },
+    footer:      { text: 'EdgeDetector.ai' },
     timestamp:   new Date().toISOString(),
   };
 }

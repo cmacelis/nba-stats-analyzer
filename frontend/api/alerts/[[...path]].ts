@@ -145,7 +145,7 @@ function buildEmbed(entry: EdgeEntry, stat: StatKey, direction: Direction, minMi
       { name: 'L5 Scores',   value: entry.last5.join(' \u00B7 '),       inline: false },
       ...(linkParts.length ? [{ name: '\u200b', value: linkParts.join('  \u00B7  '), inline: false }] : []),
     ],
-    footer: { text: `${league.toUpperCase()} Edge Detector \u00B7 ${new Date().toUTCString()}` },
+    footer: { text: `EdgeDetector.ai [${league.toUpperCase()}] \u00B7 ${new Date().toUTCString()}` },
   };
 }
 

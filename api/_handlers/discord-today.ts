@@ -68,7 +68,7 @@ function buildStatEmbed(
       ...playerFields,
       ...(feedUrl ? [{ name: '\u200b', value: `[🔗 Full Edge Feed](${feedUrl})`, inline: false }] : []),
     ],
-    footer:    { text: `NBA Edge Detector · min ${minMinutes} min/game · via BallDontLie` },
+    footer:    { text: `EdgeDetector.ai [NBA] · min ${minMinutes} min/game · via BallDontLie` },
     timestamp: new Date().toISOString(),
   };
 }

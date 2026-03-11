@@ -112,7 +112,7 @@ async function sendAlertDM(client, alert) {
       { name: 'League',     value: (alert.league || 'nba').toUpperCase(), inline: true },
       { name: 'Rule ID',    value: String(alert.ruleId || ''), inline: true },
     ],
-    footer: { text: 'Edge Detector Personal Alert' },
+    footer: { text: 'EdgeDetector.ai Alert' },
     timestamp: new Date().toISOString(),
   };
 
