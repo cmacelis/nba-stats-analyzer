@@ -310,8 +310,56 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Stack>
         </Toolbar>
       </AppBar>
-      <Container 
-        sx={{ 
+      {/* VIP onboarding banner */}
+      {user?.vipActive && (
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            textAlign: 'center',
+            bgcolor: user.discordConnected ? 'success.dark' : 'primary.dark',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            flexWrap: 'wrap',
+          }}
+        >
+          {user.discordConnected ? (
+            <Typography variant="body2" fontWeight={600}>
+              VIP Active — Alerts ready. Use <strong>/track</strong> in Discord.
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="body2" fontWeight={600}>
+                Step 2 of 2: Connect Discord to activate VIP Pro role + alerts
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<DiscordIcon size={16} />}
+                onClick={() => {
+                  window.location.href = '/api/auth?_subpath=discord/start';
+                }}
+                sx={{
+                  bgcolor: '#5865F2',
+                  '&:hover': { bgcolor: '#4752C4' },
+                  fontWeight: 700,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  px: 2,
+                }}
+              >
+                Connect Discord
+              </Button>
+            </>
+          )}
+        </Box>
+      )}
+
+      <Container
+        sx={{
           mt: 4,
           animation: `${fadeIn} 0.5s ease-out 0.2s`,
           animationFillMode: 'backwards'
