@@ -369,10 +369,81 @@ export async function computeEdgeFeed(
   return result;
 }
 
+// ── shareable card (HTML with dynamic OG tags) ──────────────────────────────
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function serveCard(req: VercelRequest, res: VercelResponse): void {
+  const p = (req.query.p as string) || '';
+  const n = (req.query.n as string) || 'Player';
+  const t = (req.query.t as string) || '';
+  const s = (req.query.s as string) || 'pts';
+  const d = (req.query.d as string) || '0';
+  const a = (req.query.a as string) || '0';
+  const r = (req.query.r as string) || '0';
+  const l = (req.query.l as string) || '';
+
+  const delta = parseFloat(d);
+  const isOver = delta > 0;
+  const direction = isOver ? 'Over' : 'Under';
+  const arrow = isOver ? '\u2191' : '\u2193';
+  const statLabel = s === 'pra' ? 'PRA' : 'PTS';
+  const sign = delta > 0 ? '+' : '';
+  const lineStr = l ? ` | Line: ${l}` : '';
+
+  const title = `${n} (${t}) ${statLabel} ${arrow} ${sign}${d}`;
+  const description = `L5 avg ${r} vs Season avg ${a}${lineStr} | ${direction} trend detected`;
+  const edgeUrl = `/edge?highlight=${encodeURIComponent(p)}&stat=${encodeURIComponent(s)}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${escapeHtml(title)} \u2014 EdgeDetector.ai</title>
+<meta name="description" content="${escapeHtml(description)}">
+<meta property="og:title" content="${escapeHtml(title)}">
+<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://edgedetector.ai/og-image.png">
+<meta property="og:url" content="https://edgedetector.ai${edgeUrl}">
+<meta property="og:site_name" content="EdgeDetector.ai">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${escapeHtml(title)}">
+<meta name="twitter:description" content="${escapeHtml(description)}">
+<meta name="twitter:image" content="https://edgedetector.ai/og-image.png">
+<script>window.location.replace("${edgeUrl}");</script>
+</head>
+<body style="font-family:Inter,system-ui,sans-serif;background:#0a0a0a;color:#e0e0e0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px">
+<div style="text-align:center;max-width:400px">
+<h1 style="font-size:24px;margin:0 0 8px">${escapeHtml(n)} <span style="color:#888">(${escapeHtml(t)})</span></h1>
+<div style="font-size:36px;font-weight:800;color:${isOver ? '#4caf50' : '#f44336'};margin:12px 0">${statLabel} ${sign}${escapeHtml(d)}</div>
+<p style="color:#aaa;font-size:14px;line-height:1.6">L5 avg: <strong style="color:#fff">${escapeHtml(r)}</strong> &middot; Season avg: <strong style="color:#fff">${escapeHtml(a)}</strong>${l ? ` &middot; Line: <strong style="color:#fff">${escapeHtml(l)}</strong>` : ''}</p>
+<a href="${edgeUrl}" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#1976d2;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View on EdgeDetector.ai</a>
+<p style="margin-top:24px;font-size:11px;color:#555">Redirecting...</p>
+</div>
+</body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+  res.status(200).send(html);
+}
+
 // ── handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
+
+  // Shareable card: return HTML with OG tags instead of JSON
+  if ('card' in req.query) return serveCard(req, res);
 
   const stat    = ((req.query.stat as string) || 'pts') as StatKey;
   const minMin  = parseFloat(req.query.min_minutes as string) || 20;

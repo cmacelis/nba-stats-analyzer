@@ -32,7 +32,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { AddCircleOutline, BoltOutlined, LockOutlined, SportsBasketball, TrendingDown, TrendingUp } from '@mui/icons-material';
+import { AddCircleOutline, BoltOutlined, LockOutlined, Share as ShareIcon, SportsBasketball, TrendingDown, TrendingUp } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
@@ -301,13 +301,15 @@ const EdgeRow: React.FC<{
   stat:       string;
   onCompare:  () => void;
   onTrack:    (e: React.MouseEvent) => void;
-}> = ({ rank, entry, stat, onCompare, onTrack }) => {
+  onShare:    (e: React.MouseEvent) => void;
+  rowRef?:    (el: HTMLTableRowElement | null) => void;
+}> = ({ rank, entry, stat, onCompare, onTrack, onShare, rowRef }) => {
   const theme = useTheme();
   const isUp = entry.delta > 0;
   const statLabel = stat === 'pra' ? 'PRA' : 'PTS';
 
   return (
-    <TableRow hover onClick={onCompare} sx={{ cursor: 'pointer' }}>
+    <TableRow hover onClick={onCompare} ref={rowRef} sx={{ cursor: 'pointer' }}>
       <TableCell sx={{ color: 'text.disabled', fontWeight: 600, width: 36 }}>{rank}</TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -358,7 +360,12 @@ const EdgeRow: React.FC<{
           </Box>
         </Tooltip>
       </TableCell>
-      <TableCell align="center" sx={{ width: 44, pr: 0.5 }}>
+      <TableCell align="center" sx={{ width: 80, pr: 0.5 }}>
+        <Tooltip title="Share this edge">
+          <IconButton size="small" onClick={onShare}>
+            <ShareIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Track this pick">
           <IconButton
             size="small"
@@ -402,8 +409,13 @@ const EdgeDetector: React.FC = () => {
   const [trackedInitialStat,      setTrackedInitialStat]      = useState<'pts' | 'pra' | undefined>();
   const [trackedInitialDirection, setTrackedInitialDirection] = useState<'over' | 'under' | undefined>();
 
+  const [shareToast, setShareToast] = useState(false);
+  const highlightId = searchParams.get('highlight');
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
   // Prevent double-open if data re-fetches while modal is already open
   const deepLinkHandled = useRef(false);
+  const highlightHandled = useRef(false);
 
   const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season, league);
 
@@ -422,6 +434,40 @@ const EdgeDetector: React.FC = () => {
     navigate(`/edge?${clean.toString()}`, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, trackPlayerId]);
+
+  // Scroll to and highlight a player row when arriving via a share link
+  useEffect(() => {
+    if (!highlightId || !data?.data || highlightHandled.current) return;
+    const pid = parseInt(highlightId, 10);
+    const el = rowRefs.current.get(pid);
+    if (!el) return;
+    highlightHandled.current = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.transition = 'background-color 0.3s';
+    el.style.backgroundColor = 'rgba(25, 118, 210, 0.15)';
+    setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+  }, [data, highlightId]);
+
+  function buildShareUrl(entry: EdgeEntry): string {
+    const params = new URLSearchParams({
+      card: '',
+      p: String(entry.player_id),
+      n: entry.player_name,
+      t: entry.team_abbrev,
+      s: stat,
+      d: String(entry.delta),
+      a: String(entry.season_avg),
+      r: String(entry.recent_avg),
+    });
+    if (entry.prop_line != null) params.set('l', String(entry.prop_line));
+    return `https://edgedetector.ai/api/edge?${params.toString()}`;
+  }
+
+  const handleShare = (entry: EdgeEntry, e: React.MouseEvent): void => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(buildShareUrl(entry));
+    setShareToast(true);
+  };
 
   const rows = useMemo(() => {
     const entries = data?.data ?? [];
@@ -534,7 +580,7 @@ const EdgeDetector: React.FC = () => {
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Line</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Δ</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Trend</TableCell>
-                <TableCell sx={{ width: 44 }} />
+                <TableCell sx={{ width: 80 }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -546,6 +592,8 @@ const EdgeDetector: React.FC = () => {
                   stat={stat}
                   onCompare={() => handleCompare(entry)}
                   onTrack={e => { e.stopPropagation(); setTracked(entry); }}
+                  onShare={e => handleShare(entry, e)}
+                  rowRef={el => { if (el) rowRefs.current.set(entry.player_id, el); }}
                 />
               ))}
               {/* Ghost locked rows — hinting at hidden content */}
@@ -604,6 +652,14 @@ const EdgeDetector: React.FC = () => {
       <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
         {league.toUpperCase()} · {STAT_OPTIONS.find(o => o.value === stat)?.label} · min {minMinutes} min/game · refreshes every 10 min
       </Typography>
+
+      <Snackbar
+        open={shareToast}
+        autoHideDuration={2000}
+        onClose={() => setShareToast(false)}
+        message="Edge card link copied!"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
 
       {/* Track modal */}
       {tracked && (
