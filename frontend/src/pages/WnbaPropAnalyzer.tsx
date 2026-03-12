@@ -304,7 +304,7 @@ const WnbaPropAnalyzer: React.FC = () => {
         {isError && (
           <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              WNBA edge feed temporarily unavailable — check back during the season.
+              WNBA edge feed temporarily unavailable — data source may be recovering. Try again in a few minutes.
             </Typography>
           </Paper>
         )}

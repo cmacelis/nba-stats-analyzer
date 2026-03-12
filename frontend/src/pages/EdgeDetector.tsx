@@ -35,7 +35,7 @@ import {
 import { AddCircleOutline, BoltOutlined, LockOutlined, Share as ShareIcon, SportsBasketball, TrendingDown, TrendingUp } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
+import { useEdgeFeed, useTrackPick, EdgeEntry, type EdgeEmptyReason } from '../hooks/useNbaData';
 import { useAuth } from '../contexts/AuthContext';
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -49,9 +49,9 @@ const STAT_OPTIONS = [
 
 const SEASON_OPTIONS = [
   { value: 2025, label: '2025-26' },
-  { value: 2024, label: '2024-25' },
-  { value: 2023, label: '2023-24' },
-  { value: 2022, label: '2022-23' },
+  { value: 2024, label: '2024-25 (ended)' },
+  { value: 2023, label: '2023-24 (ended)' },
+  { value: 2022, label: '2022-23 (ended)' },
 ];
 
 const MARKET_OPTIONS = [
@@ -381,6 +381,52 @@ const EdgeRow: React.FC<{
   );
 };
 
+// ── empty state ──────────────────────────────────────────────────────────────
+
+const EmptyState: React.FC<{
+  reason: EdgeEmptyReason;
+  positiveOnly: boolean;
+  minMinutes: number;
+  season: number;
+}> = ({ reason, positiveOnly, minMinutes, season }) => {
+  if (reason === 'past_season') {
+    const label = SEASON_OPTIONS.find(o => o.value === season)?.label ?? `${season}`;
+    return (
+      <Alert severity="info">
+        The {label} season has ended — edge detection needs recent game data to compare against.
+        Switch to the current season for live edges.
+      </Alert>
+    );
+  }
+  if (reason === 'upstream_error') {
+    return (
+      <Alert severity="warning">
+        Stats data is temporarily unavailable upstream. Edges will return once the data source recovers — try again in a few minutes.
+      </Alert>
+    );
+  }
+  if (reason === 'filter_too_restrictive' || minMinutes > 35) {
+    return (
+      <Alert severity="info">
+        No players averaged {minMinutes}+ minutes in their last 5 games. Try lowering minimum minutes to 20–30.
+      </Alert>
+    );
+  }
+  if (positiveOnly) {
+    return (
+      <Alert severity="info">
+        No positive-delta edges right now. Disable the &quot;Positive Δ only&quot; toggle to see all edges.
+      </Alert>
+    );
+  }
+  // Generic fallback (no_qualifying_players or unknown)
+  return (
+    <Alert severity="info">
+      No qualifying edges right now. Check back when more games are being played.
+    </Alert>
+  );
+};
+
 // ── page ──────────────────────────────────────────────────────────────────────
 
 const EdgeDetector: React.FC = () => {
@@ -534,8 +580,10 @@ const EdgeDetector: React.FC = () => {
 
         <TextField
           size="small" label="Min minutes" type="number" value={minMinutes}
-          onChange={e => setMinMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-          inputProps={{ min: 0, max: 48, step: 5 }} sx={{ width: 130 }}
+          onChange={e => setMinMinutes(Math.min(38, Math.max(0, parseInt(e.target.value) || 0)))}
+          inputProps={{ min: 0, max: 38, step: 5 }} sx={{ width: 130 }}
+          helperText={minMinutes > 30 ? 'High — fewer players qualify' : undefined}
+          FormHelperTextProps={{ sx: { color: 'warning.main', mt: 0.25, fontSize: '0.65rem' } }}
         />
 
         <FormControlLabel
@@ -562,11 +610,9 @@ const EdgeDetector: React.FC = () => {
           <Typography color="text.secondary">Building edge feed…</Typography>
         </Box>
       ) : error ? (
-        <Alert severity="error">Failed to load edge feed. Please try again.</Alert>
+        <Alert severity="error">Edge feed temporarily unavailable. Please try again in a few minutes.</Alert>
       ) : rows.length === 0 ? (
-        <Alert severity="info">
-          No players matched filters. Try lowering minimum minutes or disabling positive-only.
-        </Alert>
+        <EmptyState reason={data?.reason ?? null} positiveOnly={positiveOnly} minMinutes={minMinutes} season={season} />
       ) : (
         <>
         <TableContainer>

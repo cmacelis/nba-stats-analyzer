@@ -313,7 +313,7 @@ const NbaPropAnalyzer: React.FC = () => {
         {isError && (
           <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              Edge feed temporarily unavailable — check back soon.
+              Edge feed temporarily unavailable — data source may be recovering.
             </Typography>
           </Paper>
         )}
@@ -386,7 +386,9 @@ const NbaPropAnalyzer: React.FC = () => {
         {!isLoading && !isError && previewEdges.length === 0 && (
           <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              No edges available right now — check back when games are in season.
+              {edgeData?.reason === 'upstream_error'
+                ? 'Stats data temporarily unavailable — edges will return shortly.'
+                : 'No qualifying edges right now. Check back when more games are being played.'}
             </Typography>
           </Paper>
         )}

@@ -189,11 +189,19 @@ export interface EdgeEntry {
   has_game_today?: boolean;
 }
 
+export type EdgeEmptyReason =
+  | 'past_season'
+  | 'filter_too_restrictive'
+  | 'upstream_error'
+  | 'no_qualifying_players'
+  | null;
+
 export interface EdgeFeedResponse {
   data: EdgeEntry[];
   stat: string;
   season: number;
   generated_at: string;
+  reason?: EdgeEmptyReason;
 }
 
 export const useEdgeFeed = (stat: string, minMinutes: number, season: number, league: string = 'nba') => {

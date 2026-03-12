@@ -133,6 +133,18 @@ export interface EdgeDebugInfo {
   final_returned: number;
 }
 
+/**
+ * Machine-readable reason when `data` is empty.
+ * The frontend uses this to show a specific, helpful empty-state message
+ * instead of a generic "no players matched".
+ */
+export type EdgeEmptyReason =
+  | 'past_season'           // season < BDL_SEASON → no recent game logs exist
+  | 'filter_too_restrictive' // min_minutes so high that 0 players qualify
+  | 'upstream_error'         // BDL returned errors or empty on critical paths
+  | 'no_qualifying_players'  // legitimate: no players have a meaningful delta right now
+  | null;                    // data is non-empty — no reason needed
+
 // ── core computation (exported for reuse by alerts endpoint) ──────────────────
 
 /**
@@ -468,9 +480,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Debug mode uses computeEdgeFeed directly to capture pipeline diagnostics.
     // Production path goes through the adapter (zero behaviour change — NBAAdapter calls computeEdgeFeed internally).
     const league = (req.query.league as string) || 'nba';
+    let upstreamHadError = false;
     const top = isDebug
       ? await computeEdgeFeed(stat, minMin, season, debugOut)
-      : (await AdapterFactory.get(league).edgeFeed({ stat, minMinutes: minMin, season })) as EdgeEntry[];
+      : await (async () => {
+          try {
+            return (await AdapterFactory.get(league).edgeFeed({ stat, minMinutes: minMin, season })) as EdgeEntry[];
+          } catch {
+            upstreamHadError = true;
+            return [] as EdgeEntry[];
+          }
+        })();
 
     // Enrich with headshots (in parallel, non-fatal)
     await Promise.all(
@@ -482,15 +502,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     );
 
+    // Determine empty-state reason so the frontend can show a specific message
+    let reason: EdgeEmptyReason = null;
+    if (top.length === 0) {
+      if (season < BDL_SEASON) {
+        reason = 'past_season';
+      } else if (upstreamHadError || (debugOut && (debugOut.season_averages_error || debugOut.stats_error))) {
+        reason = 'upstream_error';
+      } else if (minMin > 35) {
+        reason = 'filter_too_restrictive';
+      } else {
+        reason = 'no_qualifying_players';
+      }
+    }
+
     res.json({
       data: top,
       stat,
       season,
       generated_at: new Date().toISOString(),
+      ...(reason && { reason }),
       ...(isDebug && { debug: debugOut }),
     });
   } catch (err) {
     console.error('[edge] error:', (err as Error).message);
-    res.status(500).json({ error: 'Failed to generate edge feed' });
+    res.status(500).json({ error: 'Failed to generate edge feed', reason: 'upstream_error' as EdgeEmptyReason });
   }
 }

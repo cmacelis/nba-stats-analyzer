@@ -1,2 +1,0 @@
-import{an as n,O as o,r as c,j as e,B as i,K as x,T as l}from"./index-t7mPTcQ4.js";const p=()=>{const t=n(),[a]=o();return c.useEffect(()=>{const r=a.toString(),s=r?`/?${r}`:"/";t(s,{replace:!0})},[t,a]),e.jsxs(i,{sx:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:2},children:[e.jsx(x,{}),e.jsx(l,{variant:"body1",color:"text.secondary",children:"Redirecting..."})]})};export{p as default};
-//# sourceMappingURL=StartHere-Vvf2sLYq.js.map
