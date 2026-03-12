@@ -643,7 +643,7 @@ const EdgeDetector: React.FC = () => {
                 />
               ))}
               {/* Ghost locked rows — hinting at hidden content */}
-              {lockedCount > 0 && [...Array(Math.min(3, lockedCount))].map((_, i) => (
+              {lockedCount > 0 && [...Array(Math.min(6, lockedCount))].map((_, i) => (
                 <TableRow key={`locked-${i}`} sx={{ filter: 'blur(4px)', opacity: 0.22, pointerEvents: 'none', userSelect: 'none' }}>
                   <TableCell sx={{ color: 'text.disabled', fontWeight: 600 }}>{FREE_LIMIT + i + 1}</TableCell>
                   <TableCell>
@@ -688,7 +688,7 @@ const EdgeDetector: React.FC = () => {
               onClick={() => navigate('/pricing')}
               sx={{ px: 4, fontWeight: 700, borderRadius: 2 }}
             >
-              Join VIP Pro
+              Join VIP Pro — $19/mo
             </Button>
           </Box>
         )}

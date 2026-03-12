@@ -12,6 +12,7 @@ import {
   Paper,
   Select,
   Snackbar,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -22,13 +23,14 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { ArrowBack, ArrowForward, ContentCopy, Remove, CompareArrows, KeyboardArrowUp } from '@mui/icons-material';
+import { ArrowBack, ArrowForward, BoltOutlined, ContentCopy, Remove, CompareArrows, KeyboardArrowUp } from '@mui/icons-material';
 import { useSearchParams, Link as RouterLink } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
 import { usePlayerStatsWithFallback, usePlayerPhoto, usePrediction } from '../hooks/useNbaData';
+import { useAuth } from '../contexts/AuthContext';
 import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
@@ -54,6 +56,7 @@ const SEASONS = [
 ];
 
 const GamePredictor: React.FC = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
@@ -336,7 +339,7 @@ const GamePredictor: React.FC = () => {
                 size="small"
               />
               <Chip
-                label={isServerPrediction ? 'BDL GOAT' : 'Basic Stats'}
+                label={isServerPrediction ? '5-Factor Model' : 'Basic Stats'}
                 size="small"
                 variant="outlined"
                 color={isServerPrediction ? 'success' : 'default'}
@@ -557,6 +560,32 @@ const GamePredictor: React.FC = () => {
             </Button>
           </Box>
         </>
+      )}
+
+      {/* VIP Upsell */}
+      {!user?.vipActive && (
+        <Paper
+          variant="outlined"
+          sx={{ mt: 4, p: 3, textAlign: 'center', borderColor: 'primary.main', borderWidth: 2 }}
+        >
+          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 1.5 }}>
+            <BoltOutlined color="primary" />
+            <Typography variant="h6" fontWeight={700}>
+              Get the full edge
+            </Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            VIP Pro unlocks 20+ edges per stat, DM alerts, and research access.
+          </Typography>
+          <Button
+            variant="contained"
+            component={RouterLink}
+            to="/pricing"
+            sx={{ fontWeight: 700, borderRadius: 2, px: 3 }}
+          >
+            Join VIP Pro — $19/mo
+          </Button>
+        </Paper>
       )}
 
       <Typography

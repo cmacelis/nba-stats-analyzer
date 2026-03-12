@@ -242,7 +242,6 @@ const Pricing: React.FC = () => {
               variant="contained"
               fullWidth
               href={STRIPE_LINK_MONTHLY}
-              target="_blank"
               rel="noopener noreferrer"
               startIcon={<LockOpen />}
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
@@ -254,7 +253,6 @@ const Pricing: React.FC = () => {
               variant="outlined"
               fullWidth
               href={STRIPE_LINK_ANNUAL}
-              target="_blank"
               rel="noopener noreferrer"
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
               onClick={() => funnelEvent('vip-cta-click', { plan: 'annual' })}

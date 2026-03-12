@@ -16,6 +16,9 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Drawer,
+  List,
+  ListItemButton,
   Snackbar,
   Alert,
 } from '@mui/material';
@@ -28,6 +31,11 @@ import {
   PersonOutline,
   Logout,
   CheckCircle,
+  Menu as MenuIcon,
+  Close as CloseIcon,
+  CompareArrows,
+  SportsBasketball,
+  AttachMoney,
 } from '@mui/icons-material';
 import { useSound } from '../contexts/SoundContext';
 import { fadeIn } from '../utils/animations';
@@ -54,6 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [signInOpen, setSignInOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [discordToast, setDiscordToast] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Handle Discord OAuth redirect params
@@ -111,10 +120,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             EdgeDetector.ai
           </Typography>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Button 
-              color="inherit" 
-              component={RouterLink} 
+          {/* Mobile: hamburger icon */}
+          <Stack direction="row" spacing={0.5} alignItems="center"
+            sx={{ display: { xs: 'flex', md: 'none' } }}
+          >
+            {user?.vipActive && (
+              <Chip label="VIP" color="success" size="small" sx={{ fontWeight: 700 }} />
+            )}
+            <IconButton color="inherit" onClick={() => setDrawerOpen(true)} edge="end" aria-label="Open menu">
+              <MenuIcon />
+            </IconButton>
+          </Stack>
+
+          {/* Desktop: full nav */}
+          <Stack direction="row" spacing={2} alignItems="center"
+            sx={{ display: { xs: 'none', md: 'flex' } }}
+          >
+            <Button
+              color="inherit"
+              component={RouterLink}
               to="/"
               onMouseEnter={handleButtonHover}
               onClick={handleButtonClick}
@@ -206,7 +230,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }
                 }}
               >
-                Join VIP Pro
+                Join VIP Pro — $19/mo
               </Button>
             )}
             {user?.vipActive && (
@@ -310,6 +334,114 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Stack>
         </Toolbar>
       </AppBar>
+
+      {/* Mobile navigation drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{ sx: { width: 260, bgcolor: 'background.paper' } }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={700}>EdgeDetector.ai</Typography>
+          <IconButton onClick={() => setDrawerOpen(false)} size="small"><CloseIcon /></IconButton>
+        </Box>
+        <Divider />
+        <List sx={{ pt: 0.5 }}>
+          {[
+            { to: '/',        label: 'Home',            icon: <BoltOutlined fontSize="small" /> },
+            { to: '/compare', label: 'Compare Players', icon: <CompareArrows fontSize="small" /> },
+            { to: '/predict', label: 'Matchup Edge',    icon: <SportsBasketball fontSize="small" /> },
+            { to: '/edge',    label: 'Edge Feed',       icon: <BoltOutlined fontSize="small" /> },
+            { to: '/pricing', label: 'Pricing',         icon: <AttachMoney fontSize="small" /> },
+          ].map(item => (
+            <ListItemButton
+              key={item.to}
+              component={RouterLink}
+              to={item.to}
+              onClick={() => setDrawerOpen(false)}
+              sx={{ gap: 1.5, py: 1.25 }}
+            >
+              <ListItemIcon sx={{ minWidth: 0 }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+        <Divider sx={{ my: 0.5 }} />
+        <List>
+          {!authLoading && !user && (
+            <>
+              <ListItemButton
+                component={RouterLink}
+                to="/pricing"
+                onClick={() => setDrawerOpen(false)}
+                sx={{ gap: 1.5, py: 1.25 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}><BoltOutlined fontSize="small" color="primary" /></ListItemIcon>
+                <ListItemText
+                  primary="Join VIP Pro — $19/mo"
+                  primaryTypographyProps={{ fontWeight: 700, color: 'primary.main' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => { setDrawerOpen(false); setSignInOpen(true); }}
+                sx={{ gap: 1.5, py: 1.25 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}><PersonOutline fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Sign In" />
+              </ListItemButton>
+            </>
+          )}
+          {!authLoading && user && (
+            <>
+              <ListItemButton disabled sx={{ gap: 1.5, py: 1 }}>
+                <ListItemIcon sx={{ minWidth: 0 }}><PersonOutline fontSize="small" /></ListItemIcon>
+                <ListItemText
+                  primary={user.email.split('@')[0]}
+                  secondary={user.vipActive ? 'VIP Pro' : 'Free'}
+                  primaryTypographyProps={{ fontSize: '0.85rem' }}
+                />
+              </ListItemButton>
+              {!user.discordConnected && (
+                <ListItemButton
+                  onClick={() => { setDrawerOpen(false); window.location.href = '/api/auth?_subpath=discord/start'; }}
+                  sx={{ gap: 1.5, py: 1.25 }}
+                >
+                  <ListItemIcon sx={{ minWidth: 0 }}><DiscordIcon size={18} /></ListItemIcon>
+                  <ListItemText primary="Connect Discord" />
+                </ListItemButton>
+              )}
+              {user.discordConnected && (
+                <ListItemButton disabled sx={{ gap: 1.5, py: 1 }}>
+                  <ListItemIcon sx={{ minWidth: 0 }}><CheckCircle fontSize="small" color="success" /></ListItemIcon>
+                  <ListItemText primary="Discord Connected" secondary={user.discordUsername || undefined} />
+                </ListItemButton>
+              )}
+              <ListItemButton
+                onClick={() => { setDrawerOpen(false); signOut(); }}
+                sx={{ gap: 1.5, py: 1.25 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}><Logout fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Sign Out" />
+              </ListItemButton>
+            </>
+          )}
+        </List>
+        <Divider sx={{ my: 0.5 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, py: 1.5 }}>
+          <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
+            <IconButton onClick={handleSoundToggle} size="small">
+              {isSoundEnabled ? <VolumeUp /> : <VolumeOff />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={`${isDarkMode ? 'Light' : 'Dark'} Mode`}>
+            <IconButton onClick={toggleTheme} size="small">
+              {isDarkMode ? <Brightness7 /> : <Brightness4 />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Drawer>
+
       {/* VIP onboarding banner */}
       {user?.vipActive && (
         <Box

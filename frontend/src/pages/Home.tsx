@@ -113,22 +113,24 @@ const Home: React.FC = () => {
         mx: 'auto',
       }}>
         <Typography
-          variant="h2"
+          variant="overline"
+          color="text.secondary"
           sx={{
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
+            fontWeight: 700,
+            letterSpacing: '0.1em',
             animation: `${fadeIn} 0.5s ease-out`,
-            mb: 2,
+            mb: 1,
+            display: 'block',
           }}
         >
           EdgeDetector.ai
         </Typography>
 
         <Typography
-          variant="h5"
-          color="text.secondary"
+          variant="h2"
           sx={{
-            fontWeight: 400,
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
             animation: `${slideIn} 0.6s ease-out 0.15s`,
             animationFillMode: 'backwards',
             mb: 2,
@@ -496,7 +498,7 @@ const Home: React.FC = () => {
               onClick={onClick}
               sx={{ fontWeight: 700, borderRadius: 2, px: 4, mb: 1, ...hoverLift }}
             >
-              View Plans
+              Join VIP Pro — $19/mo
             </Button>
             <Typography variant="caption" display="block" color="text.secondary">
               Starting at $19/mo. Cancel anytime.
