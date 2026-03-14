@@ -139,6 +139,52 @@ export async function listAllDocuments(
   return all;
 }
 
+/** Run a structured query with optional ordering and limit. */
+export async function runStructuredQuery(
+  collection: string,
+  filters: Array<{ field: string; op: string; value: unknown }>,
+  options?: { orderBy?: string; orderDir?: 'ASCENDING' | 'DESCENDING'; limit?: number },
+): Promise<Array<Record<string, unknown>>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const query: any = {
+    from: [{ collectionId: collection }],
+  };
+
+  if (filters.length > 0) {
+    query.where = {
+      compositeFilter: {
+        op: 'AND',
+        filters: filters.map(f => ({
+          fieldFilter: {
+            field: { fieldPath: f.field },
+            op: f.op,
+            value: toFsValue(f.value),
+          },
+        })),
+      },
+    };
+  }
+
+  if (options?.orderBy) {
+    query.orderBy = [{ field: { fieldPath: options.orderBy }, direction: options.orderDir || 'DESCENDING' }];
+  }
+  if (options?.limit) {
+    query.limit = options.limit;
+  }
+
+  const res = await fetch(`${BASE}:runQuery?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: query }),
+  });
+  if (!res.ok) throw new Error(`Firestore structured query ${collection} failed: ${res.status}`);
+
+  const results = await res.json();
+  return results
+    .filter((r: { document?: unknown }) => r.document)
+    .map((r: { document: { name: string; fields: Record<string, FsValue> } }) => docToObj(r.document));
+}
+
 /** Query documents with structured query (WHERE clauses). */
 export async function queryDocuments(
   collection: string,

@@ -16,6 +16,7 @@ import {
   getOrCreateUser,
   updateUserByEmail,
   assignDiscordVipRole,
+  recordFunnelEvent,
 } from '../_auth.js';
 
 // Disable body parsing so we can verify the webhook raw signature
@@ -102,6 +103,10 @@ async function handleCheckout(req: VercelRequest, res: VercelResponse) {
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
+
+    // Record funnel event
+    await recordFunnelEvent('vip_checkout_start', { planContext: plan, sourcePage: 'pricing' });
+
     return res.json({ url: session.url });
   } catch (err) {
     const msg = (err as Error).message;
@@ -186,6 +191,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   await updateUserByEmail(lowerEmail, updates);
   console.log(`[stripe] checkout completed for ${lowerEmail}, VIP activated`);
+
+  // Record funnel event — this is the confirmed server-side conversion
+  if (updates.vipActive) {
+    await recordFunnelEvent('vip_conversion_success', {
+      email: lowerEmail,
+      planContext: (updates.vipPlan as string) || 'monthly',
+    });
+  }
 
   // Best-effort: assign Discord VIP role if user has connected Discord
   if (updates.vipActive) {

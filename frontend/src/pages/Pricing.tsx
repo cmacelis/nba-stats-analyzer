@@ -20,7 +20,7 @@ import {
   RemoveCircleOutline,
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { funnelEvent } from '../lib/analytics';
+import { funnelEvent, trackServerFunnel } from '../lib/analytics';
 import { useAuth } from '../contexts/AuthContext';
 import SignInModal from '../components/SignInModal';
 
@@ -75,9 +75,10 @@ const Pricing: React.FC = () => {
 
   const checkoutStatus = searchParams.get('checkout');
 
-  // Track pricing page view as a funnel event
+  // Track pricing page view as a funnel event (Vercel Analytics + our own store)
   useEffect(() => {
     funnelEvent('pricing-view');
+    trackServerFunnel('pricing_view', { sourcePage: '/pricing' });
     if (checkoutStatus === 'success') funnelEvent('checkout-success');
   }, [checkoutStatus]);
 
@@ -235,6 +236,7 @@ const Pricing: React.FC = () => {
             sx={{ mt: 3, borderRadius: 2, fontWeight: 700 }}
             onClick={() => {
               funnelEvent('free-cta-click');
+              trackServerFunnel('free_cta_click', { sourcePage: '/pricing' });
               if (user) {
                 // Already signed in — go straight to Edge Feed
                 navigate('/edge');
@@ -313,8 +315,8 @@ const Pricing: React.FC = () => {
               variant="contained"
               fullWidth
               {...(ref
-                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'monthly', ref }); startCheckout('monthly'); } }
-                : { href: STRIPE_LINK_MONTHLY, rel: 'noopener noreferrer', onClick: () => funnelEvent('vip-cta-click', { plan: 'monthly' }) }
+                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'monthly', ref }); trackServerFunnel('vip_checkout_start', { planContext: 'monthly' }); startCheckout('monthly'); } }
+                : { href: STRIPE_LINK_MONTHLY, rel: 'noopener noreferrer', onClick: () => { funnelEvent('vip-cta-click', { plan: 'monthly' }); trackServerFunnel('vip_checkout_start', { planContext: 'monthly' }); } }
               )}
               disabled={checkoutLoading === 'monthly'}
               startIcon={<LockOpen />}
@@ -326,8 +328,8 @@ const Pricing: React.FC = () => {
               variant="outlined"
               fullWidth
               {...(ref
-                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'annual', ref }); startCheckout('annual'); } }
-                : { href: STRIPE_LINK_ANNUAL, rel: 'noopener noreferrer', onClick: () => funnelEvent('vip-cta-click', { plan: 'annual' }) }
+                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'annual', ref }); trackServerFunnel('vip_checkout_start', { planContext: 'annual' }); startCheckout('annual'); } }
+                : { href: STRIPE_LINK_ANNUAL, rel: 'noopener noreferrer', onClick: () => { funnelEvent('vip-cta-click', { plan: 'annual' }); trackServerFunnel('vip_checkout_start', { planContext: 'annual' }); } }
               )}
               disabled={checkoutLoading === 'annual'}
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}

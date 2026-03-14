@@ -1,10 +1,11 @@
 /**
- * analytics.ts — Lightweight wrapper around @vercel/analytics track().
+ * analytics.ts — Lightweight wrapper around @vercel/analytics track()
+ * plus server-side funnel event recording via our own API.
  *
  * Usage:
- *   import { funnelEvent } from '../lib/analytics';
+ *   import { funnelEvent, trackServerFunnel } from '../lib/analytics';
  *   funnelEvent('sign-in-start');
- *   funnelEvent('pricing-view', { source: 'edge-feed-cta' });
+ *   trackServerFunnel('pricing_view', { sourcePage: '/pricing' });
  */
 
 import { track } from '@vercel/analytics';
@@ -26,4 +27,40 @@ export function funnelEvent(
   props?: Record<string, string | number | boolean>,
 ): void {
   track(event, props);
+}
+
+// ── Server-side funnel event types ──────────────────────────────────────────
+
+type ServerFunnelEvent =
+  | 'pricing_view'
+  | 'free_cta_click'
+  | 'vip_checkout_start';
+
+/**
+ * Record a funnel event to our own backend (Firestore via /api/auth?_subpath=funnel/track).
+ * Fire-and-forget — never blocks UI.
+ */
+export function trackServerFunnel(
+  eventType: ServerFunnelEvent,
+  opts?: {
+    sessionId?: string;
+    planContext?: string;
+    sourcePage?: string;
+    metadata?: Record<string, unknown>;
+  },
+): void {
+  fetch('/api/auth?_subpath=funnel/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      eventType,
+      sessionId: opts?.sessionId,
+      planContext: opts?.planContext,
+      sourcePage: opts?.sourcePage,
+      metadata: opts?.metadata,
+    }),
+  }).catch(() => {
+    // Best-effort, never block UI
+  });
 }

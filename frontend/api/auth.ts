@@ -33,8 +33,11 @@ import {
   verifyShortJwt,
   updateUserByEmail,
   assignDiscordVipRole,
+  recordFunnelEvent,
+  isValidFunnelEvent,
+  normalizePlanLabel,
 } from './_auth.js';
-import { listAllDocuments } from './alerts/_firebase.js';
+import { listAllDocuments, runStructuredQuery } from './alerts/_firebase.js';
 
 // ── Discord config ──────────────────────────────────────────────────────────
 
@@ -76,13 +79,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   try {
-    // Check for _subpath routes first (GET only)
+    // Check for _subpath routes first
+    const subpath = getSubpath(req);
     if (req.method === 'GET') {
-      const subpath = getSubpath(req);
       if (subpath === 'discord/start') return await handleDiscordStart(req, res);
       if (subpath === 'discord/callback') return await handleDiscordCallback(req, res);
       if (subpath === 'discord/status') return await handleDiscordStatus(req, res);
       if (subpath === 'admin/stats') return await handleAdminStats(req, res);
+    }
+    if (req.method === 'POST' && subpath === 'funnel/track') {
+      return await handleFunnelTrack(req, res);
     }
 
     // Original routes
@@ -118,6 +124,13 @@ async function handleRequestLink(req: VercelRequest, res: VercelResponse) {
   const token = await createMagicLink(email, redirectTo);
   await sendMagicLinkEmail(email, token);
 
+  // Record funnel event server-side
+  await recordFunnelEvent('magic_link_request', {
+    email,
+    planContext: redirectTo?.includes('free-signup') ? 'free' : null,
+    sourcePage: 'pricing',
+  });
+
   console.log(`[auth] magic link requested for ${email}${redirectTo ? ` → ${redirectTo}` : ''}`);
   return res.json({ ok: true });
 }
@@ -135,6 +148,12 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
   await getOrCreateUser(result.email);
   const jwt = await signJwt(result.email);
   setSessionCookie(res, jwt);
+
+  // Record funnel event for free signup completion
+  const isFreeSignup = result.redirectTo?.includes('free-signup');
+  if (isFreeSignup) {
+    await recordFunnelEvent('free_signup_success', { email: result.email, planContext: 'free' });
+  }
 
   // Redirect to the stored destination (e.g. /edge?auth=free-signup) or default
   const destination = result.redirectTo || '/pricing?auth=success';
@@ -361,6 +380,31 @@ async function handleDiscordStatus(req: VercelRequest, res: VercelResponse) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Funnel event ingestion
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleFunnelTrack(req: VercelRequest, res: VercelResponse) {
+  const { eventType, sessionId, planContext, sourcePage, metadata } = req.body || {};
+
+  if (!eventType || !isValidFunnelEvent(eventType)) {
+    return res.status(400).json({ error: 'Invalid or missing eventType' });
+  }
+
+  // Optionally attach email if user is signed in
+  const email = await getSessionEmail(req);
+
+  await recordFunnelEvent(eventType, {
+    email,
+    sessionId: sessionId || null,
+    planContext: planContext || null,
+    sourcePage: sourcePage || null,
+    metadata: metadata || null,
+  });
+
+  return res.json({ ok: true });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Admin dashboard route
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -403,7 +447,7 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     const vipUsers = allUsers.filter((u) => u.vipActive === true);
     const freeUsers = allUsers.filter((u) => !u.vipActive);
 
-    // Recent signups (last 7 days)
+    // Recent signups (last 7 days) with normalized plan labels
     const recentSignups = allUsers
       .filter((u) => {
         const created = u.createdAt as string | undefined;
@@ -418,8 +462,7 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       .map((u) => ({
         email: u.email,
         createdAt: u.createdAt,
-        vipActive: u.vipActive ?? false,
-        vipPlan: u.vipPlan ?? null,
+        planLabel: normalizePlanLabel(u),
         discordConnected: !!u.discordUserId,
       }));
 
@@ -482,6 +525,52 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     // Estimated MRR
     const estimatedMrr = vipMonthly * 19 + vipAnnual * Math.round(199 / 12);
 
+    // 6. Funnel events (last 14 days from funnel_events collection)
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    let funnelCounts: Record<string, number> = {
+      pricing_view: 0,
+      free_cta_click: 0,
+      magic_link_request: 0,
+      free_signup_success: 0,
+      vip_checkout_start: 0,
+      vip_conversion_success: 0,
+    };
+    let recentFunnelEvents: Array<{ eventType: string; createdAt: string; email: string | null }> = [];
+
+    try {
+      const funnelDocs = await runStructuredQuery(
+        'funnel_events',
+        [{ field: 'createdAt', op: 'GREATER_THAN_OR_EQUAL', value: fourteenDaysAgo.toISOString() }],
+        { orderBy: 'createdAt', orderDir: 'DESCENDING', limit: 500 },
+      );
+
+      // Count by type
+      for (const doc of funnelDocs) {
+        const et = doc.eventType as string;
+        if (et in funnelCounts) {
+          funnelCounts[et]++;
+        }
+      }
+
+      // Recent 15 events for activity feed
+      recentFunnelEvents = funnelDocs.slice(0, 15).map((d) => ({
+        eventType: d.eventType as string,
+        createdAt: d.createdAt as string,
+        email: (d.email as string) || null,
+      }));
+    } catch (err) {
+      console.error('[admin] funnel query error:', (err as Error).message);
+      // If collection doesn't exist yet, just return zeros
+      funnelCounts = {
+        pricing_view: 0,
+        free_cta_click: 0,
+        magic_link_request: 0,
+        free_signup_success: 0,
+        vip_checkout_start: 0,
+        vip_conversion_success: 0,
+      };
+    }
+
     return res.json({
       generatedAt: now.toISOString(),
       users: {
@@ -499,6 +588,11 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       recentSignups,
       signupsByDay,
       stripeEvents,
+      funnel: {
+        periodDays: 14,
+        counts: funnelCounts,
+        recentEvents: recentFunnelEvents,
+      },
     });
   } catch (err) {
     console.error('[admin] stats error:', (err as Error).message);

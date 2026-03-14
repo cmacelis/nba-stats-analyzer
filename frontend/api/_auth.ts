@@ -10,6 +10,7 @@ import {
   getDocument,
   updateDocument,
   queryDocuments,
+  addDocument,
 } from './alerts/_firebase.js';
 
 // ── Config (lazy, read at call time) ─────────────────────────────────────────
@@ -274,4 +275,76 @@ export async function sendMagicLinkEmail(
     const text = await res.text().catch(() => '');
     console.error(`[auth] Resend error ${res.status}: ${text.slice(0, 200)}`);
   }
+}
+
+// ── Funnel event tracking ─────────────────────────────────────────────────
+
+export type FunnelEventType =
+  | 'pricing_view'
+  | 'free_cta_click'
+  | 'magic_link_request'
+  | 'free_signup_success'
+  | 'vip_checkout_start'
+  | 'vip_conversion_success';
+
+const VALID_FUNNEL_EVENTS: Set<string> = new Set([
+  'pricing_view',
+  'free_cta_click',
+  'magic_link_request',
+  'free_signup_success',
+  'vip_checkout_start',
+  'vip_conversion_success',
+]);
+
+export function isValidFunnelEvent(t: string): t is FunnelEventType {
+  return VALID_FUNNEL_EVENTS.has(t);
+}
+
+/**
+ * Record a funnel event to Firestore `funnel_events` collection.
+ * Best-effort — never throws.
+ */
+export async function recordFunnelEvent(
+  eventType: FunnelEventType,
+  opts?: {
+    email?: string | null;
+    sessionId?: string | null;
+    planContext?: string | null;
+    sourcePage?: string | null;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<void> {
+  try {
+    await addDocument('funnel_events', {
+      eventType,
+      createdAt: new Date().toISOString(),
+      email: opts?.email ?? null,
+      sessionId: opts?.sessionId ?? null,
+      planContext: opts?.planContext ?? null,
+      sourcePage: opts?.sourcePage ?? null,
+      metadata: opts?.metadata ?? null,
+    });
+  } catch (err) {
+    console.error(`[funnel] failed to record ${eventType}:`, (err as Error).message);
+  }
+}
+
+// ── Plan label normalization ──────────────────────────────────────────────
+
+/**
+ * Normalize raw user/subscription state into a consistent display label.
+ */
+export function normalizePlanLabel(user: Record<string, unknown>): string {
+  if (!user) return 'Unknown';
+  const vipActive = user.vipActive === true;
+  const plan = user.vipPlan as string | null;
+
+  if (vipActive && plan === 'annual') return 'VIP Annual';
+  if (vipActive && plan === 'monthly') return 'VIP Monthly';
+  if (vipActive) return 'VIP Monthly'; // fallback for active with no plan specified
+
+  // Not active but has a subscription ID → likely canceled
+  if (user.stripeSubscriptionId && !vipActive) return 'Canceled';
+
+  return 'Free';
 }

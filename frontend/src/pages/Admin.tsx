@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -17,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
@@ -24,10 +26,22 @@ import {
   BoltOutlined,
   AttachMoney,
   TrendingUp,
+  Refresh,
+  FilterList,
+  ArrowForward,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 // ── Types ───────────────────────────────────────────────────────────────────
+
+interface FunnelCounts {
+  pricing_view: number;
+  free_cta_click: number;
+  magic_link_request: number;
+  free_signup_success: number;
+  vip_checkout_start: number;
+  vip_conversion_success: number;
+}
 
 interface AdminStats {
   generatedAt: string;
@@ -46,8 +60,7 @@ interface AdminStats {
   recentSignups: Array<{
     email: string;
     createdAt: string;
-    vipActive: boolean;
-    vipPlan: string | null;
+    planLabel: string;
     discordConnected: boolean;
   }>;
   signupsByDay: Record<string, number>;
@@ -57,6 +70,15 @@ interface AdminStats {
     email: string | null;
     amount: number | null;
   }>;
+  funnel: {
+    periodDays: number;
+    counts: FunnelCounts;
+    recentEvents: Array<{
+      eventType: string;
+      createdAt: string;
+      email: string | null;
+    }>;
+  };
 }
 
 // ── Stat Card ───────────────────────────────────────────────────────────────
@@ -68,11 +90,11 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   color?: string;
 }> = ({ label, value, sub, icon, color = 'primary.main' }) => (
-  <Card sx={{ flex: 1, minWidth: 180 }}>
-    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      <Box sx={{ color, fontSize: 36, display: 'flex' }}>{icon}</Box>
+  <Card sx={{ flex: 1, minWidth: 160 }}>
+    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2, '&:last-child': { pb: 2 } }}>
+      <Box sx={{ color, fontSize: 32, display: 'flex' }}>{icon}</Box>
       <Box>
-        <Typography variant="h4" fontWeight={800}>
+        <Typography variant="h5" fontWeight={800}>
           {value}
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -88,6 +110,18 @@ const StatCard: React.FC<{
   </Card>
 );
 
+// ── Plan Label Chip ────────────────────────────────────────────────────────
+
+function planChip(label: string): React.ReactNode {
+  const colorMap: Record<string, 'warning' | 'success' | 'error' | 'default' | 'info'> = {
+    'VIP Monthly': 'warning',
+    'VIP Annual': 'success',
+    'Canceled': 'error',
+    'Free': 'default',
+  };
+  return <Chip label={label} size="small" color={colorMap[label] || 'info'} />;
+}
+
 // ── Stripe Event Label ──────────────────────────────────────────────────────
 
 function eventLabel(type: string): { label: string; color: 'success' | 'error' | 'info' | 'warning' } {
@@ -98,6 +132,20 @@ function eventLabel(type: string): { label: string; color: 'success' | 'error' |
   if (type.includes('payment_failed')) return { label: 'Payment Failed', color: 'error' };
   if (type.includes('updated')) return { label: 'Sub Updated', color: 'info' };
   return { label: type.split('.').pop() || type, color: 'info' };
+}
+
+// ── Funnel Event Label ─────────────────────────────────────────────────────
+
+function funnelLabel(type: string): { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' } {
+  const map: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' }> = {
+    pricing_view: { label: 'Pricing View', color: 'info' },
+    free_cta_click: { label: 'Free CTA Click', color: 'primary' },
+    magic_link_request: { label: 'Magic Link Sent', color: 'secondary' },
+    free_signup_success: { label: 'Free Signup', color: 'success' },
+    vip_checkout_start: { label: 'VIP Checkout', color: 'warning' },
+    vip_conversion_success: { label: 'VIP Converted', color: 'success' },
+  };
+  return map[type] || { label: type, color: 'info' };
 }
 
 function timeAgo(iso: string): string {
@@ -111,13 +159,41 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+function pct(num: number, denom: number): string {
+  if (denom === 0) return '0%';
+  return `${Math.round((num / denom) * 100)}%`;
+}
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
 const Admin: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth?_subpath=admin/stats', {
+        credentials: 'same-origin',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setStats(await res.json());
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -126,24 +202,8 @@ const Admin: React.FC = () => {
       setLoading(false);
       return;
     }
-
-    (async () => {
-      try {
-        const res = await fetch('/api/auth?_subpath=admin/stats', {
-          credentials: 'same-origin',
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        setStats(await res.json());
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [user, authLoading]);
+    fetchStats();
+  }, [user, authLoading, fetchStats]);
 
   if (authLoading || loading) {
     return (
@@ -163,23 +223,49 @@ const Admin: React.FC = () => {
 
   if (!stats) return null;
 
-  const { users, revenue, recentSignups, signupsByDay, stripeEvents } = stats;
+  const { users, revenue, recentSignups, signupsByDay, stripeEvents, funnel } = stats;
+  const fc = funnel.counts;
 
   // Sort signupsByDay for display
   const sortedDays = Object.entries(signupsByDay)
     .sort(([a], [b]) => b.localeCompare(a))
     .slice(0, 14);
 
+  // Funnel stages for the conversion table
+  const funnelStages = [
+    { key: 'pricing_view', label: 'Pricing Views', count: fc.pricing_view },
+    { key: 'free_cta_click', label: 'Free CTA Clicks', count: fc.free_cta_click },
+    { key: 'magic_link_request', label: 'Magic Links Sent', count: fc.magic_link_request },
+    { key: 'free_signup_success', label: 'Free Signups', count: fc.free_signup_success },
+    { key: 'vip_checkout_start', label: 'VIP Checkout Starts', count: fc.vip_checkout_start },
+    { key: 'vip_conversion_success', label: 'VIP Conversions', count: fc.vip_conversion_success },
+  ];
+
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: 'auto' }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={800} gutterBottom>
-          Admin Dashboard
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Last updated: {new Date(stats.generatedAt).toLocaleString()}
-        </Typography>
+      {/* Header + Refresh */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={800} gutterBottom>
+            Admin Dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Last updated: {new Date(stats.generatedAt).toLocaleString()}
+          </Typography>
+        </Box>
+        <Tooltip title="Refresh all data">
+          <span>
+            <Button
+              variant="outlined"
+              startIcon={refreshing ? <CircularProgress size={16} /> : <Refresh />}
+              onClick={() => fetchStats(true)}
+              disabled={refreshing}
+              sx={{ fontWeight: 700, borderRadius: 2 }}
+            >
+              Refresh
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
 
       {/* KPI Cards */}
@@ -209,10 +295,6 @@ const Admin: React.FC = () => {
           icon={<AttachMoney fontSize="inherit" />}
           color="success.main"
         />
-      </Box>
-
-      {/* Additional Metrics */}
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 4 }}>
         <StatCard
           label="Discord Connected"
           value={users.discordConnected}
@@ -220,6 +302,115 @@ const Admin: React.FC = () => {
           icon={<TrendingUp fontSize="inherit" />}
           color="info.main"
         />
+      </Box>
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* ═══ FUNNEL SECTION ═══════════════════════════════════════════════ */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <FilterList />
+          <Typography variant="h5" fontWeight={800}>
+            Conversion Funnel
+          </Typography>
+          <Chip label={`Last ${funnel.periodDays}d`} size="small" variant="outlined" />
+        </Box>
+
+        {/* Funnel KPI Cards */}
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
+          {funnelStages.map((s) => (
+            <Card key={s.key} sx={{ minWidth: 140, flex: 1 }}>
+              <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Typography variant="h5" fontWeight={800}>{s.count}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+
+        {/* Funnel Conversion Table */}
+        <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            Stage-by-Stage Conversion
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>From</TableCell>
+                  <TableCell sx={{ px: 0.5, width: 30 }}></TableCell>
+                  <TableCell>To</TableCell>
+                  <TableCell align="right">From</TableCell>
+                  <TableCell align="right">To</TableCell>
+                  <TableCell align="right">Rate</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {funnelStages.slice(0, -1).map((from, i) => {
+                  const to = funnelStages[i + 1];
+                  return (
+                    <TableRow key={from.key}>
+                      <TableCell>{from.label}</TableCell>
+                      <TableCell sx={{ px: 0.5 }}>
+                        <ArrowForward sx={{ fontSize: 14, color: 'text.disabled' }} />
+                      </TableCell>
+                      <TableCell>{to.label}</TableCell>
+                      <TableCell align="right" sx={{ fontFamily: 'monospace' }}>{from.count}</TableCell>
+                      <TableCell align="right" sx={{ fontFamily: 'monospace' }}>{to.count}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                        {pct(to.count, from.count)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {/* Overall conversion */}
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Pricing View</TableCell>
+                  <TableCell sx={{ px: 0.5 }}>
+                    <ArrowForward sx={{ fontSize: 14, color: 'text.disabled' }} />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>VIP Conversion</TableCell>
+                  <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{fc.pricing_view}</TableCell>
+                  <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{fc.vip_conversion_success}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, fontFamily: 'monospace', color: 'success.main' }}>
+                    {pct(fc.vip_conversion_success, fc.pricing_view)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+
+        {/* Recent Funnel Activity */}
+        {funnel.recentEvents.length > 0 && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Recent Funnel Activity
+            </Typography>
+            <List dense disablePadding>
+              {funnel.recentEvents.map((e, i) => {
+                const { label, color } = funnelLabel(e.eventType);
+                return (
+                  <ListItem key={i} disableGutters divider={i < funnel.recentEvents.length - 1}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Chip label={label} size="small" color={color} />
+                          {e.email && (
+                            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                              {e.email}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                      secondary={timeAgo(e.createdAt)}
+                    />
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Paper>
+        )}
       </Box>
 
       <Divider sx={{ my: 3 }} />
@@ -245,9 +436,7 @@ const Admin: React.FC = () => {
                         <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
                           {s.email}
                         </Typography>
-                        {s.vipActive && (
-                          <Chip label={s.vipPlan || 'VIP'} size="small" color="warning" />
-                        )}
+                        {planChip(s.planLabel)}
                         {s.discordConnected && (
                           <Chip label="Discord" size="small" variant="outlined" />
                         )}
@@ -324,7 +513,7 @@ const Admin: React.FC = () => {
               <TableBody>
                 {sortedDays.map(([day, count]) => {
                   const max = Math.max(...sortedDays.map(([, c]) => c));
-                  const pct = max > 0 ? (count / max) * 100 : 0;
+                  const pctVal = max > 0 ? (count / max) * 100 : 0;
                   return (
                     <TableRow key={day}>
                       <TableCell sx={{ fontFamily: 'monospace' }}>{day}</TableCell>
@@ -335,7 +524,7 @@ const Admin: React.FC = () => {
                         <Box
                           sx={{
                             height: 16,
-                            width: `${pct}%`,
+                            width: `${pctVal}%`,
                             minWidth: count > 0 ? 8 : 0,
                             bgcolor: 'primary.main',
                             borderRadius: 1,
@@ -356,8 +545,8 @@ const Admin: React.FC = () => {
       <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <Chip label="LIVE: Firestore users" size="small" color="success" variant="outlined" />
         <Chip label="LIVE: Stripe events API" size="small" color="success" variant="outlined" />
+        <Chip label="LIVE: Funnel events (Firestore)" size="small" color="success" variant="outlined" />
         <Chip label="ESTIMATED: MRR" size="small" color="warning" variant="outlined" />
-        <Chip label="NOT SYNCED: Vercel Analytics" size="small" color="default" variant="outlined" />
       </Box>
     </Box>
   );
