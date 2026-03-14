@@ -106,10 +106,13 @@ async function handleRequestLink(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Valid email required' });
   }
 
-  const token = await createMagicLink(email);
+  // Allow callers to specify a post-auth redirect (e.g. /edge?auth=free-signup)
+  const redirectTo = (req.body?.redirectTo || '').trim() || undefined;
+
+  const token = await createMagicLink(email, redirectTo);
   await sendMagicLinkEmail(email, token);
 
-  console.log(`[auth] magic link requested for ${email}`);
+  console.log(`[auth] magic link requested for ${email}${redirectTo ? ` → ${redirectTo}` : ''}`);
   return res.json({ ok: true });
 }
 
@@ -117,18 +120,20 @@ async function handleRequestLink(req: VercelRequest, res: VercelResponse) {
 
 async function handleCallback(req: VercelRequest, res: VercelResponse) {
   const token = req.query.token as string;
-  const email = await validateAndConsumeMagicLink(token);
+  const result = await validateAndConsumeMagicLink(token);
 
-  if (!email) {
+  if (!result) {
     return res.redirect(302, `${getBaseUrl()}/pricing?auth=expired`);
   }
 
-  await getOrCreateUser(email);
-  const jwt = await signJwt(email);
+  await getOrCreateUser(result.email);
+  const jwt = await signJwt(result.email);
   setSessionCookie(res, jwt);
 
-  console.log(`[auth] signed in: ${email}`);
-  return res.redirect(302, `${getBaseUrl()}/pricing?auth=success`);
+  // Redirect to the stored destination (e.g. /edge?auth=free-signup) or default
+  const destination = result.redirectTo || '/pricing?auth=success';
+  console.log(`[auth] signed in: ${result.email} → ${destination}`);
+  return res.redirect(302, `${getBaseUrl()}${destination}`);
 }
 
 // ── GET: Me ─────────────────────────────────────────────────────────────────

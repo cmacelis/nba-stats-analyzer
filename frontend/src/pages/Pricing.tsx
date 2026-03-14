@@ -22,6 +22,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { funnelEvent } from '../lib/analytics';
 import { useAuth } from '../contexts/AuthContext';
+import SignInModal from '../components/SignInModal';
 
 // ── Stripe Payment Links ───────────────────────────────────────────────────
 const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/bJe6oH3yx3NT1fS5qx97G02';
@@ -67,6 +68,7 @@ const Pricing: React.FC = () => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [freeSignInOpen, setFreeSignInOpen] = useState(false);
 
   // Telegram ref param (e.g. "tg_123456") — when present, use server-side checkout
   const ref = searchParams.get('ref') || undefined;
@@ -231,10 +233,23 @@ const Pricing: React.FC = () => {
             variant="outlined"
             fullWidth
             sx={{ mt: 3, borderRadius: 2, fontWeight: 700 }}
-            onClick={() => navigate('/edge')}
+            onClick={() => {
+              funnelEvent('free-cta-click');
+              if (user) {
+                // Already signed in — go straight to Edge Feed
+                navigate('/edge');
+              } else {
+                setFreeSignInOpen(true);
+              }
+            }}
           >
-            Get Started
+            {user ? 'Open Edge Feed' : 'Start Free'}
           </Button>
+          {!user && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, textAlign: 'center', display: 'block' }}>
+              Free email sign-in — no password needed
+            </Typography>
+          )}
         </Paper>
 
         {/* ── VIP Pro Card ────────────────────────────────────────── */}
@@ -371,6 +386,14 @@ const Pricing: React.FC = () => {
         This tool provides statistical insights and tracking. It is not financial advice.
         Past results don't guarantee future performance. Payments processed securely via Stripe.
       </Typography>
+
+      {/* Free plan sign-in modal */}
+      <SignInModal
+        open={freeSignInOpen}
+        onClose={() => setFreeSignInOpen(false)}
+        subtitle="Create your free account to access the Edge Feed, comparisons, and daily picks."
+        redirectTo="/edge?auth=free-signup"
+      />
     </Box>
   );
 };

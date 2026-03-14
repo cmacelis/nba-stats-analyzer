@@ -13,6 +13,7 @@ type FunnelEvent =
   | 'sign-in-start'
   | 'pricing-view'
   | 'vip-cta-click'
+  | 'free-cta-click'
   | 'edge-feed-view'
   | 'compare-view'
   | 'matchup-view'

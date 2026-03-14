@@ -15,9 +15,13 @@ import { funnelEvent } from '../lib/analytics';
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Optional subtitle shown below "Sign In" title (e.g. plan context) */
+  subtitle?: string;
+  /** Where to redirect after magic link auth (default: /pricing) */
+  redirectTo?: string;
 }
 
-const SignInModal: React.FC<Props> = ({ open, onClose }) => {
+const SignInModal: React.FC<Props> = ({ open, onClose, subtitle, redirectTo }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -41,7 +45,7 @@ const SignInModal: React.FC<Props> = ({ open, onClose }) => {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, ...(redirectTo ? { redirectTo } : {}) }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -65,6 +69,9 @@ const SignInModal: React.FC<Props> = ({ open, onClose }) => {
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle>Sign In</DialogTitle>
       <DialogContent>
+        {subtitle && status !== 'sent' && (
+          <Alert severity="info" sx={{ mt: 1, mb: 2 }}>{subtitle}</Alert>
+        )}
         {status === 'sent' ? (
           <Alert severity="success" sx={{ mt: 1 }}>
             Check your email for a sign-in link. It expires in 15 minutes.

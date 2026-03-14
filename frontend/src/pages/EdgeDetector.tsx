@@ -434,6 +434,7 @@ const EdgeDetector: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const isVip = user?.vipActive === true;
+  const authParam = searchParams.get('auth');
 
   // Read URL params set by Discord "Open Edge Feed" / "Track this pick" links
   const urlStat        = searchParams.get('stat')        as 'pts' | 'pra' | null;
@@ -547,6 +548,23 @@ const EdgeDetector: React.FC = () => {
         Players ranked by edge — recent performance vs sportsbook lines (or season average).
         Click a row to compare; click <AddCircleOutline sx={{ fontSize: 14, verticalAlign: 'middle' }} /> to track a pick.
       </Typography>
+
+      {/* Welcome banner after free signup */}
+      {authParam === 'free-signup' && user && (
+        <Alert
+          severity="success"
+          sx={{ mb: 3, borderRadius: 2 }}
+          onClose={() => {
+            const clean = new URLSearchParams(searchParams);
+            clean.delete('auth');
+            navigate(`/edge${clean.toString() ? `?${clean}` : ''}`, { replace: true });
+          }}
+        >
+          <Typography variant="body2" fontWeight={600}>
+            Welcome — your Free account is active! You're signed in as {user.email}.
+          </Typography>
+        </Alert>
+      )}
 
       {/* Filters */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'center' }}>

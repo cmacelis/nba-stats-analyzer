@@ -129,7 +129,7 @@ function emailToDocId(email: string): string {
 
 // ── Firestore: magic_links ───────────────────────────────────────────────────
 
-export async function createMagicLink(email: string): Promise<string> {
+export async function createMagicLink(email: string, redirectTo?: string): Promise<string> {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
 
@@ -137,6 +137,7 @@ export async function createMagicLink(email: string): Promise<string> {
     email,
     expiresAt,
     consumedAt: null,
+    ...(redirectTo ? { redirectTo } : {}),
   });
 
   return token;
@@ -144,7 +145,7 @@ export async function createMagicLink(email: string): Promise<string> {
 
 export async function validateAndConsumeMagicLink(
   token: string,
-): Promise<string | null> {
+): Promise<{ email: string; redirectTo?: string } | null> {
   const doc = await getDocument('magic_links', token);
   if (!doc) return null;
 
@@ -160,7 +161,10 @@ export async function validateAndConsumeMagicLink(
     consumedAt: new Date().toISOString(),
   });
 
-  return doc.email as string;
+  return {
+    email: doc.email as string,
+    redirectTo: (doc.redirectTo as string) || undefined,
+  };
 }
 
 // ── Discord: role assignment helper ──────────────────────────────────────────
