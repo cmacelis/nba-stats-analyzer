@@ -33,8 +33,12 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
       if (cached) return res.json({ ...cached, cached: true });
     }
 
-    // Map prop string to StatKey ('points' → 'pts', anything else unknown → 'pts')
-    const statKey: StatKey = prop === 'pra' ? 'pra' : 'pts';
+    // Map prop string to StatKey — pass correct stat through to adapter.
+    const PROP_TO_STAT: Record<string, StatKey> = {
+      points: 'pts', rebounds: 'reb', assists: 'ast', threes: 'fg3m',
+      pts: 'pts', reb: 'reb', ast: 'ast', fg3m: 'fg3m', pra: 'pra',
+    };
+    const statKey: StatKey = PROP_TO_STAT[prop] ?? 'pts';
 
     const [mentions, statContext] = await Promise.all([
       scrapePlayerMentions(playerName),

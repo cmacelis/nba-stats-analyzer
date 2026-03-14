@@ -111,7 +111,7 @@ function StatContextRow({ ctx, propType }: { ctx: StatContext; propType: PropTyp
     ctx.streak > 0 ? `${ctx.streak} OVER streak` :
     ctx.streak < 0 ? `${Math.abs(ctx.streak)} UNDER streak` : 'No streak';
 
-  const propUnit = propType === 'points' ? 'pts' : propType === 'rebounds' ? 'reb' : propType === 'assists' ? 'ast' : '';
+  const propUnit = propType === 'points' ? 'pts' : propType === 'rebounds' ? 'reb' : propType === 'assists' ? 'ast' : propType === 'threes' ? '3PM' : '';
 
   // Mini sparkline: last 10 games as colored dots
   const sparkDots = ctx.recentGames.slice(0, 10).map((v, i) => {
@@ -342,6 +342,7 @@ export default function ResearchPanel({ playerName }: Props) {
             <MenuItem value="points">Points</MenuItem>
             <MenuItem value="rebounds">Rebounds</MenuItem>
             <MenuItem value="assists">Assists</MenuItem>
+            <MenuItem value="threes">Threes</MenuItem>
             <MenuItem value="combined">Combined</MenuItem>
           </Select>
         </FormControl>

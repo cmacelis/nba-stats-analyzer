@@ -9,7 +9,7 @@
 
 // ─── Shared enums ────────────────────────────────────────────────────────────
 
-export type StatKey = 'pts' | 'pra';
+export type StatKey = 'pts' | 'reb' | 'ast' | 'fg3m' | 'pra';
 
 // ─── Core models ─────────────────────────────────────────────────────────────
 

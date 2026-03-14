@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-export type PropType = 'points' | 'rebounds' | 'assists' | 'combined';
+export type PropType = 'points' | 'rebounds' | 'assists' | 'threes' | 'combined';
 export type Prediction = 'over' | 'under' | 'neutral';
 
 export interface StatContext {

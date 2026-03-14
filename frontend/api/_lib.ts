@@ -129,14 +129,16 @@ export interface StatContext {
   underOdds?:  number | null;
 }
 
-const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
+const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast' | 'fg3m'> = {
   points:   'pts',
   rebounds: 'reb',
   assists:  'ast',
+  threes:   'fg3m',
   // Adapter also passes short keys (StatKey format) — accept both
-  pts: 'pts',
-  reb: 'reb',
-  ast: 'ast',
+  pts:  'pts',
+  reb:  'reb',
+  ast:  'ast',
+  fg3m: 'fg3m',
 };
 
 function parseMins(min: string | number): number {
@@ -597,13 +599,14 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     if (!avgRow && playedLogs.length >= 3) {
       const n = playedLogs.length;
       const avg = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0) / n;
-      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), games_played: n };
+      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), fg3m: avg('fg3m'), games_played: n };
     }
     if (!avgRow) return null;
 
+    const isPRA = propType === 'combined' || propType === 'pra';
     const statKey = PROP_STAT[propType];
     let seasonAvg: number;
-    if (propType === 'combined') {
+    if (isPRA) {
       seasonAvg = (Number(avgRow.pts) || 0) + (Number(avgRow.reb) || 0) + (Number(avgRow.ast) || 0);
     } else if (statKey) {
       seasonAvg = Number(avgRow[statKey]) || 0;
@@ -614,7 +617,7 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     const values = playedLogs
       .slice(0, 10)
       .map(g =>
-        propType === 'combined'
+        isPRA
           ? (Number(g['pts']) || 0) + (Number(g['reb']) || 0) + (Number(g['ast']) || 0)
           : Number(g[statKey!]) || 0
       );
@@ -622,7 +625,7 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     if (values.length < 3) return null;
 
     // Look up real sportsbook prop line; fall back to season avg
-    const internalStat = statKey ?? (propType === 'combined' ? 'pra' : null);
+    const internalStat = statKey ?? (isPRA ? 'pra' : null);
     const propKey = internalStat ? `${player.id}:${internalStat}` : null;
     const realProp = propKey ? (allProps.get(propKey) ?? null) : null;
     const propLine = realProp ? realProp.line_value : Math.round(seasonAvg * 10) / 10;

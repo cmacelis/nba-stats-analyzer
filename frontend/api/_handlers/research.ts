@@ -27,9 +27,13 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
       if (cached) return res.json({ ...cached, cached: true });
     }
 
-    // Pass the original prop name ('points', 'rebounds', 'assists') — fetchStatContext
-    // accepts both long and short keys via PROP_STAT.
-    const statKey: StatKey = prop === 'pra' ? 'pra' : 'pts';
+    // Pass the prop name through — fetchStatContext resolves it via PROP_STAT.
+    // StatKey accepts short keys; map long names for the adapter.
+    const PROP_TO_STAT: Record<string, StatKey> = {
+      points: 'pts', rebounds: 'reb', assists: 'ast', threes: 'fg3m',
+      pts: 'pts', reb: 'reb', ast: 'ast', fg3m: 'fg3m', pra: 'pra',
+    };
+    const statKey: StatKey = PROP_TO_STAT[prop] ?? 'pts';
 
     const league = (req.query.league as string) || 'nba';
     const [mentions, statContext] = await Promise.all([
