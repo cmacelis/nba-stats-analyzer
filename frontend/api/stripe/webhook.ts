@@ -116,6 +116,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (updates.vipActive) {
     await tryAssignDiscordRole(lowerEmail);
   }
+
+  // Best-effort: link Telegram user if checkout came from Telegram bot
+  const clientRef = session.client_reference_id;
+  if (clientRef?.startsWith('tg_') && updates.vipActive) {
+    await tryLinkTelegramUser(clientRef.slice(3), lowerEmail);
+  }
 }
 
 async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
@@ -196,5 +202,37 @@ async function tryAssignDiscordRole(email: string): Promise<void> {
     }
   } catch (err) {
     console.error(`[stripe] Discord role assign error for ${email}:`, (err as Error).message);
+  }
+}
+
+/**
+ * Best-effort Telegram user VIP activation.
+ * Updates the telegram_users Firestore doc to set vipActive = true.
+ */
+async function tryLinkTelegramUser(chatId: string, email: string): Promise<void> {
+  try {
+    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || '';
+    const API_KEY = process.env.FIREBASE_API_KEY || '';
+    const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+    const fields = {
+      vipActive: { booleanValue: true },
+      email: { stringValue: email },
+      linkedAt: { stringValue: new Date().toISOString() },
+    };
+    const masks = Object.keys(fields).map(k => `updateMask.fieldPaths=${k}`).join('&');
+    const res = await fetch(
+      `${FS_BASE}/telegram_users/chat_${chatId}?${masks}&key=${API_KEY}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      },
+    );
+    if (res.ok) {
+      console.log(`[stripe] Telegram VIP activated for chat_${chatId} (${email})`);
+    }
+  } catch (err) {
+    console.error(`[stripe] Telegram link error for chat_${chatId}:`, (err as Error).message);
   }
 }
