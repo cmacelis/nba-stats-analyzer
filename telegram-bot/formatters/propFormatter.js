@@ -17,11 +17,11 @@ export function formatPropResponse(data, parsed, remaining) {
   if (dir) msg += ` ${dir}`;
   msg += '\n\n';
 
-  if (parsed.line) {
-    msg += `*Your Line:* ${parsed.line}\n`;
-  }
   if (ctx.propLine) {
-    msg += `*Book Line:* ${ctx.propLine} (${ctx.lineSource || 'est.'})\n`;
+    msg += `*Line:* ${ctx.propLine} (${ctx.lineSource || 'est.'})\n`;
+  }
+  if (parsed.line && parsed.line !== ctx.propLine) {
+    msg += `*Your Target:* ${parsed.line}\n`;
   }
 
   const l5 = ctx.recentAvg5;

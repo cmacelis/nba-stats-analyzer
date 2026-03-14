@@ -1,5 +1,19 @@
+import { getOrCreateUser } from '../services/userService.js';
+
 export async function handleSubscribe(bot, msg) {
   const chatId = msg.chat.id;
+  const user = await getOrCreateUser(chatId, msg.from?.username);
+
+  if (user.vipActive) {
+    const briefing = user.subscribedBriefing ? 'On' : 'Off';
+    return bot.sendMessage(chatId,
+      `\u2B50 *You're on Pro*\n\n` +
+      `Unlimited queries\n` +
+      `Daily briefing: ${briefing}`,
+      { parse_mode: 'Markdown' },
+    );
+  }
+
   const baseUrl = process.env.STRIPE_CHECKOUT_URL || 'https://edgedetector.ai/pricing';
   const checkoutUrl = `${baseUrl}?ref=tg_${chatId}`;
 
