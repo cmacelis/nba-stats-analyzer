@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   Alert,
   Box,
@@ -19,7 +19,7 @@ import {
   LockOpen,
   RemoveCircleOutline,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { funnelEvent } from '../lib/analytics';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,11 +65,41 @@ const Pricing: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  // Telegram ref param (e.g. "tg_123456") — when present, use server-side checkout
+  const ref = searchParams.get('ref') || undefined;
 
   // Track pricing page view as a funnel event
   useEffect(() => {
     funnelEvent('pricing-view');
   }, []);
+
+  /**
+   * Start checkout via server-side session (passes client_reference_id for Telegram linking).
+   * Falls back to direct Payment Links when no ref is present.
+   */
+  const startCheckout = useCallback(async (plan: 'monthly' | 'annual') => {
+    setCheckoutLoading(plan);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, ref }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('[pricing] checkout error:', data.error);
+        setCheckoutLoading(null);
+      }
+    } catch (err) {
+      console.error('[pricing] checkout fetch error:', err);
+      setCheckoutLoading(null);
+    }
+  }, [ref]);
   const cardSx = {
     p: 3,
     borderRadius: 3,
@@ -241,23 +271,27 @@ const Pricing: React.FC = () => {
             <Button
               variant="contained"
               fullWidth
-              href={STRIPE_LINK_MONTHLY}
-              rel="noopener noreferrer"
+              {...(ref
+                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'monthly', ref }); startCheckout('monthly'); } }
+                : { href: STRIPE_LINK_MONTHLY, rel: 'noopener noreferrer', onClick: () => funnelEvent('vip-cta-click', { plan: 'monthly' }) }
+              )}
+              disabled={checkoutLoading === 'monthly'}
               startIcon={<LockOpen />}
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
-              onClick={() => funnelEvent('vip-cta-click', { plan: 'monthly' })}
             >
-              Join VIP Pro — $19/mo
+              {checkoutLoading === 'monthly' ? 'Loading…' : 'Join VIP Pro — $19/mo'}
             </Button>
             <Button
               variant="outlined"
               fullWidth
-              href={STRIPE_LINK_ANNUAL}
-              rel="noopener noreferrer"
+              {...(ref
+                ? { onClick: () => { funnelEvent('vip-cta-click', { plan: 'annual', ref }); startCheckout('annual'); } }
+                : { href: STRIPE_LINK_ANNUAL, rel: 'noopener noreferrer', onClick: () => funnelEvent('vip-cta-click', { plan: 'annual' }) }
+              )}
+              disabled={checkoutLoading === 'annual'}
               sx={{ borderRadius: 2, fontWeight: 700, py: 1.2 }}
-              onClick={() => funnelEvent('vip-cta-click', { plan: 'annual' })}
             >
-              Join VIP Pro Annual — $199/yr
+              {checkoutLoading === 'annual' ? 'Loading…' : 'Join VIP Pro Annual — $199/yr'}
             </Button>
           </Box>
 

@@ -1,14 +1,12 @@
 /**
- * stripe/webhook.ts — Stripe webhook handler.
+ * stripe/[[...path]].ts — Combined Stripe handler (catch-all).
  *
- * POST /api/stripe/webhook
+ * Routes:
+ *   POST /api/stripe/webhook  — Stripe webhook (signature-verified)
+ *   POST /api/stripe/checkout — Create Checkout Session with client_reference_id
  *
- * Handles:
- *   - checkout.session.completed → link Stripe customer to user, activate VIP
- *   - customer.subscription.updated → sync VIP status + period end
- *   - customer.subscription.deleted → deactivate VIP
- *
- * Requires: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+ * Combined into one file to stay within the Vercel Hobby 12-function limit.
+ * Requires: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_MONTHLY, STRIPE_PRICE_ANNUAL
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -20,7 +18,7 @@ import {
   assignDiscordVipRole,
 } from '../_auth.js';
 
-// Disable Vercel's automatic body parsing so we can verify the raw signature
+// Disable body parsing so we can verify the webhook raw signature
 export const config = { api: { bodyParser: false } };
 
 function getStripe(): Stripe {
@@ -37,7 +35,83 @@ async function readRawBody(req: VercelRequest): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+// ── Router ──────────────────────────────────────────────────────────────────
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const pathname = new URL(req.url!, `https://${req.headers.host}`).pathname;
+
+  if (pathname.endsWith('/stripe/checkout')) {
+    return handleCheckout(req, res);
+  }
+  if (pathname.endsWith('/stripe/webhook')) {
+    return handleWebhook(req, res);
+  }
+
+  return res.status(404).json({ error: 'Not found' });
+}
+
+// ── Checkout Session Creator ────────────────────────────────────────────────
+
+function getPriceId(plan: string): string | null {
+  if (plan === 'monthly') return process.env.STRIPE_PRICE_MONTHLY || null;
+  if (plan === 'annual') return process.env.STRIPE_PRICE_ANNUAL || null;
+  return null;
+}
+
+async function handleCheckout(req: VercelRequest, res: VercelResponse) {
+  // CORS preflight
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+
+  // Body parsing disabled globally — parse manually
+  const rawBody = await readRawBody(req);
+  let body: { plan?: string; ref?: string } = {};
+  try {
+    body = JSON.parse(rawBody.toString());
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  const { plan, ref } = body;
+  if (!plan || (plan !== 'monthly' && plan !== 'annual')) {
+    return res.status(400).json({ error: 'plan must be "monthly" or "annual"' });
+  }
+
+  const priceId = getPriceId(plan);
+  if (!priceId) {
+    return res.status(500).json({ error: `STRIPE_PRICE_${plan.toUpperCase()} env var not set` });
+  }
+
+  try {
+    const stripe = getStripe();
+    const baseUrl = process.env.CHECKOUT_SUCCESS_URL || 'https://edgedetector.ai';
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${baseUrl}/pricing?checkout=success`,
+      cancel_url: `${baseUrl}/pricing?checkout=cancel`,
+    };
+
+    if (ref && typeof ref === 'string') {
+      sessionParams.client_reference_id = ref;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    return res.json({ url: session.url });
+  } catch (err) {
+    console.error('[stripe/checkout] error:', (err as Error).message);
+    return res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+}
+
+// ── Webhook Handler ─────────────────────────────────────────────────────────
+
+async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -83,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.json({ received: true });
 }
 
-// ── Event handlers ───────────────────────────────────────────────────────────
+// ── Webhook Event Handlers ──────────────────────────────────────────────────
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const email = session.customer_details?.email || session.customer_email;
@@ -138,9 +212,10 @@ async function handleSubscriptionUpdate(sub: Stripe.Subscription) {
 
   console.log(`[stripe] subscription ${sub.id} updated for ${email}, active=${isActive}`);
 
-  // Best-effort: assign Discord VIP role when subscription becomes active
   if (isActive) {
     await tryAssignDiscordRole(email);
+  } else {
+    await tryDeactivateTelegramUser(email);
   }
 }
 
@@ -155,6 +230,8 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   });
 
   console.log(`[stripe] subscription ${sub.id} deleted for ${email}, VIP deactivated`);
+
+  await tryDeactivateTelegramUser(email);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -176,7 +253,6 @@ function determinePlan(sub: Stripe.Subscription): string {
   return 'monthly';
 }
 
-/** Extract period end from subscription (field still exists at runtime but removed from 2026 types). */
 function extractPeriodEnd(sub: Stripe.Subscription): string | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodEnd = (sub as any).current_period_end;
@@ -184,11 +260,6 @@ function extractPeriodEnd(sub: Stripe.Subscription): string | null {
   return null;
 }
 
-/**
- * Best-effort Discord VIP role assignment.
- * Looks up user's discordUserId; if connected, assigns the VIP Pro role.
- * Never throws — logs and continues.
- */
 async function tryAssignDiscordRole(email: string): Promise<void> {
   try {
     const user = await getUserByEmail(email);
@@ -205,16 +276,9 @@ async function tryAssignDiscordRole(email: string): Promise<void> {
   }
 }
 
-/**
- * Best-effort Telegram user VIP activation.
- * Updates the telegram_users Firestore doc to set vipActive = true.
- */
 async function tryLinkTelegramUser(chatId: string, email: string): Promise<void> {
   try {
-    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || '';
-    const API_KEY = process.env.FIREBASE_API_KEY || '';
-    const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-
+    const { base, key } = tgFirestore();
     const fields = {
       vipActive: { booleanValue: true },
       email: { stringValue: email },
@@ -222,7 +286,7 @@ async function tryLinkTelegramUser(chatId: string, email: string): Promise<void>
     };
     const masks = Object.keys(fields).map(k => `updateMask.fieldPaths=${k}`).join('&');
     const res = await fetch(
-      `${FS_BASE}/telegram_users/chat_${chatId}?${masks}&key=${API_KEY}`,
+      `${base}/telegram_users/chat_${chatId}?${masks}&key=${key}`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -235,4 +299,58 @@ async function tryLinkTelegramUser(chatId: string, email: string): Promise<void>
   } catch (err) {
     console.error(`[stripe] Telegram link error for chat_${chatId}:`, (err as Error).message);
   }
+}
+
+async function tryDeactivateTelegramUser(email: string): Promise<void> {
+  try {
+    const { base, key } = tgFirestore();
+
+    const queryRes = await fetch(`${base}:runQuery?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'telegram_users' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'email' },
+              op: 'EQUAL',
+              value: { stringValue: email },
+            },
+          },
+        },
+      }),
+    });
+    if (!queryRes.ok) return;
+
+    const results = await queryRes.json();
+    for (const r of results) {
+      if (!r.document?.name) continue;
+      const docPath = r.document.name.split('/documents/')[1];
+      if (!docPath) continue;
+
+      const fields = { vipActive: { booleanValue: false } };
+      await fetch(
+        `${base}/${docPath}?updateMask.fieldPaths=vipActive&key=${key}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields }),
+        },
+      );
+      const docId = docPath.split('/').pop();
+      console.log(`[stripe] Telegram VIP deactivated for ${docId} (${email})`);
+    }
+  } catch (err) {
+    console.error(`[stripe] Telegram deactivation error for ${email}:`, (err as Error).message);
+  }
+}
+
+function tgFirestore() {
+  const pid = process.env.FIREBASE_PROJECT_ID || '';
+  const key = process.env.FIREBASE_API_KEY || '';
+  return {
+    key,
+    base: `https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents`,
+  };
 }
