@@ -19,6 +19,7 @@ const Pricing          = React.lazy(() => import('./pages/Pricing'));
 const NbaPropAnalyzer   = React.lazy(() => import('./pages/NbaPropAnalyzer'));
 const WnbaPropAnalyzer  = React.lazy(() => import('./pages/WnbaPropAnalyzer'));
 const StartHere         = React.lazy(() => import('./pages/StartHere'));
+const Admin             = React.lazy(() => import('./pages/Admin'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
       {
         path: 'start-here',
         element: <StartHere />
+      },
+      {
+        path: 'admin',
+        element: <Admin />
       }
     ]
   }

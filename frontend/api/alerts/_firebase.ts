@@ -116,6 +116,29 @@ export async function updateDocument(collection: string, docId: string, data: Re
   if (!res.ok) throw new Error(`Firestore update ${collection}/${docId} failed: ${res.status}`);
 }
 
+/** List all documents in a collection (unfiltered, paginated via Firestore REST). */
+export async function listAllDocuments(
+  collection: string,
+): Promise<Array<Record<string, unknown>>> {
+  const all: Array<Record<string, unknown>> = [];
+  let pageToken = '';
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const url = `${BASE}/${collection}?key=${API_KEY}&pageSize=300${pageToken ? `&pageToken=${pageToken}` : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Firestore list ${collection} failed: ${res.status}`);
+    const data = await res.json();
+    const docs = data.documents || [];
+    for (const doc of docs) {
+      if (doc.fields) all.push(docToObj(doc));
+    }
+    if (!data.nextPageToken || docs.length === 0) break;
+    pageToken = data.nextPageToken;
+  }
+  return all;
+}
+
 /** Query documents with structured query (WHERE clauses). */
 export async function queryDocuments(
   collection: string,

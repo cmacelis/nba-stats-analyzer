@@ -11,10 +11,14 @@
  *   GET  /api/auth?_subpath=discord/start     → redirect to Discord OAuth
  *   GET  /api/auth?_subpath=discord/callback  → handle Discord callback
  *   GET  /api/auth?_subpath=discord/status    → return Discord connection status
+ *
+ * Admin (_subpath routes):
+ *   GET  /api/auth?_subpath=admin/stats       → admin dashboard data (allowlisted emails only)
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
+import Stripe from 'stripe';
 import {
   createMagicLink,
   validateAndConsumeMagicLink,
@@ -30,6 +34,7 @@ import {
   updateUserByEmail,
   assignDiscordVipRole,
 } from './_auth.js';
+import { listAllDocuments } from './alerts/_firebase.js';
 
 // ── Discord config ──────────────────────────────────────────────────────────
 
@@ -71,12 +76,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   try {
-    // Check for Discord _subpath routes first (GET only)
+    // Check for _subpath routes first (GET only)
     if (req.method === 'GET') {
       const subpath = getSubpath(req);
       if (subpath === 'discord/start') return await handleDiscordStart(req, res);
       if (subpath === 'discord/callback') return await handleDiscordCallback(req, res);
       if (subpath === 'discord/status') return await handleDiscordStatus(req, res);
+      if (subpath === 'admin/stats') return await handleAdminStats(req, res);
     }
 
     // Original routes
@@ -352,4 +358,150 @@ async function handleDiscordStatus(req: VercelRequest, res: VercelResponse) {
     discordUsername: doc.discordUsername || null,
     vipActive: user.vipActive,
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Admin dashboard route
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Allowlisted admin emails — set ADMIN_EMAILS env var (comma-separated). */
+function getAdminEmails(): string[] {
+  const raw = process.env.ADMIN_EMAILS || '';
+  return raw
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+// ── GET _subpath=admin/stats ────────────────────────────────────────────────
+
+async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
+  // 1. Auth check
+  const email = await getSessionEmail(req);
+  if (!email) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // 2. Admin allowlist check
+  const admins = getAdminEmails();
+  if (admins.length === 0) {
+    return res.status(403).json({ error: 'No admin emails configured' });
+  }
+  if (!admins.includes(email.toLowerCase())) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  try {
+    // 3. Fetch all users from Firestore
+    const allUsers = await listAllDocuments('users');
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const totalUsers = allUsers.length;
+    const vipUsers = allUsers.filter((u) => u.vipActive === true);
+    const freeUsers = allUsers.filter((u) => !u.vipActive);
+
+    // Recent signups (last 7 days)
+    const recentSignups = allUsers
+      .filter((u) => {
+        const created = u.createdAt as string | undefined;
+        return created && new Date(created) >= sevenDaysAgo;
+      })
+      .sort((a, b) => {
+        const da = new Date(a.createdAt as string).getTime();
+        const db = new Date(b.createdAt as string).getTime();
+        return db - da;
+      })
+      .slice(0, 20)
+      .map((u) => ({
+        email: u.email,
+        createdAt: u.createdAt,
+        vipActive: u.vipActive ?? false,
+        vipPlan: u.vipPlan ?? null,
+        discordConnected: !!u.discordUserId,
+      }));
+
+    // Signups over time (last 30 days, by day)
+    const signupsByDay: Record<string, number> = {};
+    allUsers.forEach((u) => {
+      const created = u.createdAt as string | undefined;
+      if (created && new Date(created) >= thirtyDaysAgo) {
+        const day = created.slice(0, 10); // YYYY-MM-DD
+        signupsByDay[day] = (signupsByDay[day] || 0) + 1;
+      }
+    });
+
+    // Discord connection rate
+    const discordConnected = allUsers.filter((u) => !!u.discordUserId).length;
+
+    // 4. Fetch recent Stripe events (best-effort)
+    let stripeEvents: Array<{
+      type: string;
+      created: string;
+      email: string | null;
+      amount: number | null;
+    }> = [];
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (stripeKey) {
+      try {
+        const stripe = new Stripe(stripeKey, { apiVersion: '2026-02-25.clover' });
+        const events = await stripe.events.list({
+          limit: 25,
+          types: [
+            'checkout.session.completed',
+            'customer.subscription.created',
+            'customer.subscription.updated',
+            'customer.subscription.deleted',
+            'invoice.payment_succeeded',
+            'invoice.payment_failed',
+          ],
+        });
+
+        stripeEvents = events.data.map((e) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const obj = e.data.object as any;
+          return {
+            type: e.type,
+            created: new Date(e.created * 1000).toISOString(),
+            email: obj?.customer_email || obj?.customer_details?.email || null,
+            amount: obj?.amount_total ? obj.amount_total / 100 : null,
+          };
+        });
+      } catch (err) {
+        console.error('[admin] Stripe events fetch error:', (err as Error).message);
+      }
+    }
+
+    // 5. VIP breakdown
+    const vipMonthly = vipUsers.filter((u) => u.vipPlan === 'monthly').length;
+    const vipAnnual = vipUsers.filter((u) => u.vipPlan === 'annual').length;
+
+    // Estimated MRR
+    const estimatedMrr = vipMonthly * 19 + vipAnnual * Math.round(199 / 12);
+
+    return res.json({
+      generatedAt: now.toISOString(),
+      users: {
+        total: totalUsers,
+        free: freeUsers.length,
+        vip: vipUsers.length,
+        vipMonthly,
+        vipAnnual,
+        discordConnected,
+      },
+      revenue: {
+        estimatedMrr,
+        note: 'MRR = (monthly × $19) + (annual × $16.58/mo)',
+      },
+      recentSignups,
+      signupsByDay,
+      stripeEvents,
+    });
+  } catch (err) {
+    console.error('[admin] stats error:', (err as Error).message);
+    return res.status(500).json({ error: 'Failed to load admin stats' });
+  }
 }
