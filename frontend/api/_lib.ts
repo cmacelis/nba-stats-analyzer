@@ -86,16 +86,18 @@ export interface BdlPlayer {
   team?: { id: number; full_name: string; abbreviation: string };
 }
 
-/** Search by first name, then exact-match full name if a full name was given. */
+/** Search BDL by last name (if full name) or first name, then filter to exact match. */
 export async function searchPlayers(searchTerm: string, league?: string): Promise<{ data: BdlPlayer[]; meta: unknown }> {
-  const firstName = searchTerm.split(' ')[0];
-  const params: Record<string, unknown> = { search: firstName, per_page: 25 };
+  const parts = searchTerm.trim().split(/\s+/);
+  const isFullName = parts.length > 1;
+  // BDL search matches first OR last independently — use last name when available (fewer collisions)
+  const searchKey = isFullName ? parts[parts.length - 1] : parts[0];
+  const params: Record<string, unknown> = { search: searchKey, per_page: 25 };
   if (league) params.league = league;
-  
+
   const raw = await bdlGet('/players', params);
   const allPlayers: BdlPlayer[] = raw?.data ?? [];
-  const isFullName = searchTerm.includes(' ');
-  const lower = searchTerm.toLowerCase();
+  const lower = searchTerm.trim().toLowerCase();
   const filtered = isFullName
     ? allPlayers.filter(p => `${p.first_name} ${p.last_name}`.toLowerCase() === lower)
     : allPlayers;
@@ -104,10 +106,11 @@ export async function searchPlayers(searchTerm: string, league?: string): Promis
 
 /** Find a single player by full name; falls back to first result. */
 async function findPlayer(name: string): Promise<BdlPlayer | null> {
-  const firstName = name.split(' ')[0];
-  const raw = await bdlGet('/players', { search: firstName, per_page: 10 });
+  const parts = name.trim().split(/\s+/);
+  const searchKey = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  const raw = await bdlGet('/players', { search: searchKey, per_page: 25 });
   const candidates: BdlPlayer[] = raw?.data ?? [];
-  const lower = name.toLowerCase();
+  const lower = name.trim().toLowerCase();
   return candidates.find(p => `${p.first_name} ${p.last_name}`.toLowerCase() === lower)
     ?? candidates[0]
     ?? null;
