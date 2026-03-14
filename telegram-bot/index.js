@@ -17,6 +17,7 @@ import { handleProp, handleNaturalQuery } from './commands/prop.js';
 import { handlePlayer } from './commands/player.js';
 import { handleEdges } from './commands/edges.js';
 import { handleSubscribe } from './commands/subscribe.js';
+import { handleStatus } from './commands/status.js';
 import { startBriefing } from './briefing.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -53,12 +54,25 @@ bot.onText(/\/subscribe/, (msg) => {
   handleSubscribe(bot, msg).catch(err => console.error('[subscribe] error:', err.message));
 });
 
-// ── Natural language prop queries ───────────────────────────────────────────
+bot.onText(/\/status/, (msg) => {
+  handleStatus(bot, msg).catch(err => console.error('[status] error:', err.message));
+});
+
+// ── Natural language prop queries + fallback ────────────────────────────────
 
 bot.on('message', (msg) => {
   if (msg.text?.startsWith('/')) return;
   if (!msg.text) return;
-  handleNaturalQuery(bot, msg).catch(err => console.error('[natural] error:', err.message));
+  handleNaturalQuery(bot, msg)
+    .then(matched => {
+      if (!matched) {
+        bot.sendMessage(msg.chat.id,
+          `I didn't catch that.\n\nTry: \`LeBron over 25.5 points\`\nOr use /help to see commands.`,
+          { parse_mode: 'Markdown' },
+        );
+      }
+    })
+    .catch(err => console.error('[natural] error:', err.message));
 });
 
 // ── Daily briefing scheduler ────────────────────────────────────────────────

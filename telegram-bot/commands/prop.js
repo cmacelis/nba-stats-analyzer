@@ -108,10 +108,11 @@ export async function handleProp(bot, msg, queryText) {
 
 export async function handleNaturalQuery(bot, msg) {
   const text = msg.text?.trim();
-  if (!text) return;
+  if (!text) return false;
 
   const parsed = parseNaturalQuery(text);
-  if (!parsed) return; // Not a prop query — ignore
+  if (!parsed) return false; // Not a prop query
 
   await handleProp(bot, msg, text);
+  return true;
 }

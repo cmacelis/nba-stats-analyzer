@@ -18,6 +18,7 @@ export async function handleStart(bot, msg) {
     `/prop LeBron points \u2014 Prop analysis\n` +
     `/edges \u2014 Today's top 5 edges\n` +
     `/subscribe \u2014 Upgrade to Pro ($19/mo)\n` +
+    `/status \u2014 Your plan & usage\n` +
     `/help \u2014 Full command list\n\n` +
     `Free tier: 5 queries/day \u2022 Pro: unlimited + daily briefing`,
     { parse_mode: 'Markdown' },

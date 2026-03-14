@@ -6,9 +6,7 @@ export async function handleSubscribe(bot, msg) {
   await bot.sendMessage(chatId,
     `*EdgeDetector Pro* \u2014 $19/month\n\n` +
     `\u2705 Unlimited prop queries\n` +
-    `\u2705 Daily 9 AM edge briefing\n` +
-    `\u2705 Real-time line movement alerts\n` +
-    `\u2705 Priority support\n\n` +
+    `\u2705 Daily 9 AM edge briefing\n\n` +
     `Tap below to subscribe:`,
     {
       parse_mode: 'Markdown',

@@ -10,11 +10,12 @@ export async function handleHelp(bot, msg) {
     `/prop <name> <stat> \u2014 Prop analysis (e.g. /prop LeBron points)\n` +
     `/edges \u2014 Today's top 5 statistical edges\n` +
     `/subscribe \u2014 Upgrade to Pro ($19/mo)\n` +
+    `/status \u2014 Your plan & usage\n` +
     `/help \u2014 This message\n\n` +
     `*Supported Stats:*\n` +
     `points, rebounds, assists, threes, pra (combined)\n\n` +
     `*Free:* 5 queries/day\n` +
-    `*Pro ($19/mo):* Unlimited queries + daily 9 AM briefing + real-time alerts`,
+    `*Pro ($19/mo):* Unlimited queries + daily 9 AM briefing`,
     { parse_mode: 'Markdown' },
   );
 }
