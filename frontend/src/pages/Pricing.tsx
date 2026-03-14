@@ -71,10 +71,13 @@ const Pricing: React.FC = () => {
   // Telegram ref param (e.g. "tg_123456") — when present, use server-side checkout
   const ref = searchParams.get('ref') || undefined;
 
+  const checkoutStatus = searchParams.get('checkout');
+
   // Track pricing page view as a funnel event
   useEffect(() => {
     funnelEvent('pricing-view');
-  }, []);
+    if (checkoutStatus === 'success') funnelEvent('checkout-success');
+  }, [checkoutStatus]);
 
   /**
    * Start checkout via server-side session (passes client_reference_id for Telegram linking).
@@ -121,6 +124,29 @@ const Pricing: React.FC = () => {
           Free tools for everyone. VIP Pro for serious edge hunters.
         </Typography>
       </Box>
+
+      {/* Checkout status banners */}
+      {checkoutStatus === 'success' && (
+        <Alert
+          severity="success"
+          icon={<CheckCircle />}
+          sx={{ mb: 4, borderRadius: 2 }}
+        >
+          <Typography variant="body2" fontWeight={600}>
+            Payment successful! You now have VIP Pro access. Sign in with the email you used at checkout to get started.
+          </Typography>
+        </Alert>
+      )}
+      {checkoutStatus === 'cancel' && (
+        <Alert
+          severity="info"
+          sx={{ mb: 4, borderRadius: 2 }}
+        >
+          <Typography variant="body2">
+            Checkout was cancelled. You can try again anytime.
+          </Typography>
+        </Alert>
+      )}
 
       {/* VIP Discord CTA — top of page */}
       {user?.vipActive && !user.discordConnected && (
