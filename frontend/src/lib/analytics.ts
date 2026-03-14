@@ -17,7 +17,8 @@ type FunnelEvent =
   | 'compare-view'
   | 'matchup-view'
   | 'prop-analyzer-view'
-  | 'wnba-analyzer-view';
+  | 'wnba-analyzer-view'
+  | 'checkout-success';
 
 export function funnelEvent(
   event: FunnelEvent,
