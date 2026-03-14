@@ -104,8 +104,9 @@ async function handleCheckout(req: VercelRequest, res: VercelResponse) {
     const session = await stripe.checkout.sessions.create(sessionParams);
     return res.json({ url: session.url });
   } catch (err) {
-    console.error('[stripe/checkout] error:', (err as Error).message);
-    return res.status(500).json({ error: 'Failed to create checkout session' });
+    const msg = (err as Error).message;
+    console.error('[stripe/checkout] error:', msg);
+    return res.status(500).json({ error: 'Failed to create checkout session', detail: msg });
   }
 }
 
