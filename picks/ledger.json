@@ -1,0 +1,35 @@
+{
+  "picks": [],
+  "record": {
+    "total": { "wins": 0, "losses": 0, "pushes": 0 },
+    "by_type": {
+      "pick_of_the_day": { "wins": 0, "losses": 0, "pushes": 0 },
+      "runner_up": { "wins": 0, "losses": 0, "pushes": 0 },
+      "player_prop": { "wins": 0, "losses": 0, "pushes": 0 },
+      "fade": { "wins": 0, "losses": 0, "pushes": 0 }
+    },
+    "by_confidence": {
+      "high": { "wins": 0, "losses": 0, "pushes": 0 },
+      "moderate": { "wins": 0, "losses": 0, "pushes": 0 },
+      "low": { "wins": 0, "losses": 0, "pushes": 0 }
+    }
+  },
+  "schema_version": 1,
+  "schema_notes": {
+    "pick_entry": {
+      "date": "YYYY-MM-DD (game date)",
+      "type": "pick_of_the_day | runner_up | player_prop | fade",
+      "game": "Team A vs Team B",
+      "pick": "The specific pick (e.g. 'Nuggets -2.5', 'Over 216.5', 'Knueppel Over 2.5 threes')",
+      "line": "The line/spread/total number",
+      "odds": "The odds (e.g. '-115', '+140')",
+      "confidence": "high | moderate | low",
+      "reasoning": "Why this pick was made (1-2 sentences)",
+      "sources": "Which sources/models backed this pick",
+      "result": "W | L | P | null (null = unsettled)",
+      "actual_score": "Final score or stat line (e.g. 'DEN 112 - LAL 108' or 'Knueppel: 3 threes')",
+      "result_notes": "Why the pick won/lost (1 sentence post-game analysis)",
+      "settled_date": "YYYY-MM-DD when result was graded"
+    }
+  }
+}
