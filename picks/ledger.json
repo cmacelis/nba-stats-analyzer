@@ -10,10 +10,10 @@
       "confidence": "high",
       "reasoning": "Detroit (48-18) is on a 3-game win streak vs. a middling Toronto squad (37-29) with nothing to play for; multiple analysts rated this the clearest spread play of the day.",
       "sources": "Bleacher Nation, Pickswise, Dimers (3/3 expert sources agree)",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "TOR 119 - DET 108",
+      "result_notes": "Brandon Ingram erupted for 34 points; Pistons lost by 11 on the road despite being consensus favorites.",
+      "settled_date": "2026-03-16"
     },
     {
       "date": "2026-03-15",
@@ -25,10 +25,10 @@
       "confidence": "high",
       "reasoning": "Cleveland blew out Dallas by 33 points two days ago in Dallas with starters under 30 minutes; sharp money returning to Cavs as Dallas travels demoralized.",
       "sources": "Covers.com, CBS Sports, Action Network",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "DAL 130 - CLE 120",
+      "result_notes": "Dallas stunned Cleveland on the road; Cooper Flagg (27 pts) and Naji Marshall (25 pts) led an unexpected upset — revenge game narrative backfired.",
+      "settled_date": "2026-03-16"
     },
     {
       "date": "2026-03-15",
@@ -40,10 +40,10 @@
       "confidence": "moderate",
       "reasoning": "OKC is elite but 8.5–9.5 pts is too generous; Minnesota won the last meeting 123-111, and their defense prevents blowouts even in hostile environments.",
       "sources": "Dimers, ClutchPoints, TheLines, Predictem (4 sources)",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "OKC 116 - MIN 103",
+      "result_notes": "Thunder won by 13, blowing past the spread; OKC on an 8-game win streak — Minnesota's defense couldn't contain SGA (20/10) and Holmgren (21/9).",
+      "settled_date": "2026-03-16"
     },
     {
       "date": "2026-03-15",
@@ -55,10 +55,10 @@
       "confidence": "moderate",
       "reasoning": "OKC controls pace at home; Minnesota's elite defense suppresses scoring; multiple analysts project the game landing in the low-220s.",
       "sources": "Dimers, ClutchPoints",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "W",
+      "actual_score": "OKC 116 - MIN 103 (total: 219)",
+      "result_notes": "Total of 219 came in well under 226 as predicted — Minnesota's defense held even in a loss.",
+      "settled_date": "2026-03-16"
     },
     {
       "date": "2026-03-15",
@@ -70,10 +70,10 @@
       "confidence": "high",
       "reasoning": "KAT shooting 37% from deep at home (1.6 made/game at MSG); Warriors allowing a league-worst 13 made threes per game over their last 10 contests — optimal matchup for a multi-three game.",
       "sources": "Bleacher Nation, RotoWire, ESPN Fantasy, Basketball.org.nz (5+ sources)",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "KAT: 17 pts, 12 reb, 7-12 FG, 0-2 3PT",
+      "result_notes": "KAT went 0-for-2 from three despite a favorable matchup; focused on interior scoring (17 pts on 7-12 FG) as Knicks rallied from 21 down to win 110-107.",
+      "settled_date": "2026-03-16"
     },
     {
       "date": "2026-03-15",
@@ -85,6 +85,23 @@
       "confidence": "high",
       "reasoning": "Dallas got torched by 33 at home vs. Cleveland two days ago with Cavs starters playing under 30 minutes; traveling to Cleveland again in a demoralized state with no elite scorer to lean on.",
       "sources": "Covers.com, ClutchPoints, sharp line movement",
+      "result": "L",
+      "actual_score": "DAL 130 - CLE 120",
+      "result_notes": "Dallas flipped the script completely — Flagg and Marshall combined for 52 points; 'demoralized' narrative was wrong, Dallas came out motivated.",
+      "settled_date": "2026-03-16"
+    },
+    {
+      "date": "2026-03-16",
+      "type": "pick_of_the_day",
+      "game": "Memphis Grizzlies @ Chicago Bulls",
+      "pick": "Under 243.5",
+      "line": "243.5",
+      "odds": "-110",
+      "confidence": "moderate",
+      "edge_type": "total",
+      "reasoning": "Dimers model: 57.6% probability, 5.2% edge — strongest model play on the full 8-game Monday slate. 243.5 is the highest total of the day for a non-marquee matchup; pace/defense analysis suppresses combined scoring. Our only profitable edge type (1-0 on totals).",
+      "sources": "Dimers simulation model, BettingPros, multiple best-bet aggregators",
+      "units": 1,
       "result": null,
       "actual_score": null,
       "result_notes": null,
@@ -92,33 +109,44 @@
     }
   ],
   "record": {
-    "total": { "wins": 0, "losses": 0, "pushes": 0 },
+    "total": { "wins": 1, "losses": 5, "pushes": 0 },
     "by_type": {
-      "pick_of_the_day": { "wins": 0, "losses": 0, "pushes": 0 },
-      "runner_up": { "wins": 0, "losses": 0, "pushes": 0 },
-      "player_prop": { "wins": 0, "losses": 0, "pushes": 0 },
-      "fade": { "wins": 0, "losses": 0, "pushes": 0 }
+      "pick_of_the_day": { "wins": 0, "losses": 1, "pushes": 0 },
+      "runner_up": { "wins": 1, "losses": 2, "pushes": 0 },
+      "player_prop": { "wins": 0, "losses": 1, "pushes": 0 },
+      "fade": { "wins": 0, "losses": 1, "pushes": 0 }
     },
     "by_confidence": {
-      "high": { "wins": 0, "losses": 0, "pushes": 0 },
-      "moderate": { "wins": 0, "losses": 0, "pushes": 0 },
+      "high": { "wins": 0, "losses": 4, "pushes": 0 },
+      "moderate": { "wins": 1, "losses": 1, "pushes": 0 },
       "low": { "wins": 0, "losses": 0, "pushes": 0 }
     }
   },
-  "schema_version": 1,
+  "units": {
+    "wagered": 6,
+    "won": 0.91,
+    "lost": 5,
+    "net": -4.09,
+    "roi_pct": -68.2,
+    "note": "Assuming 1u per pick. Under 226 at -110 pays 0.91u. All losses = -1u each."
+  },
+  "schema_version": 2,
+  "_note_mar16": "Mar 16 2026: 1 pick only (POTD). Rejected 6 other potential picks per lessons.md rules. Discipline over quantity.",
   "schema_notes": {
     "pick_entry": {
       "date": "YYYY-MM-DD (game date)",
       "type": "pick_of_the_day | runner_up | player_prop | fade",
       "game": "Team A vs Team B",
-      "pick": "The specific pick (e.g. 'Nuggets -2.5', 'Over 216.5', 'Knueppel Over 2.5 threes')",
+      "pick": "The specific pick (e.g. 'Nuggets -2.5', 'Over 216.5', 'KAT Over 1.5 threes')",
       "line": "The line/spread/total number",
       "odds": "The odds (e.g. '-115', '+140')",
       "confidence": "high | moderate | low",
-      "reasoning": "Why this pick was made (1-2 sentences)",
+      "edge_type": "rest | pace | defense | sharp_money | total | schedule | prop_stat | consensus (what kind of edge drove this pick)",
+      "units": "Number of units risked (default 1, use 0.5 for low confidence, 2 for rare high-conviction plays)",
+      "reasoning": "Why this pick was made — MUST reference specific stats, not just 'experts agree'",
       "sources": "Which sources/models backed this pick",
-      "result": "W | L | P | null (null = unsettled)",
-      "actual_score": "Final score or stat line (e.g. 'DEN 112 - LAL 108' or 'Knueppel: 3 threes')",
+      "result": "W | L | P | CANCELLED | null (null = unsettled)",
+      "actual_score": "Final score or stat line (e.g. 'DEN 112 - LAL 108' or 'KAT: 0-2 3PT')",
       "result_notes": "Why the pick won/lost (1 sentence post-game analysis)",
       "settled_date": "YYYY-MM-DD when result was graded"
     }
