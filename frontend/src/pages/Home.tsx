@@ -13,7 +13,9 @@ import { useSound } from '../contexts/SoundContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useEdgeFeed, EdgeEntry } from '../hooks/useNbaData';
 import { fadeIn, slideIn, scaleIn, getStaggerDelay } from '../utils/animations';
+import { funnelEvent, trackServerFunnel } from '../lib/analytics';
 import PlayerAvatar from '../components/PlayerAvatar';
+import SignInModal from '../components/SignInModal';
 
 // ── mini sparkline (copied from EdgeDetector.tsx) ───────────────────────────
 
@@ -90,8 +92,15 @@ const Home: React.FC = () => {
   const theme = useTheme();
   const { playSound } = useSound();
   const { user } = useAuth();
+  const [freeSignInOpen, setFreeSignInOpen] = React.useState(false);
   const { data: edgeData, isLoading: edgeLoading, isError: edgeError } = useEdgeFeed('pts', 20, 2025);
   const previewEdges: EdgeEntry[] = (edgeData?.data ?? []).slice(0, 5);
+
+  // Track landing page view
+  React.useEffect(() => {
+    funnelEvent('landing-view');
+    trackServerFunnel('landing_view', { sourcePage: '/' });
+  }, []);
 
   const onHover = () => playSound('hover');
   const onClick = () => playSound('click');
@@ -175,31 +184,91 @@ const Home: React.FC = () => {
             animationFillMode: 'backwards',
           }}
         >
-          <Button
-            variant="contained"
-            color="secondary"
-            size="large"
-            endIcon={<ArrowForward />}
-            component={RouterLink}
-            to="/edge"
-            onMouseEnter={onHover}
-            onClick={onClick}
-            sx={{ fontWeight: 700, borderRadius: 2, px: 4, ...hoverLift }}
-          >
-            Explore the Edge Feed
-          </Button>
+          {!user ? (
+            <Button
+              variant="contained"
+              color="secondary"
+              size="large"
+              endIcon={<ArrowForward />}
+              onMouseEnter={onHover}
+              onClick={() => {
+                onClick();
+                funnelEvent('free-cta-click');
+                trackServerFunnel('free_cta_click', { sourcePage: '/' });
+                setFreeSignInOpen(true);
+              }}
+              sx={{ fontWeight: 700, borderRadius: 2, px: 4, ...hoverLift }}
+            >
+              Get Free Access
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="secondary"
+              size="large"
+              endIcon={<ArrowForward />}
+              component={RouterLink}
+              to="/edge"
+              onMouseEnter={onHover}
+              onClick={onClick}
+              sx={{ fontWeight: 700, borderRadius: 2, px: 4, ...hoverLift }}
+            >
+              Explore the Edge Feed
+            </Button>
+          )}
           <Button
             variant="outlined"
             size="large"
             component={RouterLink}
-            to="/compare"
+            to={user ? '/compare' : '/edge'}
             onMouseEnter={onHover}
             onClick={onClick}
             sx={{ borderRadius: 2, px: 3, ...hoverLift }}
           >
-            Compare Players
+            {user ? 'Compare Players' : 'Explore the Edge Feed'}
           </Button>
         </Stack>
+
+        {/* Helper text for logged-out users */}
+        {!user && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 2,
+              mb: 1,
+              animation: `${fadeIn} 0.5s ease-out 0.4s`,
+              animationFillMode: 'backwards',
+              textAlign: 'center',
+            }}
+          >
+            Create a free account. No card required. Connect Discord after signup.
+          </Typography>
+        )}
+
+        {!user && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+              animation: `${fadeIn} 0.5s ease-out 0.45s`,
+              animationFillMode: 'backwards',
+            }}
+          >
+            Want full access?{' '}
+            <Button
+              variant="text"
+              size="small"
+              component={RouterLink}
+              to="/pricing"
+              startIcon={<BoltOutlined sx={{ fontSize: 16 }} />}
+              sx={{ fontWeight: 600, textTransform: 'none' }}
+            >
+              See VIP Pro
+            </Button>
+          </Typography>
+        )}
       </Box>
 
       {/* ── LIVE EDGE PREVIEW ───────────────────────────────────────────── */}
@@ -506,6 +575,14 @@ const Home: React.FC = () => {
           </Paper>
         </Box>
       )}
+
+      {/* Free sign-in modal */}
+      <SignInModal
+        open={freeSignInOpen}
+        onClose={() => setFreeSignInOpen(false)}
+        subtitle="Create your free account — no credit card required."
+        redirectTo="/welcome"
+      />
 
       {/* ── FOOTER ──────────────────────────────────────────────────────── */}
       <Divider />

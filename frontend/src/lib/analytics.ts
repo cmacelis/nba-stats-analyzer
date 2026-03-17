@@ -20,7 +20,10 @@ type FunnelEvent =
   | 'matchup-view'
   | 'prop-analyzer-view'
   | 'wnba-analyzer-view'
-  | 'checkout-success';
+  | 'checkout-success'
+  | 'landing-view'
+  | 'onboarding-view'
+  | 'discord-connect-click';
 
 export function funnelEvent(
   event: FunnelEvent,
@@ -34,7 +37,11 @@ export function funnelEvent(
 type ServerFunnelEvent =
   | 'pricing_view'
   | 'free_cta_click'
-  | 'vip_checkout_start';
+  | 'vip_checkout_start'
+  | 'landing_view'
+  | 'onboarding_view'
+  | 'discord_connect_click'
+  | 'onboarding_skip';
 
 /**
  * Record a funnel event to our own backend (Firestore via /api/auth?_subpath=funnel/track).

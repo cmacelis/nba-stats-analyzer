@@ -215,11 +215,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Button
                 variant="outlined"
                 color="inherit"
-                component={RouterLink}
-                to="/pricing"
                 onMouseEnter={handleButtonHover}
-                onClick={handleButtonClick}
-                startIcon={<BoltOutlined />}
+                onClick={() => {
+                  handleButtonClick();
+                  setSignInOpen(true);
+                }}
+                startIcon={<PersonOutline />}
                 sx={{
                   borderRadius: 2,
                   fontWeight: 700,
@@ -230,7 +231,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }
                 }}
               >
-                Join VIP Pro — $19/mo
+                Get Free Access
               </Button>
             )}
             {user?.vipActive && (
@@ -290,15 +291,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Menu>
                 </>
               ) : (
-                <Button
-                  color="inherit"
-                  size="small"
-                  startIcon={<PersonOutline />}
-                  onClick={() => setSignInOpen(true)}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Sign In
-                </Button>
+                <>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="small"
+                    onClick={() => setSignInOpen(true)}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, mr: 0.5 }}
+                  >
+                    Get Free Access
+                  </Button>
+                  <Button
+                    color="inherit"
+                    size="small"
+                    startIcon={<PersonOutline />}
+                    onClick={() => setSignInOpen(true)}
+                    sx={{ textTransform: 'none', opacity: 0.85 }}
+                  >
+                    Sign In
+                  </Button>
+                </>
               )
             )}
             <Tooltip title={`Sound ${isSoundEnabled ? 'On' : 'Off'}`}>
@@ -372,15 +384,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {!authLoading && !user && (
             <>
               <ListItemButton
-                component={RouterLink}
-                to="/pricing"
-                onClick={() => setDrawerOpen(false)}
-                sx={{ gap: 1.5, py: 1.25 }}
+                onClick={() => { setDrawerOpen(false); setSignInOpen(true); }}
+                sx={{
+                  gap: 1.5,
+                  py: 1.5,
+                  bgcolor: 'secondary.main',
+                  color: 'secondary.contrastText',
+                  borderRadius: 1,
+                  mx: 1,
+                  mb: 0.5,
+                  '&:hover': { bgcolor: 'secondary.dark' },
+                }}
               >
-                <ListItemIcon sx={{ minWidth: 0 }}><BoltOutlined fontSize="small" color="primary" /></ListItemIcon>
+                <ListItemIcon sx={{ minWidth: 0, color: 'inherit' }}><PersonOutline fontSize="small" /></ListItemIcon>
                 <ListItemText
-                  primary="Join VIP Pro — $19/mo"
-                  primaryTypographyProps={{ fontWeight: 700, color: 'primary.main' }}
+                  primary="Get Free Access"
+                  secondary="No card required"
+                  primaryTypographyProps={{ fontWeight: 700 }}
+                  secondaryTypographyProps={{ fontSize: '0.7rem', color: 'inherit', sx: { opacity: 0.85 } }}
                 />
               </ListItemButton>
               <ListItemButton
@@ -388,7 +409,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 sx={{ gap: 1.5, py: 1.25 }}
               >
                 <ListItemIcon sx={{ minWidth: 0 }}><PersonOutline fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Sign In" />
+                <ListItemText
+                  primary="Sign In"
+                  secondary="Returning user"
+                  primaryTypographyProps={{ fontWeight: 500 }}
+                  secondaryTypographyProps={{ fontSize: '0.7rem' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                component={RouterLink}
+                to="/pricing"
+                onClick={() => setDrawerOpen(false)}
+                sx={{ gap: 1.5, py: 1.25 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}><BoltOutlined fontSize="small" color="primary" /></ListItemIcon>
+                <ListItemText
+                  primary="VIP Pro — $19/mo"
+                  primaryTypographyProps={{ fontSize: '0.85rem', color: 'primary.main' }}
+                />
               </ListItemButton>
             </>
           )}
@@ -442,14 +480,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Box>
       </Drawer>
 
-      {/* VIP onboarding banner */}
-      {user?.vipActive && (
+      {/* Onboarding banner — Discord connect prompt for all users, VIP status for connected VIPs */}
+      {user && !user.discordConnected && (
         <Box
           sx={{
             px: 2,
             py: 1.5,
             textAlign: 'center',
-            bgcolor: user.discordConnected ? 'success.dark' : 'primary.dark',
+            bgcolor: user.vipActive ? 'primary.dark' : '#5865F2',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -458,35 +496,50 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             flexWrap: 'wrap',
           }}
         >
-          {user.discordConnected ? (
-            <Typography variant="body2" fontWeight={600}>
-              VIP Active — Alerts ready. Use <strong>/track</strong> in Discord.
-            </Typography>
-          ) : (
-            <>
-              <Typography variant="body2" fontWeight={600}>
-                Step 2 of 2: Connect Discord to activate VIP Pro role + alerts
-              </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<DiscordIcon size={16} />}
-                onClick={() => {
-                  window.location.href = '/api/auth?_subpath=discord/start';
-                }}
-                sx={{
-                  bgcolor: '#5865F2',
-                  '&:hover': { bgcolor: '#4752C4' },
-                  fontWeight: 700,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  px: 2,
-                }}
-              >
-                Connect Discord
-              </Button>
-            </>
-          )}
+          <Typography variant="body2" fontWeight={600}>
+            {user.vipActive
+              ? 'Connect Discord to activate your VIP Pro role + DM alerts'
+              : 'Connect Discord to get the Edge of the Day and community alerts'}
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<DiscordIcon size={16} />}
+            onClick={() => {
+              window.location.href = '/api/auth?_subpath=discord/start';
+            }}
+            sx={{
+              bgcolor: user.vipActive ? '#5865F2' : '#fff',
+              color: user.vipActive ? '#fff' : '#5865F2',
+              '&:hover': { bgcolor: user.vipActive ? '#4752C4' : 'rgba(255,255,255,0.9)' },
+              fontWeight: 700,
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 2,
+            }}
+          >
+            Connect Discord
+          </Button>
+        </Box>
+      )}
+      {user?.vipActive && user.discordConnected && (
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            textAlign: 'center',
+            bgcolor: 'success.dark',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="body2" fontWeight={600}>
+            VIP Active — Alerts ready. Use <strong>/track</strong> in Discord.
+          </Typography>
         </Box>
       )}
 
@@ -507,7 +560,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }}
         persistent={false}
       />
-      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        subtitle="Create your free account — no credit card required."
+        redirectTo="/welcome"
+      />
 
       {/* Discord connection toast */}
       <Snackbar

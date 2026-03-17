@@ -35,10 +35,15 @@ import { useAuth } from '../contexts/AuthContext';
 // ── Types ───────────────────────────────────────────────────────────────────
 
 interface FunnelCounts {
+  landing_view: number;
   pricing_view: number;
   free_cta_click: number;
   magic_link_request: number;
   free_signup_success: number;
+  onboarding_view: number;
+  discord_connect_click: number;
+  discord_connect_success: number;
+  onboarding_skip: number;
   vip_checkout_start: number;
   vip_conversion_success: number;
 }
@@ -138,10 +143,15 @@ function eventLabel(type: string): { label: string; color: 'success' | 'error' |
 
 function funnelLabel(type: string): { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' } {
   const map: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' }> = {
+    landing_view: { label: 'Landing View', color: 'info' },
     pricing_view: { label: 'Pricing View', color: 'info' },
     free_cta_click: { label: 'Free CTA Click', color: 'primary' },
     magic_link_request: { label: 'Magic Link Sent', color: 'secondary' },
     free_signup_success: { label: 'Free Signup', color: 'success' },
+    onboarding_view: { label: 'Onboarding View', color: 'info' },
+    discord_connect_click: { label: 'Discord Click', color: 'primary' },
+    discord_connect_success: { label: 'Discord Connected', color: 'success' },
+    onboarding_skip: { label: 'Onboarding Skip', color: 'warning' },
     vip_checkout_start: { label: 'VIP Checkout', color: 'warning' },
     vip_conversion_success: { label: 'VIP Converted', color: 'success' },
   };
@@ -233,10 +243,15 @@ const Admin: React.FC = () => {
 
   // Funnel stages for the conversion table
   const funnelStages = [
+    { key: 'landing_view', label: 'Landing Views', count: fc.landing_view },
     { key: 'pricing_view', label: 'Pricing Views', count: fc.pricing_view },
     { key: 'free_cta_click', label: 'Free CTA Clicks', count: fc.free_cta_click },
     { key: 'magic_link_request', label: 'Magic Links Sent', count: fc.magic_link_request },
     { key: 'free_signup_success', label: 'Free Signups', count: fc.free_signup_success },
+    { key: 'onboarding_view', label: 'Onboarding Views', count: fc.onboarding_view },
+    { key: 'discord_connect_click', label: 'Discord Clicks', count: fc.discord_connect_click },
+    { key: 'discord_connect_success', label: 'Discord Connected', count: fc.discord_connect_success },
+    { key: 'onboarding_skip', label: 'Onboarding Skips', count: fc.onboarding_skip },
     { key: 'vip_checkout_start', label: 'VIP Checkout Starts', count: fc.vip_checkout_start },
     { key: 'vip_conversion_success', label: 'VIP Conversions', count: fc.vip_conversion_success },
   ];
@@ -365,15 +380,15 @@ const Admin: React.FC = () => {
                 })}
                 {/* Overall conversion */}
                 <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>Pricing View</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Landing View</TableCell>
                   <TableCell sx={{ px: 0.5 }}>
                     <ArrowForward sx={{ fontSize: 14, color: 'text.disabled' }} />
                   </TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>VIP Conversion</TableCell>
-                  <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{fc.pricing_view}</TableCell>
+                  <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{fc.landing_view || fc.pricing_view}</TableCell>
                   <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{fc.vip_conversion_success}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 800, fontFamily: 'monospace', color: 'success.main' }}>
-                    {pct(fc.vip_conversion_success, fc.pricing_view)}
+                    {pct(fc.vip_conversion_success, fc.landing_view || fc.pricing_view)}
                   </TableCell>
                 </TableRow>
               </TableBody>

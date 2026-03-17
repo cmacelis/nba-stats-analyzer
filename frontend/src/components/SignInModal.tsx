@@ -67,7 +67,7 @@ const SignInModal: React.FC<Props> = ({ open, onClose, subtitle, redirectTo }) =
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Sign In</DialogTitle>
+      <DialogTitle>{subtitle ? 'Get Free Access' : 'Sign In'}</DialogTitle>
       <DialogContent>
         {subtitle && status !== 'sent' && (
           <Alert severity="info" sx={{ mt: 1, mb: 2 }}>{subtitle}</Alert>
@@ -79,7 +79,7 @@ const SignInModal: React.FC<Props> = ({ open, onClose, subtitle, redirectTo }) =
         ) : (
           <form onSubmit={handleSubmit} id="signin-form">
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Enter your email to receive a sign-in link. No password needed.
+              Enter your email to receive a magic link. No password needed.
             </Typography>
             {status === 'error' && (
               <Alert severity="error" sx={{ mb: 2 }}>{errorMsg}</Alert>

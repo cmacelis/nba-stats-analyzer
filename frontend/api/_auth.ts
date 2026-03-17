@@ -285,7 +285,12 @@ export type FunnelEventType =
   | 'magic_link_request'
   | 'free_signup_success'
   | 'vip_checkout_start'
-  | 'vip_conversion_success';
+  | 'vip_conversion_success'
+  | 'landing_view'
+  | 'onboarding_view'
+  | 'discord_connect_click'
+  | 'discord_connect_success'
+  | 'onboarding_skip';
 
 const VALID_FUNNEL_EVENTS: Set<string> = new Set([
   'pricing_view',
@@ -294,6 +299,11 @@ const VALID_FUNNEL_EVENTS: Set<string> = new Set([
   'free_signup_success',
   'vip_checkout_start',
   'vip_conversion_success',
+  'landing_view',
+  'onboarding_view',
+  'discord_connect_click',
+  'discord_connect_success',
+  'onboarding_skip',
 ]);
 
 export function isValidFunnelEvent(t: string): t is FunnelEventType {

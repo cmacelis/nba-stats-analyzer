@@ -394,7 +394,7 @@ const Pricing: React.FC = () => {
         open={freeSignInOpen}
         onClose={() => setFreeSignInOpen(false)}
         subtitle="Create your free account to access the Edge Feed, comparisons, and daily picks."
-        redirectTo="/edge?auth=free-signup"
+        redirectTo="/welcome"
       />
     </Box>
   );

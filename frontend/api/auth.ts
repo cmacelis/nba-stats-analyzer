@@ -150,7 +150,7 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
   setSessionCookie(res, jwt);
 
   // Record funnel event for free signup completion
-  const isFreeSignup = result.redirectTo?.includes('free-signup');
+  const isFreeSignup = result.redirectTo?.includes('free-signup') || result.redirectTo?.includes('/welcome');
   if (isFreeSignup) {
     await recordFunnelEvent('free_signup_success', { email: result.email, planContext: 'free' });
   }
@@ -351,6 +351,9 @@ async function handleDiscordCallback(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Record funnel event for successful Discord connection
+  await recordFunnelEvent('discord_connect_success', { email, metadata: { discordUsername, roleAssigned } });
+
   const suffix = roleAssigned ? 'connected' : 'connected_no_role';
   return res.redirect(302, `${baseUrl}/start-here?discord=${suffix}`);
 }
@@ -528,10 +531,15 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     // 6. Funnel events (last 14 days from funnel_events collection)
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     let funnelCounts: Record<string, number> = {
+      landing_view: 0,
       pricing_view: 0,
       free_cta_click: 0,
       magic_link_request: 0,
       free_signup_success: 0,
+      onboarding_view: 0,
+      discord_connect_click: 0,
+      discord_connect_success: 0,
+      onboarding_skip: 0,
       vip_checkout_start: 0,
       vip_conversion_success: 0,
     };
@@ -562,10 +570,15 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       console.error('[admin] funnel query error:', (err as Error).message);
       // If collection doesn't exist yet, just return zeros
       funnelCounts = {
+        landing_view: 0,
         pricing_view: 0,
         free_cta_click: 0,
         magic_link_request: 0,
         free_signup_success: 0,
+        onboarding_view: 0,
+        discord_connect_click: 0,
+        discord_connect_success: 0,
+        onboarding_skip: 0,
         vip_checkout_start: 0,
         vip_conversion_success: 0,
       };

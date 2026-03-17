@@ -20,6 +20,7 @@ const NbaPropAnalyzer   = React.lazy(() => import('./pages/NbaPropAnalyzer'));
 const WnbaPropAnalyzer  = React.lazy(() => import('./pages/WnbaPropAnalyzer'));
 const StartHere         = React.lazy(() => import('./pages/StartHere'));
 const Admin             = React.lazy(() => import('./pages/Admin'));
+const Welcome           = React.lazy(() => import('./pages/Welcome'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -83,6 +84,10 @@ const router = createBrowserRouter([
       {
         path: 'admin',
         element: <Admin />
+      },
+      {
+        path: 'welcome',
+        element: <Welcome />
       }
     ]
   }
