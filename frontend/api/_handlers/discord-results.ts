@@ -4,7 +4,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { listPicks, KV_OK } from '../_picks.js';
+import { listPicks, KV_OK } from '../picks.js';
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const SITE_URL    = process.env.SITE_URL
@@ -66,7 +66,7 @@ export async function discordResultsHandler(req: VercelRequest, res: VercelRespo
           ? [{ name: '\u200b', value: `[📈 Dashboard](${dashboardUrl})`, inline: false }]
           : []),
       ],
-      footer:    { text: 'EdgeDetector.ai · bets only · pushes excluded from hit rate' },
+      footer:    { text: 'NBA Edge Detector · bets only · pushes excluded from hit rate' },
       timestamp: new Date().toISOString(),
     };
 

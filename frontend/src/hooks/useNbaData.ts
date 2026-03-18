@@ -182,34 +182,21 @@ export interface EdgeEntry {
   delta: number;
   last5: number[];
   games_played: number;
-  prop_line?:      number | null;
-  line_source?:    string | null;
-  over_odds?:      number | null;
-  under_odds?:     number | null;
-  has_game_today?: boolean;
 }
-
-export type EdgeEmptyReason =
-  | 'past_season'
-  | 'filter_too_restrictive'
-  | 'upstream_error'
-  | 'no_qualifying_players'
-  | null;
 
 export interface EdgeFeedResponse {
   data: EdgeEntry[];
   stat: string;
   season: number;
   generated_at: string;
-  reason?: EdgeEmptyReason;
 }
 
-export const useEdgeFeed = (stat: string, minMinutes: number, season: number, league: string = 'nba') => {
+export const useEdgeFeed = (stat: string, minMinutes: number, season: number) => {
   return useQuery<EdgeFeedResponse>({
-    queryKey: ['edge', stat, minMinutes, season, league],
+    queryKey: ['edge', stat, minMinutes, season],
     queryFn: async () => {
       const response = await api.get('/api/edge', {
-        params: { stat, min_minutes: minMinutes, season, league },
+        params: { stat, min_minutes: minMinutes, season },
       });
       return response.data;
     },
@@ -228,29 +215,5 @@ export const useUpcomingGames = () => {
       return response.data.data ?? [];
     },
     staleTime: 5 * 60 * 1000,
-  });
-};
-
-// ── Server-side prediction ───────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const usePrediction = (
-  p1Id: string,
-  p2Id: string,
-  home: 1 | 2 | null,
-  season: number,
-) => {
-  return useQuery({
-    queryKey: ['prediction', p1Id, p2Id, home, season],
-    queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const params: Record<string, any> = { p1: p1Id, p2: p2Id, season };
-      if (home) params.home = home;
-      const res = await api.get('/api/predict', { params });
-      return res.data;
-    },
-    enabled: !!p1Id && !!p2Id,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
   });
 };

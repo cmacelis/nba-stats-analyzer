@@ -4,15 +4,14 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { AdapterFactory } from '../_adapters/AdapterFactory.js';
+import { findNbaPersonId, buildNbaPhotoUrl } from '../_lib.js';
 
 export async function playerPhotoHandler(req: VercelRequest, res: VercelResponse) {
   const name = req.query.name as string;
   if (!name) return res.status(400).json({ error: 'name param required' });
   try {
-    const league = (req.query.league as string) || 'nba';
-    const photo_url = await AdapterFactory.get(league).photo(name);
-    res.json({ photo_url });
+    const personId = await findNbaPersonId(name);
+    res.json({ photo_url: personId != null ? buildNbaPhotoUrl(personId) : null });
   } catch (err) {
     console.error('[photo] error:', (err as Error).message);
     res.json({ photo_url: null });

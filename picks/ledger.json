@@ -102,6 +102,40 @@
       "reasoning": "Dimers model: 57.6% probability, 5.2% edge — strongest model play on the full 8-game Monday slate. 243.5 is the highest total of the day for a non-marquee matchup; pace/defense analysis suppresses combined scoring. Our only profitable edge type (1-0 on totals).",
       "sources": "Dimers simulation model, BettingPros, multiple best-bet aggregators",
       "units": 1,
+      "result": "W",
+      "actual_score": "CHI 132 - MEM 107 (total: 239)",
+      "result_notes": "Total of 239 came in well under 243.5 — Bulls blew out Memphis by 25; blowout game script suppressed garbage-time offense and kept combined scoring low.",
+      "settled_date": "2026-03-17"
+    },
+    {
+      "date": "2026-03-17",
+      "type": "pick_of_the_day",
+      "game": "Oklahoma City Thunder vs. Orlando Magic",
+      "pick": "Under 223.5",
+      "line": "223.5",
+      "odds": "-110",
+      "confidence": "moderate",
+      "edge_type": "b2b+defense",
+      "units": 1,
+      "reasoning": "Orlando on B2B (lost to ATL 112-124 last night) + 3 key players OUT (Wagner, Isaac, Black) + OKC has league-best defense (107.72 DRtg #1 in NBA). Depleted, fatigued Magic cannot score vs elite OKC defense at home.",
+      "sources": "Basketball-Reference ratings, ESPN injury report, ESPN schedule (B2B confirmed)",
+      "result": null,
+      "actual_score": null,
+      "result_notes": null,
+      "settled_date": null
+    },
+    {
+      "date": "2026-03-17",
+      "type": "runner_up",
+      "game": "Phoenix Suns @ Minnesota Timberwolves",
+      "pick": "Under 228.5",
+      "line": "228.5",
+      "odds": "-110",
+      "confidence": "moderate",
+      "edge_type": "b2b+schedule",
+      "units": 1,
+      "reasoning": "Phoenix on B2B road trip (lost to BOS 112-120 last night). Rested Minnesota at home (41-27, 6th West). PHX fatigue suppresses offense in 2nd road game in 2 nights. MIN defense held OKC game to 219 combined (3/15).",
+      "sources": "ESPN schedule, Basketball-Reference team records, ESPN injury report",
       "result": null,
       "actual_score": null,
       "result_notes": null,
@@ -109,29 +143,30 @@
     }
   ],
   "record": {
-    "total": { "wins": 1, "losses": 5, "pushes": 0 },
+    "total": { "wins": 2, "losses": 5, "pushes": 0 },
     "by_type": {
-      "pick_of_the_day": { "wins": 0, "losses": 1, "pushes": 0 },
+      "pick_of_the_day": { "wins": 1, "losses": 1, "pushes": 0 },
       "runner_up": { "wins": 1, "losses": 2, "pushes": 0 },
       "player_prop": { "wins": 0, "losses": 1, "pushes": 0 },
       "fade": { "wins": 0, "losses": 1, "pushes": 0 }
     },
     "by_confidence": {
       "high": { "wins": 0, "losses": 4, "pushes": 0 },
-      "moderate": { "wins": 1, "losses": 1, "pushes": 0 },
+      "moderate": { "wins": 2, "losses": 1, "pushes": 0 },
       "low": { "wins": 0, "losses": 0, "pushes": 0 }
     }
   },
   "units": {
-    "wagered": 6,
-    "won": 0.91,
+    "wagered": 7,
+    "won": 1.82,
     "lost": 5,
-    "net": -4.09,
-    "roi_pct": -68.2,
-    "note": "Assuming 1u per pick. Under 226 at -110 pays 0.91u. All losses = -1u each."
+    "net": -3.18,
+    "roi_pct": -45.4,
+    "note": "Assuming 1u per pick. Unders at -110 pay 0.91u each (x2 wins = 1.82u). All losses = -1u each."
   },
   "schema_version": 2,
   "_note_mar16": "Mar 16 2026: 1 pick only (POTD). Rejected 6 other potential picks per lessons.md rules. Discipline over quantity.",
+  "_note_mar17": "Mar 17 2026: 2 picks only (POTD + Runner-Up). Both unders driven by B2B + defense/schedule edge. Rejected 5 games per lessons.md rules. All picks are totals (our 2-0 edge type).",
   "schema_notes": {
     "pick_entry": {
       "date": "YYYY-MM-DD (game date)",

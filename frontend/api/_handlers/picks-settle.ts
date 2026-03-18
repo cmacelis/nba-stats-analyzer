@@ -20,7 +20,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { bdlGet, BDL_SEASON } from '../_lib.js';
-import { type Pick, KV_OK, listPicks, updatePick } from '../_picks.js';
+import { type Pick, KV_OK, listPicks, updatePick } from '../picks.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

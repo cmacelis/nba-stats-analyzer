@@ -1,26 +1,16 @@
-import { inject } from '@vercel/analytics';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-// ── Vercel Web Analytics (auto-tracks all page views + route changes) ───────
-inject();
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CssBaseline from '@mui/material/CssBaseline';
 import { SoundProvider } from './contexts/SoundContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
 import App from './App';
 const Home = React.lazy(() => import('./pages/Home'));
 const PlayerComparison = React.lazy(() => import('./pages/PlayerComparison'));
 const GamePredictor = React.lazy(() => import('./pages/GamePredictor'));
 const PerformanceDashboard = React.lazy(() => import('./pages/PerformanceDashboard'));
 const EdgeDetector = React.lazy(() => import('./pages/EdgeDetector'));
-const Pricing          = React.lazy(() => import('./pages/Pricing'));
-const NbaPropAnalyzer   = React.lazy(() => import('./pages/NbaPropAnalyzer'));
-const WnbaPropAnalyzer  = React.lazy(() => import('./pages/WnbaPropAnalyzer'));
-const StartHere         = React.lazy(() => import('./pages/StartHere'));
-const Admin             = React.lazy(() => import('./pages/Admin'));
-const Welcome           = React.lazy(() => import('./pages/Welcome'));
+const Pricing      = React.lazy(() => import('./pages/Pricing'));
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
@@ -68,26 +58,6 @@ const router = createBrowserRouter([
       {
         path: 'pricing',
         element: <Pricing />
-      },
-      {
-        path: 'nba-prop-analyzer',
-        element: <NbaPropAnalyzer />
-      },
-      {
-        path: 'wnba-prop-analyzer',
-        element: <WnbaPropAnalyzer />
-      },
-      {
-        path: 'start-here',
-        element: <StartHere />
-      },
-      {
-        path: 'admin',
-        element: <Admin />
-      },
-      {
-        path: 'welcome',
-        element: <Welcome />
       }
     ]
   }
@@ -102,11 +72,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CssBaseline />
-        <AuthProvider>
-          <SoundProvider>
-            <RouterProvider router={router} />
-          </SoundProvider>
-        </AuthProvider>
+        <SoundProvider>
+          <RouterProvider router={router} />
+        </SoundProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>

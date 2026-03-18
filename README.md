@@ -1,6 +1,6 @@
-# EdgeDetector.ai
+# NBA Edge Detector
 
-A sports intelligence platform for tracking momentum-based statistical edges in player props. NBA is the flagship sport, with WNBA actively expanding.
+A web app for analyzing NBA statistics, comparing players, predicting game outcomes, and generating AI-powered prop bet edge signals.
 
 ## Tech Stack
 

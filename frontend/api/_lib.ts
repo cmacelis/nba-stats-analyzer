@@ -11,30 +11,11 @@ import axios from 'axios';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const VERSION    = '2026-02-23-research-hotfix-1';
-export const BDL_BASE    = 'https://api.balldontlie.io/v1';
-export const BDL_BASE_V2 = 'https://api.balldontlie.io/v2';
-export const BDL_SEASON  = 2025;
+export const BDL_BASE   = 'https://api.balldontlie.io/v1';
+export const BDL_SEASON = 2025;
 
 const BDL_KEY       = process.env.BALL_DONT_LIE_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-
-// ── Tiered in-memory cache ───────────────────────────────────────────────────
-
-interface CacheEntry<T> { data: T; expiresAt: number }
-const _cache = new Map<string, CacheEntry<unknown>>();
-
-function getCached<T>(key: string): T | null {
-  const e = _cache.get(key);
-  if (!e || e.expiresAt < Date.now()) { _cache.delete(key); return null; }
-  return e.data as T;
-}
-function setCached<T>(key: string, data: T, ttlMs: number): void {
-  _cache.set(key, { data, expiresAt: Date.now() + ttlMs });
-}
-
-const CACHE_GAMES      = 60 * 60 * 1000;       // 1h
-const CACHE_PROPS      = 10 * 60 * 1000;       // 10min
-const CACHE_SEASON_AVG = 4 * 60 * 60 * 1000;   // 4h
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 
@@ -66,16 +47,6 @@ export async function bdlGet(path: string, params: Record<string, unknown> = {})
   return res.data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function bdlGetV2(path: string, params: Record<string, unknown> = {}): Promise<any> {
-  const res = await axios.get(`${BDL_BASE_V2}${path}`, {
-    params,
-    headers: { Authorization: BDL_KEY },
-    timeout: 10000,
-  });
-  return res.data;
-}
-
 // ── Player lookup ─────────────────────────────────────────────────────────────
 
 export interface BdlPlayer {
@@ -86,18 +57,13 @@ export interface BdlPlayer {
   team?: { id: number; full_name: string; abbreviation: string };
 }
 
-/** Search BDL by last name (if full name) or first name, then filter to exact match. */
-export async function searchPlayers(searchTerm: string, league?: string): Promise<{ data: BdlPlayer[]; meta: unknown }> {
-  const parts = searchTerm.trim().split(/\s+/);
-  const isFullName = parts.length > 1;
-  // BDL search matches first OR last independently — use last name when available (fewer collisions)
-  const searchKey = isFullName ? parts[parts.length - 1] : parts[0];
-  const params: Record<string, unknown> = { search: searchKey, per_page: 25 };
-  if (league) params.league = league;
-
-  const raw = await bdlGet('/players', params);
+/** Search by first name, then exact-match full name if a full name was given. */
+export async function searchPlayers(searchTerm: string): Promise<{ data: BdlPlayer[]; meta: unknown }> {
+  const firstName = searchTerm.split(' ')[0];
+  const raw = await bdlGet('/players', { search: firstName, per_page: 25 });
   const allPlayers: BdlPlayer[] = raw?.data ?? [];
-  const lower = searchTerm.trim().toLowerCase();
+  const isFullName = searchTerm.includes(' ');
+  const lower = searchTerm.toLowerCase();
   const filtered = isFullName
     ? allPlayers.filter(p => `${p.first_name} ${p.last_name}`.toLowerCase() === lower)
     : allPlayers;
@@ -106,11 +72,10 @@ export async function searchPlayers(searchTerm: string, league?: string): Promis
 
 /** Find a single player by full name; falls back to first result. */
 async function findPlayer(name: string): Promise<BdlPlayer | null> {
-  const parts = name.trim().split(/\s+/);
-  const searchKey = parts.length > 1 ? parts[parts.length - 1] : parts[0];
-  const raw = await bdlGet('/players', { search: searchKey, per_page: 25 });
+  const firstName = name.split(' ')[0];
+  const raw = await bdlGet('/players', { search: firstName, per_page: 10 });
   const candidates: BdlPlayer[] = raw?.data ?? [];
-  const lower = name.trim().toLowerCase();
+  const lower = name.toLowerCase();
   return candidates.find(p => `${p.first_name} ${p.last_name}`.toLowerCase() === lower)
     ?? candidates[0]
     ?? null;
@@ -127,21 +92,12 @@ export interface StatContext {
   streak:      number;
   recentGames: number[];
   gamesPlayed: number;
-  lineSource?: string | null;   // 'draftkings' | 'fanduel' | 'season_avg'
-  overOdds?:   number | null;
-  underOdds?:  number | null;
 }
 
-const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast' | 'fg3m'> = {
+const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
   points:   'pts',
   rebounds: 'reb',
   assists:  'ast',
-  threes:   'fg3m',
-  // Adapter also passes short keys (StatKey format) — accept both
-  pts:  'pts',
-  reb:  'reb',
-  ast:  'ast',
-  fg3m: 'fg3m',
 };
 
 function parseMins(min: string | number): number {
@@ -213,403 +169,38 @@ export async function getSeasonAverages(playerId: number, season: number): Promi
   };
 }
 
-// ── Today's games + player props (GOAT tier) ─────────────────────────────────
-
-export interface TodayGame {
-  id: number;
-  date: string;
-  status: string;
-  home_team: { id: number; abbreviation: string; full_name: string };
-  visitor_team: { id: number; abbreviation: string; full_name: string };
-}
-
-export async function getTodaysGames(): Promise<TodayGame[]> {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const ck = `games:${today}`;
-  const hit = getCached<TodayGame[]>(ck);
-  if (hit) return hit;
-
-  const data = await bdlGet('/games', { 'dates[]': today, per_page: 25 });
-  const games: TodayGame[] = data?.data ?? [];
-  setCached(ck, games, CACHE_GAMES);
-  return games;
-}
-
-export function getPlayerIdsPlayingToday(
-  players: Array<{ id: number; team?: { id: number } }>,
-  todaysGames: TodayGame[],
-): Set<number> {
-  const teamIds = new Set<number>();
-  for (const g of todaysGames) {
-    teamIds.add(g.home_team.id);
-    teamIds.add(g.visitor_team.id);
-  }
-  const out = new Set<number>();
-  for (const p of players) { if (p.team && teamIds.has(p.team.id)) out.add(p.id); }
-  return out;
-}
-
-export interface PlayerProp {
-  player_id:  number;
-  vendor:     string;
-  prop_type:  string;        // internal key: 'pts','reb','ast','pra', etc.
-  line_value: number;
-  over_odds:  number;
-  under_odds: number;
-}
-
-const BDL_PROP_MAP: Record<string, string> = {
-  points:   'pts',
-  rebounds: 'reb',
-  assists:  'ast',
-  threes:   'fg3m',
-  player_points_rebounds_assists: 'pra',
-};
-
-/** Vendor preference rank — lower = better.  DraftKings > FanDuel > Caesars > others */
-const VENDOR_RANK: Record<string, number> = {
-  draftkings: 0, fanduel: 1, caesars: 2, fanatics: 3, betmgm: 4,
-};
-function vendorScore(v: string): number { return VENDOR_RANK[v] ?? 99; }
-
-export async function getPlayerProps(gameId: number): Promise<Map<string, PlayerProp>> {
-  const ck = `props:${gameId}`;
-  const hit = getCached<Map<string, PlayerProp>>(ck);
-  if (hit) return hit;
-
-  try {
-    // BDL returns all rows regardless of per_page (tested: 2805 for one game)
-    const data = await bdlGetV2('/odds/player_props', { game_id: gameId, per_page: 5000 });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = data?.data ?? [];
-    const m = new Map<string, PlayerProp>();
-    for (const o of rows) {
-      // Only accept over_under markets — skip milestone/alt lines entirely.
-      // Milestone markets are "will they score ≥X?" with a single odds value,
-      // not the primary sportsbook line.
-      if (o.market?.type !== 'over_under') continue;
-
-      const sk = BDL_PROP_MAP[o.prop_type];
-      if (!sk) continue;
-
-      const overOdds  = o.market?.over_odds  ?? 0;
-      const underOdds = o.market?.under_odds ?? 0;
-      // Must have real odds on both sides
-      if (!overOdds && !underOdds) continue;
-
-      const mk = `${o.player_id}:${sk}`;
-      const existing = m.get(mk);
-      // Keep entry from best-ranked vendor
-      if (!existing || vendorScore(o.vendor) < vendorScore(existing.vendor)) {
-        m.set(mk, {
-          player_id:  o.player_id,
-          vendor:     o.vendor,
-          prop_type:  sk,
-          line_value: parseFloat(o.line_value),
-          over_odds:  overOdds,
-          under_odds: underOdds,
-        });
-      }
-    }
-    setCached(ck, m, CACHE_PROPS);
-    return m;
-  } catch (err) {
-    console.warn('[props] getPlayerProps error game', gameId, (err as Error).message);
-    return new Map();
-  }
-}
-
-export async function getAllTodaysProps(): Promise<Map<string, PlayerProp>> {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const ck = `allprops:${today}`;
-  const hit = getCached<Map<string, PlayerProp>>(ck);
-  if (hit) return hit;
-
-  const games = await getTodaysGames();
-  if (games.length === 0) return new Map();
-
-  const maps = await Promise.all(games.map(g => getPlayerProps(g.id)));
-  const merged = new Map<string, PlayerProp>();
-  for (const m of maps) { for (const [k, v] of m) merged.set(k, v); }
-  setCached(ck, merged, CACHE_PROPS);
-  return merged;
-}
-
-// ── Batch season averages (GOAT tier) ────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getBatchSeasonAverages(playerIds: number[], season: number): Promise<Map<number, Record<string, any>>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = new Map<number, Record<string, any>>();
-  if (playerIds.length === 0) return result;
-
-  const CHUNK = 25;
-  const chunks: number[][] = [];
-  for (let i = 0; i < playerIds.length; i += CHUNK) chunks.push(playerIds.slice(i, i + CHUNK));
-
-  const responses = await Promise.all(
-    chunks.map(chunk => {
-      const sp = new URLSearchParams();
-      sp.append('season', String(season));
-      sp.append('season_type', 'regular');
-      sp.append('type', 'base');
-      for (const id of chunk) sp.append('player_ids[]', String(id));
-      return axios.get(`${BDL_BASE}/season_averages/general?${sp.toString()}`, {
-        headers: { Authorization: BDL_KEY },
-        timeout: 15000,
-      }).then(r => r.data).catch(err => {
-        console.warn('[savg] batch chunk failed:', (err as Error).message);
-        return { data: [] };
-      });
-    }),
-  );
-
-  for (const resp of responses) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = resp?.data ?? [];
-    for (const row of rows) {
-      const pid = row.player_id ?? row.player?.id;
-      const stats = row.stats ?? row;
-      if (pid) result.set(pid, { ...stats, games_played: stats.games_played ?? row.games_played });
-    }
-  }
-  return result;
-}
-
-// ── Standings (GOAT tier) ─────────────────────────────────────────────────────
-
-export interface StandingRecord {
-  team_id:          number;
-  team_abbr:        string;
-  wins:             number;
-  losses:           number;
-  win_pct:          number;
-  home_wins:        number;
-  home_losses:      number;
-  road_wins:        number;
-  road_losses:      number;
-  conference_rank:  number;
-}
-
-function parseRecord(rec: string): { w: number; l: number } {
-  const [w, l] = (rec || '0-0').split('-').map(Number);
-  return { w: w || 0, l: l || 0 };
-}
-
-export async function getStandings(season: number): Promise<Map<number, StandingRecord>> {
-  const ck = `standings:${season}`;
-  const hit = getCached<Map<number, StandingRecord>>(ck);
-  if (hit) return hit;
-
-  try {
-    const data = await bdlGet('/standings', { season });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = data?.data ?? [];
-    const result = new Map<number, StandingRecord>();
-    for (const r of rows) {
-      const teamId = r.team?.id ?? r.team_id;
-      if (!teamId) continue;
-      const home = parseRecord(r.home_record);
-      const road = parseRecord(r.road_record);
-      result.set(teamId, {
-        team_id:         teamId,
-        team_abbr:       r.team?.abbreviation ?? '',
-        wins:            r.wins ?? 0,
-        losses:          r.losses ?? 0,
-        win_pct:         (r.wins ?? 0) / Math.max(1, (r.wins ?? 0) + (r.losses ?? 0)),
-        home_wins:       home.w,
-        home_losses:     home.l,
-        road_wins:       road.w,
-        road_losses:     road.l,
-        conference_rank: r.conference_rank ?? 0,
-      });
-    }
-    setCached(ck, result, CACHE_SEASON_AVG);
-    return result;
-  } catch (err) {
-    console.warn('[standings] error:', (err as Error).message);
-    return new Map();
-  }
-}
-
-// ── Advanced stats (GOAT tier) ───────────────────────────────────────────────
-
-export interface AdvancedStats {
-  off_rating:  number;
-  def_rating:  number;
-  net_rating:  number;
-  pace:        number;
-  ts_pct:      number;
-  efg_pct:     number;
-  usg_pct:     number;
-  pie:         number;
-}
-
-export async function getPlayerAdvancedStats(
-  playerIds: number[],
-  season: number,
-): Promise<Map<number, AdvancedStats>> {
-  const result = new Map<number, AdvancedStats>();
-  if (playerIds.length === 0) return result;
-
-  const ck = `advstats:${playerIds.sort().join(',')}:${season}`;
-  const hit = getCached<Map<number, AdvancedStats>>(ck);
-  if (hit) return hit;
-
-  const CHUNK = 25;
-  const chunks: number[][] = [];
-  for (let i = 0; i < playerIds.length; i += CHUNK) chunks.push(playerIds.slice(i, i + CHUNK));
-
-  try {
-    const responses = await Promise.all(
-      chunks.map(chunk => {
-        const sp = new URLSearchParams();
-        sp.append('season', String(season));
-        sp.append('season_type', 'regular');
-        sp.append('type', 'advanced');
-        for (const id of chunk) sp.append('player_ids[]', String(id));
-        return axios.get(`${BDL_BASE}/season_averages/general?${sp.toString()}`, {
-          headers: { Authorization: BDL_KEY },
-          timeout: 15000,
-        }).then(r => r.data).catch(err => {
-          console.warn('[advstats] chunk failed:', (err as Error).message);
-          return { data: [] };
-        });
-      }),
-    );
-
-    for (const resp of responses) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows: any[] = resp?.data ?? [];
-      for (const row of rows) {
-        const pid = row.player_id ?? row.player?.id;
-        const s = row.stats ?? row;
-        if (pid) {
-          result.set(pid, {
-            off_rating: s.off_rating ?? 0,
-            def_rating: s.def_rating ?? 0,
-            net_rating: s.net_rating ?? 0,
-            pace:       s.pace       ?? 100,
-            ts_pct:     s.ts_pct     ?? 0,
-            efg_pct:    s.efg_pct    ?? 0,
-            usg_pct:    s.usg_pct    ?? 0,
-            pie:        s.pie        ?? 0,
-          });
-        }
-      }
-    }
-    setCached(ck, result, CACHE_SEASON_AVG);
-    return result;
-  } catch (err) {
-    console.warn('[advstats] error:', (err as Error).message);
-    return result;
-  }
-}
-
-// ── Recent form (game logs) ──────────────────────────────────────────────────
-
-export interface RecentForm {
-  recentPts:   number;
-  recentAst:   number;
-  recentReb:   number;
-  avgMins:     number;
-  gamesPlayed: number;
-}
-
-export async function getRecentForm(
-  playerId: number,
-  season: number,
-  numGames = 5,
-): Promise<RecentForm | null> {
-  const ck = `form:${playerId}:${season}:${numGames}`;
-  const hit = getCached<RecentForm>(ck);
-  if (hit) return hit;
-
-  try {
-    const threeWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const data = await bdlGet('/stats', {
-      'player_ids[]': playerId,
-      'seasons[]':    season,
-      start_date:     threeWeeksAgo,
-      per_page:       25,
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = data?.data ?? [];
-    if (rows.length === 0) return null;
-
-    // Sort descending by game date (BDL ignores direction param)
-    rows.sort((a, b) => {
-      const da = (a.game as Record<string, string>)?.date || '';
-      const db = (b.game as Record<string, string>)?.date || '';
-      return db.localeCompare(da);
-    });
-
-    const recent = rows.slice(0, numGames).filter(r => parseMins(r.min) > 5);
-    if (recent.length === 0) return null;
-
-    const n = recent.length;
-    const form: RecentForm = {
-      recentPts:   recent.reduce((s, r) => s + (r.pts || 0), 0) / n,
-      recentAst:   recent.reduce((s, r) => s + (r.ast || 0), 0) / n,
-      recentReb:   recent.reduce((s, r) => s + (r.reb || 0), 0) / n,
-      avgMins:     recent.reduce((s, r) => s + parseMins(r.min), 0) / n,
-      gamesPlayed: n,
-    };
-    setCached(ck, form, 60 * 60 * 1000); // 1h cache
-    return form;
-  } catch (err) {
-    console.warn('[form] error player', playerId, (err as Error).message);
-    return null;
-  }
-}
-
-// ── Stat context (research) ──────────────────────────────────────────────────
-
 export async function fetchStatContext(playerName: string, propType: string): Promise<StatContext | null> {
   try {
     const player = await findPlayer(playerName);
     if (!player) return null;
 
-    // Only fetch recent games (last ~4 weeks) — enough for L5/L10 calc.
-    // BDL ignores direction=desc and returns oldest first, so start_date
-    // ensures we get recent games within per_page limit.
-    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
-      .toISOString().slice(0, 10);
-
-    // Fetch season avg, game logs, AND today's real prop lines in parallel
-    const [avgData, logsData, allProps] = await Promise.all([
+    const [avgData, logsData] = await Promise.all([
       bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }).catch(() => ({ data: [] })),
       bdlGet('/stats', {
         'player_ids[]': player.id,
         'seasons[]': BDL_SEASON,
-        per_page: 25,
-        start_date: fourWeeksAgo,
+        per_page: 15,
+        sort: 'date',
+        direction: 'desc',
       }),
-      getAllTodaysProps().catch(() => new Map<string, PlayerProp>()),
     ]);
 
     const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
-    // Sort by date DESCENDING (newest first) — BDL's sort param is unreliable.
-    rawLogs.sort((a, b) => {
-      const da = (a['game'] as Record<string, string>)?.date || '';
-      const db = (b['game'] as Record<string, string>)?.date || '';
-      return db.localeCompare(da);
-    });
     const playedLogs = rawLogs.filter(g => parseMins(g['min'] as string | number) >= 10);
+
     // Use dedicated season averages if available; otherwise estimate from recent logs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let avgRow: Record<string, any> | undefined = avgData?.data?.[0];
     if (!avgRow && playedLogs.length >= 3) {
       const n = playedLogs.length;
       const avg = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0) / n;
-      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), fg3m: avg('fg3m'), games_played: n };
+      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), games_played: n };
     }
     if (!avgRow) return null;
 
-    const isPRA = propType === 'combined' || propType === 'pra';
     const statKey = PROP_STAT[propType];
     let seasonAvg: number;
-    if (isPRA) {
+    if (propType === 'combined') {
       seasonAvg = (Number(avgRow.pts) || 0) + (Number(avgRow.reb) || 0) + (Number(avgRow.ast) || 0);
     } else if (statKey) {
       seasonAvg = Number(avgRow[statKey]) || 0;
@@ -620,34 +211,25 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     const values = playedLogs
       .slice(0, 10)
       .map(g =>
-        isPRA
+        propType === 'combined'
           ? (Number(g['pts']) || 0) + (Number(g['reb']) || 0) + (Number(g['ast']) || 0)
           : Number(g[statKey!]) || 0
       );
 
     if (values.length < 3) return null;
 
-    // Look up real sportsbook prop line; fall back to season avg
-    const internalStat = statKey ?? (isPRA ? 'pra' : null);
-    const propKey = internalStat ? `${player.id}:${internalStat}` : null;
-    const realProp = propKey ? (allProps.get(propKey) ?? null) : null;
-    const propLine = realProp ? realProp.line_value : Math.round(seasonAvg * 10) / 10;
-
     const recentAvg5  = values.slice(0, 5).reduce((a, b) => a + b, 0) / Math.min(5, values.length);
     const recentAvg10 = values.reduce((a, b) => a + b, 0) / values.length;
 
     return {
-      propLine,
+      propLine:    Math.round(seasonAvg   * 10) / 10,
       recentAvg5:  Math.round(recentAvg5  * 10) / 10,
       recentAvg10: Math.round(recentAvg10 * 10) / 10,
       stdDev:      Math.round(calcStdDev(values) * 10) / 10,
-      overHitRate: Math.round((values.filter(v => v > propLine).length / values.length) * 100) / 100,
-      streak:      calcStreak(values, propLine),
+      overHitRate: Math.round((values.filter(v => v > seasonAvg).length / values.length) * 100) / 100,
+      streak:      calcStreak(values, seasonAvg),
       recentGames: values,
       gamesPlayed: Number(avgRow.games_played) || values.length,
-      lineSource:  realProp ? realProp.vendor : 'season_avg',
-      overOdds:    realProp?.over_odds ?? null,
-      underOdds:   realProp?.under_odds ?? null,
     };
   } catch (err) {
     console.error('[research] fetchStatContext error:', (err as Error).message);
@@ -837,10 +419,10 @@ function simulatedReport(
   return {
     playerName, propType, prediction, confidence,
     reasoning: ctx
-      ? `Simulated: L5 avg ${r1(ctx.recentAvg5)} vs ${ctx.lineSource && ctx.lineSource !== 'season_avg' ? ctx.lineSource + ' line' : 'line'} ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)}), hit rate ${Math.round(ctx.overHitRate * 100)}% over last 10.`
+      ? `Simulated: L5 avg ${r1(ctx.recentAvg5)} vs line ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)}), hit rate ${Math.round(ctx.overHitRate * 100)}% over last 10.`
       : `Simulated: insufficient data for ${playerName} ${propType}.`,
     keyFactors: ctx ? [
-      `L5 avg: ${r1(ctx.recentAvg5)} vs ${ctx.lineSource && ctx.lineSource !== 'season_avg' ? ctx.lineSource + ' line' : 'line'} ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)})`,
+      `L5 avg: ${r1(ctx.recentAvg5)} vs line ${r1(ctx.propLine)} (${sign(ctx.recentAvg5 - ctx.propLine)})`,
       `Over hit rate L10: ${Math.round(ctx.overHitRate * 100)}%`,
       `Consistency: ${consistencyLabel(ctx.stdDev)} (σ=${r1(ctx.stdDev)})`,
       streakLabel(ctx.streak),
@@ -852,31 +434,15 @@ function simulatedReport(
   };
 }
 
-// Claude API call disabled during development to avoid API costs.
-// To re-enable for production:
-//   1. Set ENABLE_CLAUDE_RESEARCH=true in Vercel env vars
-//   2. Ensure ANTHROPIC_API_KEY is set
-//   3. Redeploy
-// Uses Haiku 4.5 (~5x cheaper than Sonnet) + prompt caching for 90% input discount.
-// Estimated cost: ~$5/month at 50 reports/day.
 async function callClaude(prompt: string): Promise<string | null> {
-  if (process.env.ENABLE_CLAUDE_RESEARCH !== 'true' || !ANTHROPIC_KEY) return null;
+  if (!ANTHROPIC_KEY) return null;
   try {
     const res = await axios.post(
       'https://api.anthropic.com/v1/messages',
+      { model: 'claude-sonnet-4-6', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] },
       {
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: [{ type: 'text', text: 'You are an expert NBA prop betting analyst focused on finding edges. Respond ONLY with valid JSON.', cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: prompt }],
-      },
-      {
-        headers: {
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-        timeout: 15000,
+        headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        timeout: 30000,
       }
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -906,13 +472,7 @@ function buildPrompt(
     ? `Score: ${(sentiment.overall_score * 100).toFixed(0)}% | Volume: ${sentiment.volume} | Keywords: ${sentiment.keywords.join(', ')}`
     : 'No sentiment data';
   const top = mentions.slice(0, 5).map(m => `- ${m.content} (${m.source})`).join('\n');
-  const lineLabel = ctx.lineSource && ctx.lineSource !== 'season_avg'
-    ? `${r1(ctx.propLine)} (${ctx.lineSource})`
-    : `${r1(ctx.propLine)} (est. from season avg)`;
-  const oddsStr = ctx.overOdds != null && ctx.underOdds != null
-    ? ` | Over ${ctx.overOdds > 0 ? '+' : ''}${ctx.overOdds} / Under ${ctx.underOdds > 0 ? '+' : ''}${ctx.underOdds}`
-    : '';
-  return `You are an expert NBA prop betting analyst focused on finding edges.\nPlayer: ${playerName} | Prop: ${propType} | Line: ${lineLabel}${oddsStr}\nLast 10 games: ${games}\nHit rate L10: ${Math.round(ctx.overHitRate * 100)}% | L5 avg: ${r1(ctx.recentAvg5)} (${sign(d5)}) | L10 avg: ${r1(ctx.recentAvg10)} (${sign(d10)})\nStd dev: ${r1(ctx.stdDev)} (${consistencyLabel(ctx.stdDev)}) | Streak: ${streakLabel(ctx.streak)}\nSentiment: ${st}\n${top}\nRespond ONLY with valid JSON:\n{"prediction":"over"|"under"|"neutral","confidence":0-100,"reasoning":"<2-3 sentences>","key_factors":["..."],"sentiment_weight":"<e.g. Low (10%)>","stat_weight":"<e.g. Primary (90%)>"}`;
+  return `You are an expert NBA prop betting analyst focused on finding edges.\nPlayer: ${playerName} | Prop: ${propType} | Line: ${r1(ctx.propLine)}\nLast 10 games: ${games}\nHit rate L10: ${Math.round(ctx.overHitRate * 100)}% | L5 avg: ${r1(ctx.recentAvg5)} (${sign(d5)}) | L10 avg: ${r1(ctx.recentAvg10)} (${sign(d10)})\nStd dev: ${r1(ctx.stdDev)} (${consistencyLabel(ctx.stdDev)}) | Streak: ${streakLabel(ctx.streak)}\nSentiment: ${st}\n${top}\nRespond ONLY with valid JSON:\n{"prediction":"over"|"under"|"neutral","confidence":0-100,"reasoning":"<2-3 sentences>","key_factors":["..."],"sentiment_weight":"<e.g. Low (10%)>","stat_weight":"<e.g. Primary (90%)>"}`;
 }
 
 // ── NBA headshots ─────────────────────────────────────────────────────────────

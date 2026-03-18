@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-export type PropType = 'points' | 'rebounds' | 'assists' | 'threes' | 'combined';
+export type PropType = 'points' | 'rebounds' | 'assists' | 'combined';
 export type Prediction = 'over' | 'under' | 'neutral';
 
 export interface StatContext {
@@ -14,9 +14,6 @@ export interface StatContext {
   streak: number;        // +N = N consecutive overs, -N = N consecutive unders
   recentGames: number[]; // last 10 values, most recent first
   gamesPlayed: number;
-  lineSource?: string | null;   // 'draftkings' | 'fanduel' | 'season_avg'
-  overOdds?:   number | null;
-  underOdds?:  number | null;
 }
 
 export interface ResearchReport {

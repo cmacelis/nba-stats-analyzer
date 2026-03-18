@@ -6,12 +6,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   getCachedReport,
+  fetchStatContext,
   scrapePlayerMentions,
   analyzeSentiment,
   generateReport,
 } from '../_lib.js';
-import { AdapterFactory } from '../_adapters/AdapterFactory.js';
-import type { StatKey } from '../../frontend/src/adapters/types.js';
 
 export async function researchHandler(req: VercelRequest, res: VercelResponse, playerName: string) {
   try {
@@ -27,18 +26,9 @@ export async function researchHandler(req: VercelRequest, res: VercelResponse, p
       if (cached) return res.json({ ...cached, cached: true });
     }
 
-    // Pass the prop name through — fetchStatContext resolves it via PROP_STAT.
-    // StatKey accepts short keys; map long names for the adapter.
-    const PROP_TO_STAT: Record<string, StatKey> = {
-      points: 'pts', rebounds: 'reb', assists: 'ast', threes: 'fg3m',
-      pts: 'pts', reb: 'reb', ast: 'ast', fg3m: 'fg3m', pra: 'pra',
-    };
-    const statKey: StatKey = PROP_TO_STAT[prop] ?? 'pts';
-
-    const league = (req.query.league as string) || 'nba';
     const [mentions, statContext] = await Promise.all([
       scrapePlayerMentions(playerName),
-      AdapterFactory.get(league).playerStats(playerName, statKey),
+      fetchStatContext(playerName, prop),
     ]);
     const sentiment = analyzeSentiment(mentions);
     const report    = await generateReport(playerName, prop, mentions, sentiment, statContext);

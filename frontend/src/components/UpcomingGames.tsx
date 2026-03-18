@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   Box,
+  Button,
   Card,
-  CardActionArea,
+  CardActions,
   CardContent,
   CircularProgress,
   Collapse,
+  Divider,
   Grid,
   Skeleton,
   Typography,
@@ -76,7 +78,7 @@ interface UpcomingGamesProps {
 
 const UpcomingGames: React.FC<UpcomingGamesProps> = ({ onSelectGame }) => {
   const { data: games, isLoading } = useUpcomingGames();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [loadingGameId, setLoadingGameId] = useState<number | null>(null);
 
   const handlePredict = async (game: NbaGame) => {
@@ -102,10 +104,10 @@ const UpcomingGames: React.FC<UpcomingGamesProps> = ({ onSelectGame }) => {
     return (
       <Box sx={{ mb: 3 }}>
         <Typography variant="h6" gutterBottom>Upcoming Games</Typography>
-        <Grid container spacing={1.5}>
+        <Grid container spacing={2}>
           {[0, 1, 2].map((i) => (
             <Grid item xs={12} sm={6} md={4} key={i}>
-              <Skeleton variant="rounded" height={72} />
+              <Skeleton variant="rounded" height={120} />
             </Grid>
           ))}
         </Grid>
@@ -129,57 +131,44 @@ const UpcomingGames: React.FC<UpcomingGamesProps> = ({ onSelectGame }) => {
       </Box>
 
       <Collapse in={expanded}>
-        <Grid container spacing={1.5}>
+        <Grid container spacing={2}>
           {games.map((game) => {
             const hasMappedPlayers =
               game.home_team.abbreviation in TEAM_STAR_PLAYER &&
               game.visitor_team.abbreviation in TEAM_STAR_PLAYER;
             const isThisLoading = loadingGameId === game.id;
-            const isDisabled = !hasMappedPlayers || loadingGameId !== null;
 
             return (
               <Grid item xs={12} sm={6} md={4} key={game.id}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    height: '100%',
-                    opacity: isDisabled && !isThisLoading ? 0.5 : 1,
-                  }}
-                >
-                  <CardActionArea
-                    disabled={isDisabled}
-                    onClick={() => handlePredict(game)}
-                    sx={{ height: '100%' }}
-                  >
-                    <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold" sx={{ lineHeight: 1.3 }}>
-                            {game.visitor_team.abbreviation}{' '}
-                            <Typography component="span" color="text.secondary" variant="body2">@</Typography>{' '}
-                            {game.home_team.abbreviation}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
-                            {formatGameDate(game.date)}
-                            {(() => { const s = formatStatus(game.status); return s ? <> &middot; {s}</> : null; })()}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {isThisLoading ? (
-                            <CircularProgress size={16} color="secondary" />
-                          ) : (
-                            <Typography
-                              variant="caption"
-                              color="secondary"
-                              sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
-                            >
-                              Predict →
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
+                <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatGameDate(game.date)}
+                      {(() => { const s = formatStatus(game.status); return s ? <> &middot; {s}</> : null; })()}
+                    </Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ mt: 0.5 }}>
+                      {game.visitor_team.abbreviation}{' '}
+                      <Typography component="span" color="text.secondary">@</Typography>{' '}
+                      {game.home_team.abbreviation}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {game.visitor_team.name} at {game.home_team.name}
+                    </Typography>
+                  </CardContent>
+                  <Divider />
+                  <CardActions>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disableElevation
+                      fullWidth
+                      disabled={!hasMappedPlayers || loadingGameId !== null}
+                      onClick={() => handlePredict(game)}
+                      startIcon={isThisLoading ? <CircularProgress size={14} color="inherit" /> : undefined}
+                    >
+                      {isThisLoading ? 'Looking up players…' : 'Predict this game'}
+                    </Button>
+                  </CardActions>
                 </Card>
               </Grid>
             );

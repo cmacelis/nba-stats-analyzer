@@ -22,13 +22,6 @@ const baseTheme: ThemeOptions = {
         },
       },
     },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-        },
-      },
-    },
   }
 };
 
@@ -37,20 +30,14 @@ export const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#0F2B46',
-      light: '#1A4068',
-      dark: '#091D30',
-      contrastText: '#FFFFFF',
+      main: '#1976d2',
+      light: '#42a5f5',
+      dark: '#1565c0',
     },
     secondary: {
-      main: '#00D68F',
-      light: '#33E0A8',
-      dark: '#00B377',
-      contrastText: '#091D30',
-    },
-    background: {
-      default: '#F8F9FB',
-      paper: '#FFFFFF',
+      main: '#dc004e',
+      light: '#ff4081',
+      dark: '#c51162',
     },
   },
 });
@@ -60,20 +47,20 @@ export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#5BA4D9',
-      light: '#90CAF9',
-      dark: '#3A7CB8',
+      main: '#90caf9',
+      light: '#e3f2fd',
+      dark: '#42a5f5',
     },
     secondary: {
-      main: '#00D68F',
-      light: '#33E0A8',
-      dark: '#00B377',
+      main: '#f48fb1',
+      light: '#fce4ec',
+      dark: '#f06292',
     },
     background: {
-      default: '#0B1A2B',
-      paper: '#122036',
+      default: '#121212',
+      paper: '#1e1e1e',
     },
   },
 });
 
-export default lightTheme;
+export default lightTheme; 

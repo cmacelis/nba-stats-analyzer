@@ -111,7 +111,7 @@ function StatContextRow({ ctx, propType }: { ctx: StatContext; propType: PropTyp
     ctx.streak > 0 ? `${ctx.streak} OVER streak` :
     ctx.streak < 0 ? `${Math.abs(ctx.streak)} UNDER streak` : 'No streak';
 
-  const propUnit = propType === 'points' ? 'pts' : propType === 'rebounds' ? 'reb' : propType === 'assists' ? 'ast' : propType === 'threes' ? '3PM' : '';
+  const propUnit = propType === 'points' ? 'pts' : propType === 'rebounds' ? 'reb' : propType === 'assists' ? 'ast' : '';
 
   // Mini sparkline: last 10 games as colored dots
   const sparkDots = ctx.recentGames.slice(0, 10).map((v, i) => {
@@ -143,9 +143,7 @@ function StatContextRow({ ctx, propType }: { ctx: StatContext; propType: PropTyp
       {/* Key metrics row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1.5 }}>
         <Box>
-          <Typography variant="caption" color="text.secondary" display="block">
-            Line{ctx.lineSource && ctx.lineSource !== 'season_avg' ? ` (${ctx.lineSource})` : ''}
-          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">Line</Typography>
           <Typography variant="body2" fontWeight={700}>{ctx.propLine}</Typography>
         </Box>
         <Box>
@@ -342,7 +340,6 @@ export default function ResearchPanel({ playerName }: Props) {
             <MenuItem value="points">Points</MenuItem>
             <MenuItem value="rebounds">Rebounds</MenuItem>
             <MenuItem value="assists">Assists</MenuItem>
-            <MenuItem value="threes">Threes</MenuItem>
             <MenuItem value="combined">Combined</MenuItem>
           </Select>
         </FormControl>

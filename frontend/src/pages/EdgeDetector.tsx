@@ -32,11 +32,10 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { AddCircleOutline, BoltOutlined, LockOutlined, Share as ShareIcon, SportsBasketball, TrendingDown, TrendingUp } from '@mui/icons-material';
+import { AddCircleOutline, BoltOutlined, LockOutlined, TrendingDown, TrendingUp } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { useEdgeFeed, useTrackPick, EdgeEntry, type EdgeEmptyReason } from '../hooks/useNbaData';
-import { useAuth } from '../contexts/AuthContext';
+import { useEdgeFeed, useTrackPick, EdgeEntry } from '../hooks/useNbaData';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -49,9 +48,9 @@ const STAT_OPTIONS = [
 
 const SEASON_OPTIONS = [
   { value: 2025, label: '2025-26' },
-  { value: 2024, label: '2024-25 (ended)' },
-  { value: 2023, label: '2023-24 (ended)' },
-  { value: 2022, label: '2022-23 (ended)' },
+  { value: 2024, label: '2024-25' },
+  { value: 2023, label: '2023-24' },
+  { value: 2022, label: '2022-23' },
 ];
 
 const MARKET_OPTIONS = [
@@ -113,7 +112,7 @@ const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes
   const [pickStat,   setPickStat]   = useState<'pts' | 'reb' | 'ast' | 'pra'>(stat as 'pts' | 'pra');
   const [direction,  setDirection]  = useState<'over' | 'under'>(initialDirection ?? (entry.delta > 0 ? 'over' : 'under'));
   const [tier,       setTier]       = useState<'high' | 'medium' | 'low'>(autoTier(entry.delta));
-  const [line,       setLine]       = useState(entry.prop_line ? String(entry.prop_line) : '');
+  const [line,       setLine]       = useState('');
   const [notes,      setNotes]      = useState('');
   const [toast,      setToast]      = useState<string | null>(null);
 
@@ -234,7 +233,7 @@ const TrackModal: React.FC<TrackModalProps> = ({ entry, stat, season, minMinutes
             type="number"
             value={line}
             onChange={e => setLine(e.target.value)}
-            placeholder={entry.prop_line ? `${entry.prop_line} (${entry.line_source})` : entry.season_avg.toFixed(1)}
+            placeholder={entry.season_avg.toFixed(1)}
             InputProps={{
               startAdornment: <InputAdornment position="start">O/U</InputAdornment>,
               endAdornment: line.trim() ? (
@@ -301,27 +300,19 @@ const EdgeRow: React.FC<{
   stat:       string;
   onCompare:  () => void;
   onTrack:    (e: React.MouseEvent) => void;
-  onShare:    (e: React.MouseEvent) => void;
-  rowRef?:    (el: HTMLTableRowElement | null) => void;
-}> = ({ rank, entry, stat, onCompare, onTrack, onShare, rowRef }) => {
+}> = ({ rank, entry, stat, onCompare, onTrack }) => {
   const theme = useTheme();
   const isUp = entry.delta > 0;
   const statLabel = stat === 'pra' ? 'PRA' : 'PTS';
 
   return (
-    <TableRow hover onClick={onCompare} ref={rowRef} sx={{ cursor: 'pointer' }}>
+    <TableRow hover onClick={onCompare} sx={{ cursor: 'pointer' }}>
       <TableCell sx={{ color: 'text.disabled', fontWeight: 600, width: 36 }}>{rank}</TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <PlayerAvatar name={entry.player_name} photoUrl={entry.photo_url ?? undefined} size={36} />
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.2 }}>{entry.player_name}</Typography>
-              {entry.has_game_today && (
-                <Chip size="small" label="LIVE" color="success"
-                  sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, '& .MuiChip-label': { px: 0.5 } }} />
-              )}
-            </Box>
+            <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.2 }}>{entry.player_name}</Typography>
             <Typography variant="caption" color="text.secondary">{entry.team_abbrev} · {entry.games_played}G</Typography>
           </Box>
         </Box>
@@ -331,15 +322,6 @@ const EdgeRow: React.FC<{
       </TableCell>
       <TableCell align="center" sx={{ fontWeight: 600 }}>
         <Tooltip title={`Last 5 avg ${statLabel}`}><span>{entry.recent_avg.toFixed(1)}</span></Tooltip>
-      </TableCell>
-      <TableCell align="center">
-        {entry.prop_line ? (
-          <Tooltip title={`${entry.line_source} line`}>
-            <Typography variant="body2" fontWeight={600} color="primary.main">{entry.prop_line}</Typography>
-          </Tooltip>
-        ) : (
-          <Typography variant="body2" color="text.disabled">—</Typography>
-        )}
       </TableCell>
       <TableCell align="center">
         <Chip size="small"
@@ -360,12 +342,7 @@ const EdgeRow: React.FC<{
           </Box>
         </Tooltip>
       </TableCell>
-      <TableCell align="center" sx={{ width: 80, pr: 0.5 }}>
-        <Tooltip title="Share this edge">
-          <IconButton size="small" onClick={onShare}>
-            <ShareIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <TableCell align="center" sx={{ width: 44, pr: 0.5 }}>
         <Tooltip title="Track this pick">
           <IconButton
             size="small"
@@ -381,60 +358,11 @@ const EdgeRow: React.FC<{
   );
 };
 
-// ── empty state ──────────────────────────────────────────────────────────────
-
-const EmptyState: React.FC<{
-  reason: EdgeEmptyReason;
-  positiveOnly: boolean;
-  minMinutes: number;
-  season: number;
-}> = ({ reason, positiveOnly, minMinutes, season }) => {
-  if (reason === 'past_season') {
-    const label = SEASON_OPTIONS.find(o => o.value === season)?.label ?? `${season}`;
-    return (
-      <Alert severity="info">
-        The {label} season has ended — edge detection needs recent game data to compare against.
-        Switch to the current season for live edges.
-      </Alert>
-    );
-  }
-  if (reason === 'upstream_error') {
-    return (
-      <Alert severity="warning">
-        Stats data is temporarily unavailable upstream. Edges will return once the data source recovers — try again in a few minutes.
-      </Alert>
-    );
-  }
-  if (reason === 'filter_too_restrictive' || minMinutes > 35) {
-    return (
-      <Alert severity="info">
-        No players averaged {minMinutes}+ minutes in their last 5 games. Try lowering minimum minutes to 20–30.
-      </Alert>
-    );
-  }
-  if (positiveOnly) {
-    return (
-      <Alert severity="info">
-        No positive-delta edges right now. Disable the &quot;Positive Δ only&quot; toggle to see all edges.
-      </Alert>
-    );
-  }
-  // Generic fallback (no_qualifying_players or unknown)
-  return (
-    <Alert severity="info">
-      No qualifying edges right now. Check back when more games are being played.
-    </Alert>
-  );
-};
-
 // ── page ──────────────────────────────────────────────────────────────────────
 
 const EdgeDetector: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const isVip = user?.vipActive === true;
-  const authParam = searchParams.get('auth');
 
   // Read URL params set by Discord "Open Edge Feed" / "Track this pick" links
   const urlStat        = searchParams.get('stat')        as 'pts' | 'pra' | null;
@@ -444,10 +372,6 @@ const EdgeDetector: React.FC = () => {
   const trackStat      = searchParams.get('track_stat')  as 'pts' | 'pra' | null;
   const trackDirection = searchParams.get('track_direction') as 'over' | 'under' | null;
 
-  // Read league from URL (?league=wnba) or default to 'nba'
-  const urlLeague = searchParams.get('league') as 'nba' | 'wnba' | null;
-
-  const [league,       setLeague]       = useState<'nba' | 'wnba'>(urlLeague ?? 'nba');
   const [stat,         setStat]         = useState<'pts' | 'pra'>(urlStat ?? 'pts');
   const [minMinutes,   setMinMinutes]   = useState(urlMinMinutes ? parseInt(urlMinMinutes, 10) : 20);
   const [season,       setSeason]       = useState(urlSeason ? parseInt(urlSeason, 10) : 2025);
@@ -456,15 +380,10 @@ const EdgeDetector: React.FC = () => {
   const [trackedInitialStat,      setTrackedInitialStat]      = useState<'pts' | 'pra' | undefined>();
   const [trackedInitialDirection, setTrackedInitialDirection] = useState<'over' | 'under' | undefined>();
 
-  const [shareToast, setShareToast] = useState(false);
-  const highlightId = searchParams.get('highlight');
-  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
-
   // Prevent double-open if data re-fetches while modal is already open
   const deepLinkHandled = useRef(false);
-  const highlightHandled = useRef(false);
 
-  const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season, league);
+  const { data, isLoading, error } = useEdgeFeed(stat, minMinutes, season);
 
   // Auto-open TrackModal when arriving via Discord "Track this pick" deep link
   useEffect(() => {
@@ -477,53 +396,18 @@ const EdgeDetector: React.FC = () => {
     setTrackedInitialStat(trackStat ?? undefined);
     setTrackedInitialDirection(trackDirection ?? undefined);
     // Clean track_* params from URL so a refresh doesn't re-open the modal
-    const clean = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes), league });
+    const clean = new URLSearchParams({ stat, s: String(season), min_minutes: String(minMinutes) });
     navigate(`/edge?${clean.toString()}`, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, trackPlayerId]);
-
-  // Scroll to and highlight a player row when arriving via a share link
-  useEffect(() => {
-    if (!highlightId || !data?.data || highlightHandled.current) return;
-    const pid = parseInt(highlightId, 10);
-    const el = rowRefs.current.get(pid);
-    if (!el) return;
-    highlightHandled.current = true;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.style.transition = 'background-color 0.3s';
-    el.style.backgroundColor = 'rgba(25, 118, 210, 0.15)';
-    setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
-  }, [data, highlightId]);
-
-  function buildShareUrl(entry: EdgeEntry): string {
-    const params = new URLSearchParams({
-      card: '',
-      p: String(entry.player_id),
-      n: entry.player_name,
-      t: entry.team_abbrev,
-      s: stat,
-      d: String(entry.delta),
-      a: String(entry.season_avg),
-      r: String(entry.recent_avg),
-    });
-    if (entry.prop_line != null) params.set('l', String(entry.prop_line));
-    return `https://edgedetector.ai/api/edge?${params.toString()}`;
-  }
-
-  const handleShare = (entry: EdgeEntry, e: React.MouseEvent): void => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(buildShareUrl(entry));
-    setShareToast(true);
-  };
 
   const rows = useMemo(() => {
     const entries = data?.data ?? [];
     return positiveOnly ? entries.filter(e => e.delta > 0) : entries;
   }, [data, positiveOnly]);
 
-  const visibleLimit = isVip ? rows.length : FREE_LIMIT;
-  const freeRows    = rows.slice(0, visibleLimit);
-  const lockedCount = isVip ? 0 : Math.max(0, rows.length - FREE_LIMIT);
+  const freeRows    = rows.slice(0, FREE_LIMIT);
+  const lockedCount = Math.max(0, rows.length - FREE_LIMIT);
 
   const handleCompare = (entry: EdgeEntry) => {
     const params = new URLSearchParams({
@@ -545,43 +429,12 @@ const EdgeDetector: React.FC = () => {
         <Typography variant="h4" fontWeight={700}>Edge Feed</Typography>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Players ranked by edge — recent performance vs sportsbook lines (or season average).
+        Players ranked by momentum discrepancy — season average vs last 5 games.
         Click a row to compare; click <AddCircleOutline sx={{ fontSize: 14, verticalAlign: 'middle' }} /> to track a pick.
       </Typography>
 
-      {/* Welcome banner after free signup */}
-      {authParam === 'free-signup' && user && (
-        <Alert
-          severity="success"
-          sx={{ mb: 3, borderRadius: 2 }}
-          onClose={() => {
-            const clean = new URLSearchParams(searchParams);
-            clean.delete('auth');
-            navigate(`/edge${clean.toString() ? `?${clean}` : ''}`, { replace: true });
-          }}
-        >
-          <Typography variant="body2" fontWeight={600}>
-            Welcome — your Free account is active! You're signed in as {user.email}.
-          </Typography>
-        </Alert>
-      )}
-
       {/* Filters */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'center' }}>
-        <ToggleButtonGroup
-          exclusive
-          value={league}
-          onChange={(_, v) => v && setLeague(v)}
-          size="small"
-        >
-          <ToggleButton value="nba" sx={{ fontWeight: 700, px: 2 }}>
-            <SportsBasketball sx={{ fontSize: 16, mr: 0.5 }} /> NBA
-          </ToggleButton>
-          <ToggleButton value="wnba" sx={{ fontWeight: 700, px: 2 }}>
-            <SportsBasketball sx={{ fontSize: 16, mr: 0.5 }} /> WNBA
-          </ToggleButton>
-        </ToggleButtonGroup>
-
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Stat</InputLabel>
           <Select value={stat} label="Stat" onChange={e => setStat(e.target.value as 'pts' | 'pra')}>
@@ -598,10 +451,8 @@ const EdgeDetector: React.FC = () => {
 
         <TextField
           size="small" label="Min minutes" type="number" value={minMinutes}
-          onChange={e => setMinMinutes(Math.min(38, Math.max(0, parseInt(e.target.value) || 0)))}
-          inputProps={{ min: 0, max: 38, step: 5 }} sx={{ width: 130 }}
-          helperText={minMinutes > 30 ? 'High — fewer players qualify' : undefined}
-          FormHelperTextProps={{ sx: { color: 'warning.main', mt: 0.25, fontSize: '0.65rem' } }}
+          onChange={e => setMinMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+          inputProps={{ min: 0, max: 48, step: 5 }} sx={{ width: 130 }}
         />
 
         <FormControlLabel
@@ -628,11 +479,12 @@ const EdgeDetector: React.FC = () => {
           <Typography color="text.secondary">Building edge feed…</Typography>
         </Box>
       ) : error ? (
-        <Alert severity="error">Edge feed temporarily unavailable. Please try again in a few minutes.</Alert>
+        <Alert severity="error">Failed to load edge feed. Please try again.</Alert>
       ) : rows.length === 0 ? (
-        <EmptyState reason={data?.reason ?? null} positiveOnly={positiveOnly} minMinutes={minMinutes} season={season} />
+        <Alert severity="info">
+          No players matched filters. Try lowering minimum minutes or disabling positive-only.
+        </Alert>
       ) : (
-        <>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -641,10 +493,9 @@ const EdgeDetector: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Player</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Season {statLabel}</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>L5 {statLabel}</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>Line</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Δ</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Trend</TableCell>
-                <TableCell sx={{ width: 80 }} />
+                <TableCell sx={{ width: 44 }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -656,12 +507,10 @@ const EdgeDetector: React.FC = () => {
                   stat={stat}
                   onCompare={() => handleCompare(entry)}
                   onTrack={e => { e.stopPropagation(); setTracked(entry); }}
-                  onShare={e => handleShare(entry, e)}
-                  rowRef={el => { if (el) rowRefs.current.set(entry.player_id, el); }}
                 />
               ))}
               {/* Ghost locked rows — hinting at hidden content */}
-              {lockedCount > 0 && [...Array(Math.min(6, lockedCount))].map((_, i) => (
+              {lockedCount > 0 && [...Array(Math.min(3, lockedCount))].map((_, i) => (
                 <TableRow key={`locked-${i}`} sx={{ filter: 'blur(4px)', opacity: 0.22, pointerEvents: 'none', userSelect: 'none' }}>
                   <TableCell sx={{ color: 'text.disabled', fontWeight: 600 }}>{FREE_LIMIT + i + 1}</TableCell>
                   <TableCell>
@@ -675,7 +524,6 @@ const EdgeDetector: React.FC = () => {
                   </TableCell>
                   <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.500', borderRadius: 1, mx: 'auto' }} /></TableCell>
-                  <TableCell align="center"><Box sx={{ width: 30, height: 10, bgcolor: 'grey.400', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 44, height: 22, bgcolor: 'grey.400', borderRadius: 3, mx: 'auto' }} /></TableCell>
                   <TableCell align="center"><Box sx={{ width: 50, height: 24, bgcolor: 'grey.400', borderRadius: 1, mx: 'auto' }} /></TableCell>
                   <TableCell />
@@ -706,24 +554,15 @@ const EdgeDetector: React.FC = () => {
               onClick={() => navigate('/pricing')}
               sx={{ px: 4, fontWeight: 700, borderRadius: 2 }}
             >
-              Join VIP Pro — $19/mo
+              Join VIP Pro
             </Button>
           </Box>
         )}
-        </>
       )}
 
       <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
-        {league.toUpperCase()} · {STAT_OPTIONS.find(o => o.value === stat)?.label} · min {minMinutes} min/game · refreshes every 10 min
+        {STAT_OPTIONS.find(o => o.value === stat)?.label} · min {minMinutes} min/game · via BallDontLie · refreshes every 10 min
       </Typography>
-
-      <Snackbar
-        open={shareToast}
-        autoHideDuration={2000}
-        onClose={() => setShareToast(false)}
-        message="Edge card link copied!"
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
 
       {/* Track modal */}
       {tracked && (

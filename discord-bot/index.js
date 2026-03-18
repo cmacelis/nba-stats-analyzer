@@ -3,8 +3,6 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readdirSync } from 'fs';
-import { startAlertProcessor } from './alertProcessor.js';
-import { startEdgeOfDay } from './edgeOfDay.js';
 
 config();
 
@@ -21,23 +19,6 @@ const client = new Client({
 
 // Command collection
 client.commands = new Collection();
-
-// VIP Pro gating — commands that require a paid role
-const VIP_GATED_COMMANDS = new Set(['track', 'rules', 'untrack']);
-
-function hasVipAccess(member) {
-  const vipRoleId  = process.env.VIP_PRO_ROLE_ID;
-  const betaRoleId = process.env.BETA_ROLE_ID;
-  // If no role IDs configured, allow everyone (dev mode)
-  if (!vipRoleId && !betaRoleId) return true;
-  const roles = member?.roles;
-  if (!roles) return false;
-  // roles.cache is a Collection (discord.js GuildMember)
-  const has = (id) => roles.cache ? roles.cache.has(id) : Array.isArray(roles) && roles.includes(id);
-  if (vipRoleId && has(vipRoleId)) return true;
-  if (betaRoleId && has(betaRoleId)) return true;
-  return false;
-}
 
 // Rate limiter: userID -> timestamp of last request
 const rateLimitMap = new Map();
@@ -95,22 +76,6 @@ client.once('ready', async () => {
     console.error(`❌ Failed to register commands:`, error.message);
     console.error(error.stack);
   }
-
-  // Start alert processor
-  console.log(`🔔 Starting alert processor...\n`);
-  try {
-    startAlertProcessor(client);
-    console.log(`✓ Alert processor started\n`);
-  } catch (error) {
-    console.error(`❌ Failed to start alert processor:`, error.message);
-  }
-
-  // Start Edge of the Day scheduler
-  try {
-    startEdgeOfDay(client);
-  } catch (error) {
-    console.error(`❌ Failed to start edge-of-day:`, error.message);
-  }
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -135,15 +100,6 @@ client.on('interactionCreate', async (interaction) => {
     console.log(`\n📨 Command: /${interaction.commandName} from ${interaction.user.tag}`);
     if (interaction.options.data.length > 0) {
       console.log(`   Params: ${JSON.stringify(Object.fromEntries(interaction.options.data.map(d => [d.name, d.value])))}`);
-    }
-
-    // VIP Pro gate for personalized alert commands
-    if (VIP_GATED_COMMANDS.has(interaction.commandName) && !hasVipAccess(interaction.member)) {
-      console.log(`🔒 VIP gate denied: /${interaction.commandName} from ${interaction.user.tag}`);
-      return interaction.reply({
-        content: '🔒 **VIP Pro required** to use personalized alerts.\nGo to https://edgedetector.ai/pricing to join.',
-        ephemeral: true,
-      });
     }
 
     await command.execute(interaction);

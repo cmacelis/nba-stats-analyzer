@@ -32,7 +32,7 @@ export default {
 
       // Get research data (includes stat context)
       const response = await axios.get(`${API_BASE}/api/research/${encodeURIComponent(playerName)}`, {
-        timeout: 25000,
+        timeout: 5000,
       });
 
       const data = response.data;

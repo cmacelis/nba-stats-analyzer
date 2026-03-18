@@ -35,34 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
   const url = new URL(req.url || '', `http://${req.headers.host}`);
-  let pathname = url.pathname;
+  const pathname = url.pathname;
   const method = req.method || 'GET';
-
-  // Extract league from path OR query param: /api/{league}/... or ?league=...
-  let league = 'nba'; // default
-  
-  // Check query parameter first (from vercel.json rewrites)
-  const queryLeague = req.query.league as string;
-  if (queryLeague && ['nba', 'wnba'].includes(queryLeague)) {
-    league = queryLeague;
-  }
-  
-  // Then check path (for direct calls not going through rewrites)
-  const leagueMatch = pathname.match(/^\/api\/([a-z]+)(\/.*)?$/);
-  if (leagueMatch && ['nba', 'wnba'].includes(leagueMatch[1])) {
-    league = leagueMatch[1];
-    // Remove league prefix for internal routing
-    pathname = leagueMatch[2] ? `/api${leagueMatch[2]}` : '/api';
-  }
-
-  // Also handle /api/nba/* legacy normalization
-  if (pathname.startsWith('/api/nba/')) {
-    league = 'nba';
-    pathname = pathname.replace(/^\/api\/nba/, '/api');
-  }
-
-  // Store league in request object for handlers to use
-  (req as any).league = league;
 
   try {
     // Route based on path pattern

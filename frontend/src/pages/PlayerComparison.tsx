@@ -3,7 +3,6 @@ import axios from 'axios';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Divider,
@@ -15,7 +14,6 @@ import {
   Paper,
   Select,
   Snackbar,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -25,13 +23,12 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { BoltOutlined, ContentCopy } from '@mui/icons-material';
-import { useSearchParams, Link as RouterLink } from 'react-router-dom';
+import { ContentCopy } from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import ResearchPanel from '../components/ResearchPanel';
 import { usePlayerComparison } from '../hooks/useNbaData';
-import { useAuth } from '../contexts/AuthContext';
 import { Player } from '../types/player';
 
 interface StatRow {
@@ -87,7 +84,6 @@ const SEASONS = [
 
 const PlayerComparison: React.FC = () => {
   const theme = useTheme();
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
@@ -338,32 +334,6 @@ const PlayerComparison: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
-      )}
-
-      {/* VIP Upsell */}
-      {!user?.vipActive && (
-        <Paper
-          variant="outlined"
-          sx={{ mt: 4, p: 3, textAlign: 'center', borderColor: 'primary.main', borderWidth: 2 }}
-        >
-          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 1.5 }}>
-            <BoltOutlined color="primary" />
-            <Typography variant="h6" fontWeight={700}>
-              Want deeper edge signals?
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            VIP Pro unlocks the full Edge Feed, DM alerts, and research access.
-          </Typography>
-          <Button
-            variant="contained"
-            component={RouterLink}
-            to="/pricing"
-            sx={{ fontWeight: 700, borderRadius: 2, px: 3 }}
-          >
-            Join VIP Pro — $19/mo
-          </Button>
-        </Paper>
       )}
 
       <Snackbar

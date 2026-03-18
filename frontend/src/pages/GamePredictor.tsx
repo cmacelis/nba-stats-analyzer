@@ -2,17 +2,16 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Snackbar,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -21,25 +20,24 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowBack, ArrowForward, BoltOutlined, ContentCopy, Remove, CompareArrows, KeyboardArrowUp } from '@mui/icons-material';
-import { useSearchParams, Link as RouterLink } from 'react-router-dom';
+import { ArrowBack, ArrowForward, ContentCopy, Remove } from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
 import PlayerSearch from '../components/PlayerSearch';
 import PlayerAvatar from '../components/PlayerAvatar';
 import UpcomingGames from '../components/UpcomingGames';
 import { PlayerRadarChart } from '../components/PlayerRadarChart';
-import { usePlayerStatsWithFallback, usePlayerPhoto, usePrediction } from '../hooks/useNbaData';
-import { useAuth } from '../contexts/AuthContext';
+import { usePlayerStatsWithFallback, usePlayerPhoto } from '../hooks/useNbaData';
 import { Player } from '../types/player';
 import { mapApiStatsToPlayerStats } from '../utils/dataMappers';
 import { predictGame, RawPlayerStats } from '../utils/predictionEngine';
-import SportsScoreIcon from '@mui/icons-material/SportsScore';
 
-function confidenceColor(conf: string): 'success' | 'warning' | 'default' {
+function confidenceColor(conf: string): 'success' | 'warning' | 'error' {
   if (conf === 'high') return 'success';
   if (conf === 'medium') return 'warning';
-  return 'default';
+  return 'error';
 }
 
 function lastName(name: string): string {
@@ -56,7 +54,6 @@ const SEASONS = [
 ];
 
 const GamePredictor: React.FC = () => {
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
@@ -124,23 +121,10 @@ const GamePredictor: React.FC = () => {
   const resolvedPhoto1 = player1?.photoUrl ?? fetchedPhoto1 ?? undefined;
   const resolvedPhoto2 = player2?.photoUrl ?? fetchedPhoto2 ?? undefined;
 
-  // Server-side 5-factor prediction (preferred)
-  const { data: serverPrediction, isLoading: predLoading } = usePrediction(
-    player1?.id.toString() ?? '',
-    player2?.id.toString() ?? '',
-    homeTeam,
-    season,
-  );
-
-  // Client-side fallback if server unavailable
-  const clientPrediction = useMemo(() => {
-    if (serverPrediction) return null; // server wins
+  const prediction = useMemo(() => {
     if (!hasStats1 || !hasStats2) return null;
     return predictGame(rawStats1 as RawPlayerStats, rawStats2 as RawPlayerStats, homeTeam);
-  }, [rawStats1, rawStats2, homeTeam, hasStats1, hasStats2, serverPrediction]);
-
-  const prediction = serverPrediction ?? clientPrediction;
-  const isServerPrediction = !!serverPrediction;
+  }, [rawStats1, rawStats2, homeTeam, hasStats1, hasStats2]);
 
   // Track prediction events in localStorage for the /performance dashboard
   useEffect(() => {
@@ -162,23 +146,19 @@ const GamePredictor: React.FC = () => {
     [rawStats2],
   );
 
-  const isLoading = loading1 || loading2 || (!!player1 && !!player2 && predLoading);
+  const isLoading = loading1 || loading2;
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Typography variant="h4">
           Matchup Edge
         </Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<ContentCopy fontSize="small" />}
-          onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}
-          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-        >
-          Share
-        </Button>
+        <Tooltip title="Copy shareable link">
+          <IconButton size="small" onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }}>
+            <ContentCopy fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         Select each team's star player to predict the game outcome.
@@ -225,9 +205,9 @@ const GamePredictor: React.FC = () => {
           onChange={(_e, val: string | null) => setHomeCourtValue(val)}
           size="small"
         >
-          <ToggleButton value="1">{player1?.team || 'Team 1'}</ToggleButton>
+          <ToggleButton value="1">{player1?.name ?? 'Team 1'}</ToggleButton>
           <ToggleButton value="neutral">Neutral</ToggleButton>
-          <ToggleButton value="2">{player2?.team || 'Team 2'}</ToggleButton>
+          <ToggleButton value="2">{player2?.name ?? 'Team 2'}</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
@@ -338,105 +318,8 @@ const GamePredictor: React.FC = () => {
                 color={confidenceColor(prediction.confidence)}
                 size="small"
               />
-              <Chip
-                label={isServerPrediction ? '5-Factor Model' : 'Basic Stats'}
-                size="small"
-                variant="outlined"
-                color={isServerPrediction ? 'success' : 'default'}
-                icon={<SportsScoreIcon />}
-              />
             </Box>
           </Paper>
-
-          {/* Factor Breakdown (server prediction only) */}
-          {isServerPrediction && prediction.factors && (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Factor Breakdown
-              </Typography>
-              <Grid container spacing={2}>
-                {[
-                  {
-                    label: 'Team Record',
-                    weight: '35%',
-                    val1: prediction.factors.teamRecord.team1,
-                    val2: prediction.factors.teamRecord.team2,
-                    edge: prediction.factors.teamRecord.edge,
-                  },
-                  {
-                    label: 'Star Net Rating',
-                    weight: '20%',
-                    val1: typeof prediction.factors.starNetRating.team1 === 'number' ? prediction.factors.starNetRating.team1.toFixed(1) : prediction.factors.starNetRating.team1,
-                    val2: typeof prediction.factors.starNetRating.team2 === 'number' ? prediction.factors.starNetRating.team2.toFixed(1) : prediction.factors.starNetRating.team2,
-                    edge: prediction.factors.starNetRating.edge,
-                  },
-                  {
-                    label: 'Home Court',
-                    weight: '15%',
-                    val1: prediction.factors.homeCourt.team
-                      ? `${prediction.factors.homeCourt.team} (+${Math.abs(prediction.factors.homeCourt.bonus).toFixed(1)})`
-                      : 'Neutral',
-                    val2: '',
-                    edge: prediction.factors.homeCourt.bonus > 0 ? 1 as const
-                      : prediction.factors.homeCourt.bonus < 0 ? 2 as const
-                      : 'tie' as const,
-                  },
-                  {
-                    label: 'Recent Form (L5)',
-                    weight: '15%',
-                    val1: typeof prediction.factors.recentForm.team1 === 'number' ? prediction.factors.recentForm.team1.toFixed(1) : prediction.factors.recentForm.team1,
-                    val2: typeof prediction.factors.recentForm.team2 === 'number' ? prediction.factors.recentForm.team2.toFixed(1) : prediction.factors.recentForm.team2,
-                    edge: prediction.factors.recentForm.edge,
-                  },
-                  {
-                    label: 'Star Efficiency',
-                    weight: '15%',
-                    val1: typeof prediction.factors.starEfficiency.team1 === 'number' ? prediction.factors.starEfficiency.team1.toFixed(1) : prediction.factors.starEfficiency.team1,
-                    val2: typeof prediction.factors.starEfficiency.team2 === 'number' ? prediction.factors.starEfficiency.team2.toFixed(1) : prediction.factors.starEfficiency.team2,
-                    edge: prediction.factors.starEfficiency.edge,
-                  },
-                ].map((factor) => (
-                  <Grid item xs={12} sm={6} md={4} key={factor.label}>
-                    <Paper
-                      variant="outlined"
-                      sx={{
-                        p: 2,
-                        borderLeft: 4,
-                        borderColor:
-                          factor.edge === 1
-                            ? 'primary.main'
-                            : factor.edge === 2
-                              ? 'secondary.main'
-                              : 'divider',
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {factor.label} ({factor.weight})
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                        <Typography
-                          variant="body2"
-                          fontWeight={factor.edge === 1 ? 'bold' : 'normal'}
-                          color={factor.edge === 1 ? 'primary.main' : 'text.primary'}
-                        >
-                          {factor.val1 || '—'}
-                        </Typography>
-                        {factor.val2 !== '' && (
-                          <Typography
-                            variant="body2"
-                            fontWeight={factor.edge === 2 ? 'bold' : 'normal'}
-                            color={factor.edge === 2 ? 'secondary.main' : 'text.primary'}
-                          >
-                            {factor.val2 || '—'}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
-          )}
 
           {/* Stat Breakdown */}
           <Paper sx={{ p: 3, mb: 3 }}>
@@ -454,7 +337,7 @@ const GamePredictor: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {prediction.advantages.map((adv: { label: string; team1Value: number; team2Value: number; winner: 1 | 2 | 'tie'; higherIsBetter: boolean }) => (
+                  {prediction.advantages.map(adv => (
                     <TableRow key={adv.label}>
                       <TableCell>{adv.label}</TableCell>
                       <TableCell
@@ -525,67 +408,7 @@ const GamePredictor: React.FC = () => {
             stats2={mappedStats2}
             isLoading={false}
           />
-
-          {/* Post-Prediction CTAs */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1, mb: 2 }}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              component={RouterLink}
-              to="/edge"
-              size="small"
-              sx={{ textTransform: 'none' }}
-            >
-              View Edge Feed →
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<CompareArrows />}
-              component={RouterLink}
-              to={`/compare?p1=${player1.id}&p2=${player2.id}`}
-              size="small"
-              sx={{ textTransform: 'none' }}
-            >
-              Full Player Comparison
-            </Button>
-            <Button
-              variant="text"
-              size="small"
-              startIcon={<KeyboardArrowUp />}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              sx={{ textTransform: 'none', color: 'text.secondary' }}
-            >
-              New Matchup
-            </Button>
-          </Box>
         </>
-      )}
-
-      {/* VIP Upsell */}
-      {!user?.vipActive && (
-        <Paper
-          variant="outlined"
-          sx={{ mt: 4, p: 3, textAlign: 'center', borderColor: 'primary.main', borderWidth: 2 }}
-        >
-          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 1.5 }}>
-            <BoltOutlined color="primary" />
-            <Typography variant="h6" fontWeight={700}>
-              Get the full edge
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            VIP Pro unlocks 20+ edges per stat, DM alerts, and research access.
-          </Typography>
-          <Button
-            variant="contained"
-            component={RouterLink}
-            to="/pricing"
-            sx={{ fontWeight: 700, borderRadius: 2, px: 3 }}
-          >
-            Join VIP Pro — $19/mo
-          </Button>
-        </Paper>
       )}
 
       <Typography
@@ -593,7 +416,7 @@ const GamePredictor: React.FC = () => {
         color="text.secondary"
         sx={{ mt: 2, display: 'block', textAlign: 'center' }}
       >
-        Note: Predictions use team records, advanced stats, recent form, and pace data. For entertainment purposes only.
+        Note: Predictions use the most recent available season averages (auto-fallback if needed) and are for entertainment purposes only.
       </Typography>
 
       <Snackbar

@@ -7,13 +7,13 @@
 
 ## Overall Record
 
-**1-5-0** (16.7% hit rate) through 2026-03-15.
+**2-5-0** (28.6% hit rate) through 2026-03-16.
 
-**Units: -4.09u** (6u wagered, 0.91u won, ROI: -68.2%)
+**Units: -3.18u** (7u wagered, 1.82u won, ROI: -45.4%)
 
 | Type | W | L | P |
 |------|---|---|---|
-| Pick of the Day | 0 | 1 | 0 |
+| Pick of the Day | 1 | 1 | 0 |
 | Runner Up | 1 | 2 | 0 |
 | Player Prop | 0 | 1 | 0 |
 | Fade | 0 | 1 | 0 |
@@ -21,17 +21,21 @@
 | Confidence | W | L | P |
 |------------|---|---|---|
 | High | 0 | 4 | 0 |
-| Moderate | 1 | 1 | 0 |
+| Moderate | 2 | 1 | 0 |
 
 | Edge Type | W | L | Notes |
 |-----------|---|---|-------|
 | Consensus only | 0 | 4 | Consensus without original analysis = 0% hit rate |
-| Pace/Defense (totals) | 1 | 0 | Only edge type that hit on Day 1 |
+| Pace/Defense (totals) | 2 | 0 | 100% hit rate — strongest edge type |
 | Narrative | 0 | 1 | "Demoralized" fade failed — emotions aren't data |
 
 ---
 
 ## Patterns & Insights
+
+### Day 2 (2026-03-16): 1-0
+- **Under 243.5 (MEM @ CHI) hit.** Bulls blew out Memphis 132-107 (total: 239). Blowout game script suppressed garbage-time scoring — pace/defense model confirmed again.
+- **Discipline paid off.** Only 1 pick taken (vs. 6 evaluated), down from 6 picks on Day 1. Quality > quantity.
 
 ### Day 1 (2026-03-15): 1-5
 - **"Consensus" picks went 0-4 on high confidence.** Every high-confidence pick lost. The only win was a moderate-confidence under.
@@ -44,7 +48,8 @@
 
 ## What's Working
 
-- Totals analysis based on pace and defense metrics (1-0, 100%)
+- Totals analysis based on pace and defense metrics (2-0, 100%)
+- Discipline / fewer picks per day (Day 2: 1-0 vs Day 1: 1-5)
 
 ---
 
@@ -70,4 +75,4 @@
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*
