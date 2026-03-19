@@ -18,6 +18,7 @@ import { handlePlayer } from './commands/player.js';
 import { handleEdges } from './commands/edges.js';
 import { handleSubscribe } from './commands/subscribe.js';
 import { handleStatus } from './commands/status.js';
+import { handleMyStatus } from './commands/mystatus.js';
 import { startBriefing } from './briefing.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -56,6 +57,10 @@ bot.onText(/\/subscribe/, (msg) => {
 
 bot.onText(/\/status/, (msg) => {
   handleStatus(bot, msg).catch(err => console.error('[status] error:', err.message));
+});
+
+bot.onText(/\/mystatus/, (msg) => {
+  handleMyStatus(bot, msg).catch(err => console.error('[mystatus] error:', err.message));
 });
 
 // ── Natural language prop queries + fallback ────────────────────────────────

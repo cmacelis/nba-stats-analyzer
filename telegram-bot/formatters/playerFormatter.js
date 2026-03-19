@@ -7,20 +7,54 @@ function escMd(text) {
   return String(text).replace(/[_*`\[]/g, '');
 }
 
-export function formatPlayerResponse(data) {
+export function formatPlayerResponse(data, statType = 'points') {
   const ctx = data.statContext || {};
 
-  let msg = `\u{1F3C0} *${data.playerName}*\n\n`;
+  let msg = `\u{1F3C0} *${data.playerName}* (${statType.toUpperCase()})\n\n`;
 
-  // Season averages
+  // Map stat type to context field
+  const statMap = {
+    points: { field: ctx.ppg ?? ctx.PPG, label: 'PPG' },
+    assists: { field: ctx.apg ?? ctx.APG, label: 'APG' },
+    rebounds: { field: ctx.rpg ?? ctx.RPG, label: 'RPG' },
+    steals: { field: ctx.spg ?? ctx.SPG, label: 'SPG' },
+    blocks: { field: ctx.bpg ?? ctx.BPG, label: 'BPG' },
+    turnovers: { field: ctx.tov ?? ctx.TOV, label: 'TOV' },
+    fg_pct: { field: ctx.fg_pct ?? ctx.FG_PCT, label: 'FG%' },
+    three_pct: { field: ctx.three_pct ?? ctx.THREE_PCT, label: '3P%' },
+    ft_pct: { field: ctx.ft_pct ?? ctx.FT_PCT, label: 'FT%' }
+  };
+
+  // Get the requested stat
+  const requestedStat = statMap[statType] || statMap.points;
+  const statValue = requestedStat.field;
+  
+  // Format the value
+  const formatStat = (value, type) => {
+    if (value == null) return 'N/A';
+    if (typeof value === 'number') {
+      if (type.includes('_pct') || type === 'fg_pct' || type === 'three_pct' || type === 'ft_pct') {
+        return (value * 100).toFixed(1) + '%';
+      }
+      return value.toFixed(1);
+    }
+    return value;
+  };
+
+  msg += '*Season Average*\n';
+  msg += `${requestedStat.label}: ${formatStat(statValue, statType)}\n\n`;
+
+  // Also show other key stats for context
   const ppg = ctx.ppg ?? ctx.PPG;
   const apg = ctx.apg ?? ctx.APG;
   const rpg = ctx.rpg ?? ctx.RPG;
-
-  msg += '*Season Averages*\n';
-  msg += `PPG: ${ppg != null ? (typeof ppg === 'number' ? ppg.toFixed(1) : ppg) : 'N/A'} | `;
-  msg += `APG: ${apg != null ? (typeof apg === 'number' ? apg.toFixed(1) : apg) : 'N/A'} | `;
-  msg += `RPG: ${rpg != null ? (typeof rpg === 'number' ? rpg.toFixed(1) : rpg) : 'N/A'}\n\n`;
+  
+  if (statType !== 'points' && ppg != null) {
+    msg += '*Other Key Stats*\n';
+    msg += `PPG: ${typeof ppg === 'number' ? ppg.toFixed(1) : ppg} | `;
+    msg += `APG: ${apg != null ? (typeof apg === 'number' ? apg.toFixed(1) : apg) : 'N/A'} | `;
+    msg += `RPG: ${rpg != null ? (typeof rpg === 'number' ? rpg.toFixed(1) : rpg) : 'N/A'}\n\n`;
+  }
 
   // Recent form
   if (ctx.recentAvg5 != null) {

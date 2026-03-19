@@ -119,10 +119,10 @@
       "units": 1,
       "reasoning": "Orlando on B2B (lost to ATL 112-124 last night) + 3 key players OUT (Wagner, Isaac, Black) + OKC has league-best defense (107.72 DRtg #1 in NBA). Depleted, fatigued Magic cannot score vs elite OKC defense at home.",
       "sources": "Basketball-Reference ratings, ESPN injury report, ESPN schedule (B2B confirmed)",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "W",
+      "actual_score": "OKC 113 - ORL 108 (total: 221)",
+      "result_notes": "Total of 221 came in under 223.5 — depleted Orlando (B2B, 3 players OUT) held to 108 by OKC's elite defense despite Banchero's 32 pts.",
+      "settled_date": "2026-03-18"
     },
     {
       "date": "2026-03-17",
@@ -136,33 +136,33 @@
       "units": 1,
       "reasoning": "Phoenix on B2B road trip (lost to BOS 112-120 last night). Rested Minnesota at home (41-27, 6th West). PHX fatigue suppresses offense in 2nd road game in 2 nights. MIN defense held OKC game to 219 combined (3/15).",
       "sources": "ESPN schedule, Basketball-Reference team records, ESPN injury report",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "W",
+      "actual_score": "MIN 116 - PHX 104 (total: 220)",
+      "result_notes": "Total of 220 came in well under 228.5 — Phoenix's B2B fatigue showed as Suns scored only 104; Randle (32 pts) led Minnesota's controlled home win.",
+      "settled_date": "2026-03-18"
     }
   ],
   "record": {
-    "total": { "wins": 2, "losses": 5, "pushes": 0 },
+    "total": { "wins": 4, "losses": 5, "pushes": 0 },
     "by_type": {
-      "pick_of_the_day": { "wins": 1, "losses": 1, "pushes": 0 },
-      "runner_up": { "wins": 1, "losses": 2, "pushes": 0 },
+      "pick_of_the_day": { "wins": 2, "losses": 1, "pushes": 0 },
+      "runner_up": { "wins": 2, "losses": 2, "pushes": 0 },
       "player_prop": { "wins": 0, "losses": 1, "pushes": 0 },
       "fade": { "wins": 0, "losses": 1, "pushes": 0 }
     },
     "by_confidence": {
       "high": { "wins": 0, "losses": 4, "pushes": 0 },
-      "moderate": { "wins": 2, "losses": 1, "pushes": 0 },
+      "moderate": { "wins": 4, "losses": 1, "pushes": 0 },
       "low": { "wins": 0, "losses": 0, "pushes": 0 }
     }
   },
   "units": {
-    "wagered": 7,
-    "won": 1.82,
+    "wagered": 9,
+    "won": 3.64,
     "lost": 5,
-    "net": -3.18,
-    "roi_pct": -45.4,
-    "note": "Assuming 1u per pick. Unders at -110 pay 0.91u each (x2 wins = 1.82u). All losses = -1u each."
+    "net": -1.36,
+    "roi_pct": -15.1,
+    "note": "Assuming 1u per pick. Unders at -110 pay 0.91u each (x4 wins = 3.64u). All losses = -1u each."
   },
   "schema_version": 2,
   "_note_mar16": "Mar 16 2026: 1 pick only (POTD). Rejected 6 other potential picks per lessons.md rules. Discipline over quantity.",

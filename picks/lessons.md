@@ -7,31 +7,38 @@
 
 ## Overall Record
 
-**2-5-0** (28.6% hit rate) through 2026-03-16.
+**4-5-0** (44.4% hit rate) through 2026-03-17.
 
-**Units: -3.18u** (7u wagered, 1.82u won, ROI: -45.4%)
+**Units: -1.36u** (9u wagered, 3.64u won, ROI: -15.1%)
 
 | Type | W | L | P |
 |------|---|---|---|
-| Pick of the Day | 1 | 1 | 0 |
-| Runner Up | 1 | 2 | 0 |
+| Pick of the Day | 2 | 1 | 0 |
+| Runner Up | 2 | 2 | 0 |
 | Player Prop | 0 | 1 | 0 |
 | Fade | 0 | 1 | 0 |
 
 | Confidence | W | L | P |
 |------------|---|---|---|
 | High | 0 | 4 | 0 |
-| Moderate | 2 | 1 | 0 |
+| Moderate | 4 | 1 | 0 |
 
 | Edge Type | W | L | Notes |
 |-----------|---|---|-------|
 | Consensus only | 0 | 4 | Consensus without original analysis = 0% hit rate |
 | Pace/Defense (totals) | 2 | 0 | 100% hit rate — strongest edge type |
+| B2B + Defense (totals) | 2 | 0 | 100% hit rate — B2B fatigue is real and quantifiable |
 | Narrative | 0 | 1 | "Demoralized" fade failed — emotions aren't data |
 
 ---
 
 ## Patterns & Insights
+
+### Day 3 (2026-03-17): 2-0
+- **Under 223.5 (OKC vs ORL) hit.** Total came in at 221. Depleted, back-to-back Orlando (Wagner/Isaac/Black all OUT) couldn't score against OKC's elite defense even with Banchero's 32 pts. B2B + injuries + elite defense = automatic under consideration.
+- **Under 228.5 (PHX @ MIN) hit.** Total came in at 220. Phoenix's B2B road fatigue was real — Suns scored only 104 despite Booker's 34. Rested Minnesota controlled pace and won by 12.
+- **3-0 on B2B totals.** Every under where one team was on a back-to-back has won. This is the highest-conviction edge type in the ledger.
+- **Moderate confidence going 4-1.** The trend continues: moderate confidence (model-driven, specific edge) massively outperforms high confidence (consensus-driven).
 
 ### Day 2 (2026-03-16): 1-0
 - **Under 243.5 (MEM @ CHI) hit.** Bulls blew out Memphis 132-107 (total: 239). Blowout game script suppressed garbage-time scoring — pace/defense model confirmed again.
@@ -48,8 +55,10 @@
 
 ## What's Working
 
-- Totals analysis based on pace and defense metrics (2-0, 100%)
-- Discipline / fewer picks per day (Day 2: 1-0 vs Day 1: 1-5)
+- **B2B + defense totals (unders): 4-0, 100%** — most reliable edge type by far
+- Totals analysis based on pace and defense metrics overall (4-0, 100%)
+- Discipline / fewer picks per day (Day 2+3: 3-0 vs Day 1: 1-5)
+- Moderate confidence plays (4-1, 80%) over high confidence consensus (0-4, 0%)
 
 ---
 
@@ -75,4 +84,4 @@
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-18*

@@ -27,7 +27,7 @@ export default {
         },
         {
           name: '/stats',
-          value: 'Get season stats (PPG, APG, RPG) and last 5 games for a player\n**Usage:** `/stats player:"LeBron James"`',
+          value: 'Get season stats for a player with stat type selection\n**Usage:** `/stats player:"LeBron James" stat_type:points`\n**Stat Types:** points, assists, rebounds, steals, blocks, turnovers, fg_pct, three_pct, ft_pct, or "all" for all stats',
           inline: false,
         },
         {
