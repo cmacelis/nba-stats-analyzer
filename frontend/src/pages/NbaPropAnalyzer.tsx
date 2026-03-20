@@ -386,7 +386,7 @@ const NbaPropAnalyzer: React.FC = () => {
         {!isLoading && !isError && previewEdges.length === 0 && (
           <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              {edgeData?.reason === 'upstream_error'
+              {(edgeData as unknown as Record<string, unknown>)?.reason === 'upstream_error'
                 ? 'Stats data temporarily unavailable — edges will return shortly.'
                 : 'No qualifying edges right now. Check back when more games are being played.'}
             </Typography>

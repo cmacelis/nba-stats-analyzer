@@ -124,7 +124,7 @@ const WnbaPropAnalyzer: React.FC = () => {
   const theme = useTheme();
   const { playSound } = useSound();
   const { user } = useAuth();
-  const { data: edgeData, isLoading, isError } = useEdgeFeed('pts', 20, 2025, 'wnba');
+  const { data: edgeData, isLoading, isError } = useEdgeFeed('pts', 20, 2025);
   const previewEdges: EdgeEntry[] = (edgeData?.data ?? []).slice(0, 5);
 
   const onHover = () => playSound('hover');

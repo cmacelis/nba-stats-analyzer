@@ -485,6 +485,7 @@ const EdgeDetector: React.FC = () => {
           No players matched filters. Try lowering minimum minutes or disabling positive-only.
         </Alert>
       ) : (
+        <>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -558,6 +559,7 @@ const EdgeDetector: React.FC = () => {
             </Button>
           </Box>
         )}
+        </>
       )}
 
       <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
