@@ -1,0 +1,2 @@
+import{as as n,W as o,v as c,j as e,B as i,U as x,T as l}from"./index-BwebKpdt.js";const p=()=>{const s=n(),[t]=o();return c.useEffect(()=>{const a=t.toString(),r=a?`/?${a}`:"/";s(r,{replace:!0})},[s,t]),e.jsxs(i,{sx:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:2},children:[e.jsx(x,{}),e.jsx(l,{variant:"body1",color:"text.secondary",children:"Redirecting..."})]})};export{p as default};
+//# sourceMappingURL=StartHere-BGRiLl4V.js.map
