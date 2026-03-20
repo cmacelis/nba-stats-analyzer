@@ -1,5 +1,9 @@
 /**
  * Format prop analysis data for Telegram Markdown.
+ *
+ * The backend StatContext shape is:
+ *   { propLine, recentAvg5, recentAvg10, stdDev, overHitRate, streak, recentGames, gamesPlayed }
+ * propLine IS the season average for the requested stat.
  */
 
 // Escape chars that break Telegram Markdown (v1) inside italic/bold
@@ -8,31 +12,45 @@ function escMd(text) {
   return String(text).replace(/[_*`\[]/g, '');
 }
 
+// Human-readable labels (no underscores — safe for Telegram Markdown v1)
+const STAT_LABELS = {
+  points: 'POINTS', assists: 'ASSISTS', rebounds: 'REBOUNDS',
+  steals: 'STEALS', blocks: 'BLOCKS', turnovers: 'TURNOVERS',
+  fg_pct: 'FG%', three_pct: '3P%', ft_pct: 'FT%',
+  threes: 'THREES', pra: 'PRA',
+};
+
 export function formatPropResponse(data, parsed, remaining) {
   const ctx = data.statContext || {};
   const dir = parsed.direction?.toUpperCase();
   const emoji = dir === 'OVER' ? '\u{1F525}' : dir === 'UNDER' ? '\u{1F9CA}' : '\u{1F3AF}';
+  const statLabel = STAT_LABELS[parsed.statType] || parsed.statType.replace(/_/g, ' ').toUpperCase();
 
-  let msg = `${emoji} *${data.playerName}* \u2014 ${parsed.statType.toUpperCase()}`;
+  let msg = `${emoji} *${escMd(data.playerName)}* \u2014 ${statLabel}`;
   if (dir) msg += ` ${dir}`;
   msg += '\n\n';
 
-  if (ctx.propLine) {
-    msg += `*Line:* ${ctx.propLine} (${ctx.lineSource || 'est.'})\n`;
+  const isPct = parsed.statType?.includes('_pct');
+  // Defensive: only multiply by 100 when value is in 0-1 decimal range.
+  // If value > 1, it's already percentage-scale (or wrong data — don't amplify).
+  const fmtVal = (v) => {
+    if (v == null) return 'N/A';
+    if (isPct) {
+      const pct = v <= 1 ? v * 100 : v;
+      return pct.toFixed(1) + '%';
+    }
+    return v.toFixed(1);
+  };
+
+  if (ctx.propLine != null) {
+    msg += `*Season Avg:* ${fmtVal(ctx.propLine)}\n`;
   }
-  if (parsed.line && parsed.line !== ctx.propLine) {
-    msg += `*Your Target:* ${parsed.line}\n`;
+  if (parsed.line) {
+    msg += `*Your Line:* ${parsed.line}\n`;
   }
 
-  const l5 = ctx.recentAvg5;
-  const l10 = ctx.recentAvg10;
-  msg += `*L5 Avg:* ${l5 != null ? l5.toFixed(1) : 'N/A'}\n`;
-  msg += `*L10 Avg:* ${l10 != null ? l10.toFixed(1) : 'N/A'}\n`;
-
-  if (ctx.ppg != null || ctx.PPG != null) {
-    const ppg = ctx.ppg ?? ctx.PPG;
-    msg += `*Season Avg:* ${typeof ppg === 'number' ? ppg.toFixed(1) : ppg}\n`;
-  }
+  msg += `*L5 Avg:* ${fmtVal(ctx.recentAvg5)}\n`;
+  msg += `*L10 Avg:* ${fmtVal(ctx.recentAvg10)}\n`;
 
   if (ctx.overHitRate != null) {
     msg += `*Over Hit Rate:* ${Math.round(ctx.overHitRate * 100)}% (L10)\n`;

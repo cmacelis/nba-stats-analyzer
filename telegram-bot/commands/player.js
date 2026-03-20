@@ -9,9 +9,9 @@ export async function handlePlayer(bot, msg, args) {
   // Parse arguments: /player LeBron James points
   const parts = args?.trim().split(/\s+/) || [];
   if (parts.length === 0) {
-    return bot.sendMessage(chatId, 
+    return bot.sendMessage(chatId,
       'Usage: `/player LeBron James [stat]`\n' +
-      'Stats: points, assists, rebounds, steals, blocks, turnovers, fg_pct, three_pct, ft_pct\n' +
+      'Stats: points, assists, rebounds, steals, blocks, turnovers, fg%, 3p%, ft%\n' +
       'Example: `/player LeBron James rebounds`',
       { parse_mode: 'Markdown' }
     );
@@ -24,12 +24,22 @@ export async function handlePlayer(bot, msg, args) {
     // Only player name provided
     playerName = parts[0];
   } else {
-    // Check if last part is a valid stat type
+    // Check if last part is a valid stat type (or a common alias)
     const lastPart = parts[parts.length - 1].toLowerCase();
-    const validStats = ['points', 'assists', 'rebounds', 'steals', 'blocks', 'turnovers', 'fg_pct', 'three_pct', 'ft_pct'];
-    
-    if (validStats.includes(lastPart)) {
-      statType = lastPart;
+    const STAT_ALIASES = {
+      points: 'points', pts: 'points', point: 'points',
+      assists: 'assists', ast: 'assists', assist: 'assists',
+      rebounds: 'rebounds', reb: 'rebounds', rebound: 'rebounds',
+      steals: 'steals', stl: 'steals', steal: 'steals',
+      blocks: 'blocks', blk: 'blocks', block: 'blocks',
+      turnovers: 'turnovers', tov: 'turnovers', turnover: 'turnovers', to: 'turnovers',
+      fg_pct: 'fg_pct', 'fg%': 'fg_pct', fg: 'fg_pct',
+      three_pct: 'three_pct', '3p%': 'three_pct', '3p': 'three_pct', '3pt%': 'three_pct',
+      ft_pct: 'ft_pct', 'ft%': 'ft_pct', ft: 'ft_pct',
+    };
+
+    if (STAT_ALIASES[lastPart]) {
+      statType = STAT_ALIASES[lastPart];
       playerName = parts.slice(0, -1).join(' ');
     } else {
       // Last part is not a stat, treat everything as player name

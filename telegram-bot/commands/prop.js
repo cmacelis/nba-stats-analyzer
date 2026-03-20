@@ -9,7 +9,7 @@ import { checkThrottle, checkDailyLimit } from '../services/rateLimiter.js';
 import { formatPropResponse } from '../formatters/propFormatter.js';
 
 // Match: "LeBron over 25.5 points", "Jokic under 10.5 reb", "Curry over 4.5 threes"
-const PROP_REGEX = /^(.+?)\s+(over|under)\s+([\d.]+)\s+(points?|pts|rebounds?|reb|assists?|ast|threes?|3s|pra|combined)/i;
+const PROP_REGEX = /^(.+?)\s+(over|under)\s+([\d.]+)\s+(points?|pts|rebounds?|reb|assists?|ast|threes?|3s|steals?|stl|blocks?|blk|turnovers?|tov|to|fg%?|fg_pct|3p%?|three_pct|ft%?|ft_pct|pra|combined)/i;
 
 // Map user input to API stat types
 const STAT_MAP = {
@@ -17,6 +17,12 @@ const STAT_MAP = {
   rebounds: 'rebounds', rebound: 'rebounds', reb: 'rebounds',
   assists: 'assists', assist: 'assists', ast: 'assists',
   threes: 'threes', three: 'threes', '3s': 'threes',
+  steals: 'steals', steal: 'steals', stl: 'steals',
+  blocks: 'blocks', block: 'blocks', blk: 'blocks',
+  turnovers: 'turnovers', turnover: 'turnovers', tov: 'turnovers', to: 'turnovers',
+  'fg%': 'fg_pct', fg: 'fg_pct', fg_pct: 'fg_pct',
+  '3p%': 'three_pct', '3p': 'three_pct', three_pct: 'three_pct',
+  'ft%': 'ft_pct', ft: 'ft_pct', ft_pct: 'ft_pct',
   pra: 'pra', combined: 'pra',
 };
 

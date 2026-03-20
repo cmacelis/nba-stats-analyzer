@@ -94,10 +94,16 @@ export interface StatContext {
   gamesPlayed: number;
 }
 
-const PROP_STAT: Record<string, 'pts' | 'reb' | 'ast'> = {
-  points:   'pts',
-  rebounds: 'reb',
-  assists:  'ast',
+const PROP_STAT: Record<string, string> = {
+  points:    'pts',
+  rebounds:  'reb',
+  assists:   'ast',
+  steals:    'stl',
+  blocks:    'blk',
+  turnovers: 'turnover',
+  fg_pct:    'fg_pct',
+  three_pct: 'fg3_pct',
+  ft_pct:    'ft_pct',
 };
 
 function parseMins(min: string | number): number {
@@ -194,7 +200,15 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
     if (!avgRow && playedLogs.length >= 3) {
       const n = playedLogs.length;
       const avg = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0) / n;
-      avgRow = { pts: avg('pts'), reb: avg('reb'), ast: avg('ast'), games_played: n };
+      const sumK = (key: string) => playedLogs.reduce((s: number, g) => s + (Number(g[key]) || 0), 0);
+      avgRow = {
+        pts: avg('pts'), reb: avg('reb'), ast: avg('ast'),
+        stl: avg('stl'), blk: avg('blk'), turnover: avg('turnover'),
+        fg_pct:  sumK('fga')  > 0 ? sumK('fgm')  / sumK('fga')  : 0,
+        fg3_pct: sumK('fg3a') > 0 ? sumK('fg3m') / sumK('fg3a') : 0,
+        ft_pct:  sumK('fta')  > 0 ? sumK('ftm')  / sumK('fta')  : 0,
+        games_played: n,
+      };
     }
     if (!avgRow) return null;
 

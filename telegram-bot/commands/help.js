@@ -6,18 +6,18 @@ export async function handleHelp(bot, msg) {
     `\`Jokic under 10.5 rebounds\`\n` +
     `\`Curry over 4.5 threes\`\n\n` +
     `*Slash Commands:*\n` +
-    `/player <name> [stat] — Season stats & prediction for specific stat\n` +
-    `/prop <name> <stat> — Prop analysis (e.g. /prop LeBron points)\n` +
-    `/edges — Today's top 5 statistical edges\n` +
+    `/player <name> [stat] — Season stats & prediction\n` +
+    `/prop <name> <stat> — Prop analysis\n` +
+    `/edges — Today's top 5 edges\n` +
     `/subscribe — Upgrade to Pro ($19/mo)\n` +
-    `/status — Your plan & usage\n` +
-    `/mystatus — Detailed account info\n` +
+    `/mystatus — Your plan & usage\n` +
     `/help — This message\n\n` +
     `*Supported Stats:*\n` +
-    `points, assists, rebounds, steals, blocks, turnovers, fg_pct, three_pct, ft_pct\n` +
+    `points, assists, rebounds, steals, blocks, turnovers\n` +
+    `fg%, 3p%, ft%\n` +
     `Example: \`/player LeBron James rebounds\`\n\n` +
     `*Free:* 5 queries/day\n` +
-    `*Pro ($19/mo):* Unlimited queries + daily 9 AM briefing\n`,  // Added newline at end
+    `*Pro ($19/mo):* Unlimited + daily 9 AM briefing\n`,
     { parse_mode: 'Markdown' },
   );
 }
