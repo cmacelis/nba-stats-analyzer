@@ -10,7 +10,7 @@ import axios from 'axios';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const VERSION    = '2026-03-20-stat-support-v2';
+export const VERSION    = '2026-03-20-stat-support-v3';
 export const BDL_BASE   = 'https://api.balldontlie.io/v1';
 export const BDL_SEASON = 2025;
 
@@ -182,16 +182,22 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
 
     const [avgData, logsData] = await Promise.all([
       bdlGet('/season_averages', { player_id: player.id, season: BDL_SEASON }).catch(() => ({ data: [] })),
+      // BDL ignores sort/direction params — always returns ascending.
+      // Fetch 100 games so we get all entries, then sort + filter ourselves.
       bdlGet('/stats', {
         'player_ids[]': player.id,
         'seasons[]': BDL_SEASON,
-        per_page: 15,
-        sort: 'date',
-        direction: 'desc',
+        per_page: 100,
       }),
     ]);
 
     const rawLogs: Array<Record<string, unknown>> = logsData?.data ?? [];
+    // Sort by game date descending so most recent games come first
+    rawLogs.sort((a, b) => {
+      const da = (a['game'] as Record<string, unknown>)?.['date'] as string || '';
+      const db = (b['game'] as Record<string, unknown>)?.['date'] as string || '';
+      return db.localeCompare(da);
+    });
     const playedLogs = rawLogs.filter(g => parseMins(g['min'] as string | number) >= 10);
 
     // Use dedicated season averages if available; otherwise estimate from recent logs
@@ -230,7 +236,22 @@ export async function fetchStatContext(playerName: string, propType: string): Pr
           : Number(g[statKey!]) || 0
       );
 
-    if (values.length < 3) return null;
+    // If game logs are insufficient but we have season averages, return partial context
+    if (values.length < 3) {
+      if (avgRow && seasonAvg > 0) {
+        return {
+          propLine:    Math.round(seasonAvg * 10) / 10,
+          recentAvg5:  Math.round(seasonAvg * 10) / 10,
+          recentAvg10: Math.round(seasonAvg * 10) / 10,
+          stdDev:      0,
+          overHitRate: 0.5,
+          streak:      0,
+          recentGames: values,
+          gamesPlayed: Number(avgRow.games_played) || values.length,
+        };
+      }
+      return null;
+    }
 
     const recentAvg5  = values.slice(0, 5).reduce((a, b) => a + b, 0) / Math.min(5, values.length);
     const recentAvg10 = values.reduce((a, b) => a + b, 0) / values.length;
