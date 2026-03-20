@@ -35,8 +35,8 @@ export const usePlayerComparison = (id1: string, id2: string, season: number = 2
   return useQuery({
     queryKey: ['players', 'compare', id1, id2, season],
     queryFn: async () => {
-      const response = await api.get(`/api/players/compare/${id1}/${id2}`, {
-        params: { season },
+      const response = await api.get('/api/players', {
+        params: { _subpath: `compare/${id1}/${id2}`, season },
       });
       // Returns { player1: {}, player2: {}, head_to_head: [] }
       return response.data;
@@ -53,8 +53,8 @@ export const usePlayerStats = (playerId: string, season: number = 2025) => {
   return useQuery({
     queryKey: ['players', 'stats', playerId, season],
     queryFn: async () => {
-      const response = await api.get(`/api/players/${playerId}/stats`, {
-        params: { season },
+      const response = await api.get('/api/players', {
+        params: { _subpath: `${playerId}/stats`, season },
       });
       return response.data;
     },
@@ -80,7 +80,7 @@ export const usePlayerPhoto = (playerName: string) => {
   return useQuery<string | null>({
     queryKey: ['players', 'photo', playerName],
     queryFn: async () => {
-      const response = await api.get('/api/players/photo', { params: { name: playerName } });
+      const response = await api.get('/api/players', { params: { _subpath: 'photo', name: playerName } });
       return response.data.photo_url ?? null;
     },
     enabled: !!playerName,
