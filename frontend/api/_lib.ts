@@ -10,7 +10,7 @@ import axios from 'axios';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const VERSION    = '2026-02-23-research-hotfix-1';
+export const VERSION    = '2026-03-20-stat-support-v2';
 export const BDL_BASE   = 'https://api.balldontlie.io/v1';
 export const BDL_SEASON = 2025;
 
