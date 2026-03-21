@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/api/players/(.*)", "destination": "/api/players?_subpath=$1" },
     { "source": "/api/research/(.*)", "destination": "/api/research?_subpath=$1" },
+    { "source": "/api/auth-mobile/(.*)", "destination": "/api/auth-mobile?_subpath=$1" },
+    { "source": "/api/favorites/(.*)", "destination": "/api/favorites?_subpath=$1" },
     { "source": "/api/nba/players", "destination": "/api/players?league=nba" },
     { "source": "/api/nba/players/(.*)", "destination": "/api/players?_subpath=$1&league=nba" },
     { "source": "/api/nba/games", "destination": "/api/games?league=nba" },
