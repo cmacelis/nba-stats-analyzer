@@ -8,7 +8,7 @@ export const ServerStatus: React.FC = () => {
   useEffect(() => {
     const checkServer = async () => {
       try {
-        await apiClient.get('/api/health');
+        await apiClient.get('/api/edge?_subpath=health');
         setIsServerDown(false);
       } catch (error) {
         setIsServerDown(true);

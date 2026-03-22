@@ -41,11 +41,12 @@ export const researchApi = {
     prop: PropType = 'points',
     forceRefresh = false
   ): Promise<ResearchReport> => {
-    const params = new URLSearchParams({ prop });
+    const params = new URLSearchParams({
+      _subpath: playerName,
+      prop,
+    });
     if (forceRefresh) params.set('refresh', 'true');
-    const res = await axios.get(
-      `${API_BASE}/api/research/${encodeURIComponent(playerName)}?${params}`
-    );
+    const res = await axios.get(`${API_BASE}/api/research?${params}`);
     return res.data;
   },
 
@@ -53,7 +54,10 @@ export const researchApi = {
     playerName: string,
     prop: PropType = 'points'
   ): Promise<ResearchReport> => {
-    const res = await axios.post(`${API_BASE}/api/research/generate`, { playerName, prop });
+    const res = await axios.post(
+      `${API_BASE}/api/research?_subpath=generate`,
+      { playerName, prop },
+    );
     return res.data;
   },
 };

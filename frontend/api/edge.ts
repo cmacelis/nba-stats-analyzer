@@ -7,7 +7,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
-import { applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON } from './_lib.js';
+import { applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON, VERSION } from './_lib.js';
 
 const BDL_KEY = process.env.BALL_DONT_LIE_API_KEY;
 
@@ -245,6 +245,17 @@ export async function computeEdgeFeed(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
+
+  // Health check subpath (merged from health.ts to free a function slot)
+  const subpath = (req.query._subpath as string) || '';
+  if (subpath === 'health') {
+    return res.json({
+      status:    'ok',
+      version:   VERSION,
+      timestamp: new Date().toISOString(),
+      uptime:    process.uptime(),
+    });
+  }
 
   const stat    = ((req.query.stat as string) || 'pts') as StatKey;
   const minMin  = parseFloat(req.query.min_minutes as string) || 20;

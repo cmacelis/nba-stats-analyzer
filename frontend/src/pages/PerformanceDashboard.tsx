@@ -43,7 +43,7 @@ interface HealthData {
 }
 
 const ENDPOINTS = [
-  { path: '/api/health',                    label: 'Health check',          method: 'GET'  },
+  { path: '/api/edge?_subpath=health',      label: 'Health check',          method: 'GET'  },
   { path: '/api/players?search=',           label: 'Player search',         method: 'GET'  },
   { path: '/api/players/:id/stats',         label: 'Player season stats',   method: 'GET'  },
   { path: '/api/players/compare/:id1/:id2', label: 'Head-to-head compare',  method: 'GET'  },
@@ -117,7 +117,7 @@ const PerformanceDashboard: React.FC = () => {
 
   const { data: health, isLoading: healthLoading, isError: healthError } = useQuery<HealthData>({
     queryKey: ['health'],
-    queryFn: () => axios.get(`${API_BASE}/api/health`).then(r => r.data),
+    queryFn: () => axios.get(`${API_BASE}/api/edge?_subpath=health`).then(r => r.data),
     staleTime: 60_000,
     refetchInterval: 60_000,
     retry: 1,
