@@ -1,0 +1,18 @@
+{
+  "date": "2026-03-20",
+  "picks": [
+    {
+      "player": "Jarrett Allen",
+      "prop": "UNDER 12 points",
+      "confidence": "Low",
+      "units": "1u"
+    },
+    {
+      "player": "Jimmy Butler",
+      "prop": "OVER 23.5 points",
+      "confidence": "Low",
+      "units": "1u"
+    }
+  ],
+  "generated_at": "2026-03-20T13:20:15.708Z"
+}

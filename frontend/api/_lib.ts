@@ -58,9 +58,12 @@ export interface BdlPlayer {
 }
 
 /** Search by first name, then exact-match full name if a full name was given. */
-export async function searchPlayers(searchTerm: string): Promise<{ data: BdlPlayer[]; meta: unknown }> {
+export async function searchPlayers(searchTerm: string, league?: string): Promise<{ data: BdlPlayer[]; meta: unknown }> {
   const firstName = searchTerm.split(' ')[0];
-  const raw = await bdlGet('/players', { search: firstName, per_page: 25 });
+  const params: Record<string, unknown> = { search: firstName, per_page: 25 };
+  if (league) params.league = league;
+  
+  const raw = await bdlGet('/players', params);
   const allPlayers: BdlPlayer[] = raw?.data ?? [];
   const isFullName = searchTerm.includes(' ');
   const lower = searchTerm.toLowerCase();

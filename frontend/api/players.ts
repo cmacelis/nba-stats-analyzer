@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
-import { playersHandler } from './_handlers/players.js';
+import { nbaPlayerSearchHandler } from './handlers/nba/players.js';
 import { playerStatsHandler } from './_handlers/player-stats.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!effectivePath || effectivePath === '') {
     // Base route: /api/players?search=<name>
-    return playersHandler(req, res);
+    return nbaPlayerSearchHandler(req, res);
   }
 
   // photo
@@ -52,5 +52,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Fallback: treat as search
-  return playersHandler(req, res);
+  return nbaPlayerSearchHandler(req, res);
 }
