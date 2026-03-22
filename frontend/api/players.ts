@@ -12,10 +12,15 @@ import { compareHandler } from './_handlers/compare.js';
  * /api/players/115/stats are handled by the SPA 404.html fallback and
  * never reach this function. So the frontend must use _subpath param:
  *
- *   GET /api/players?search=<name>                          → search
+ *   GET /api/players?search=<name>[&league=nba|wnba]        → player search
  *   GET /api/players?_subpath=<id>/stats&season=2025        → season averages
  *   GET /api/players?_subpath=photo&name=<name>             → player headshot
  *   GET /api/players?_subpath=compare/<id1>/<id2>&season=   → comparison
+ *
+ * League parameter support:
+ * - league=nba (default): Returns NBA players via BallDontLie API
+ * - league=wnba: Returns WNBA players (when implemented) - currently returns NBA players
+ *                due to BDL API limitation. WNBA support is a separate backlog item.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
@@ -30,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const effectivePath = subpath || pathname.replace(/^\/api\/players\/?/, '');
 
   if (!effectivePath || effectivePath === '') {
-    // Base route: /api/players?search=<name>
+    // Base route: /api/players?search=<name>[&league=nba|wnba]
     return nbaPlayerSearchHandler(req, res);
   }
 
