@@ -140,6 +140,40 @@
       "actual_score": "MIN 116 - PHX 104 (total: 220)",
       "result_notes": "Total of 220 came in well under 228.5 — Phoenix's B2B fatigue showed as Suns scored only 104; Randle (32 pts) led Minnesota's controlled home win.",
       "settled_date": "2026-03-18"
+    },
+    {
+      "date": "2026-03-22",
+      "type": "pick_of_the_day",
+      "game": "Brooklyn Nets @ Sacramento Kings",
+      "pick": "Under 218.5",
+      "line": "218.5",
+      "odds": "-110",
+      "confidence": "moderate",
+      "edge_type": "total",
+      "units": 1,
+      "reasoning": "Brooklyn has failed to score 100 points in 5 consecutive games — one of the worst offensive stretches in the league. Even at Sacramento's normal pace (~115 pts), Brooklyn's ceiling at ~95-100 puts combined total at ~210-215, well inside 218.5.",
+      "sources": "Pickswise (best bet), Dimers simulation model",
+      "result": null,
+      "actual_score": null,
+      "result_notes": null,
+      "settled_date": null
+    },
+    {
+      "date": "2026-03-22",
+      "type": "runner_up",
+      "game": "Toronto Raptors @ Phoenix Suns",
+      "pick": "Raptors -2",
+      "line": "-2",
+      "odds": "-112",
+      "confidence": "moderate",
+      "edge_type": "b2b+sharp_money",
+      "units": 1,
+      "reasoning": "Phoenix on B2B (played 3/21), 5-game losing streak, Brooks OUT, Williams OUT, Allen QUESTIONABLE. Line moved 3.5 pts (Suns -1.5 → Raptors -2) — largest swing on Sunday board, clear sharp money signal. Toronto rested with 20-14 ATS road record.",
+      "sources": "Action Network line movement, Pickswise best bet, ESPN injury report (B2B confirmed)",
+      "result": null,
+      "actual_score": null,
+      "result_notes": null,
+      "settled_date": null
     }
   ],
   "record": {
@@ -167,6 +201,7 @@
   "schema_version": 2,
   "_note_mar16": "Mar 16 2026: 1 pick only (POTD). Rejected 6 other potential picks per lessons.md rules. Discipline over quantity.",
   "_note_mar17": "Mar 17 2026: 2 picks only (POTD + Runner-Up). Both unders driven by B2B + defense/schedule edge. Rejected 5 games per lessons.md rules. All picks are totals (our 2-0 edge type).",
+  "_note_mar22": "Mar 22 2026: 2 picks only (POTD + Runner-Up). POTD is a totals under on Nets @ Kings (Brooklyn 0-100 in 5 straight). Runner-up is Raptors -2 vs B2B Suns with 3.5-pt sharp line movement. No props (0-1 record + game-script risk). No fade (no data-backed candidate).",
   "schema_notes": {
     "pick_entry": {
       "date": "YYYY-MM-DD (game date)",

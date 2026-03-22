@@ -12,6 +12,10 @@
     { "source": "/api/wnba/players/(.*)", "destination": "/api/players?_subpath=$1&league=wnba" },
     { "source": "/api/wnba/games", "destination": "/api/games?league=wnba" },
     { "source": "/api/wnba/research/(.*)", "destination": "/api/research?_subpath=$1&league=wnba" },
-    { "source": "/api/wnba/edge", "destination": "/api/edge?league=wnba" }
+    { "source": "/api/wnba/edge", "destination": "/api/edge?league=wnba" },
+    { "source": "/api/core/nba/players", "destination": "/api/core-nba-players" },
+    { "source": "/api/core/nba/players/(.*)", "destination": "/api/core-nba-players?_subpath=$1" },
+    { "source": "/api/core/wnba/players", "destination": "/api/core-wnba-players" },
+    { "source": "/api/core/wnba/players/(.*)", "destination": "/api/core-wnba-players?_subpath=$1" }
   ]
 }
