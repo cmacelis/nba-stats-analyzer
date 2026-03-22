@@ -15,7 +15,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
-import { getSessionEmail, getUserByEmail } from './_auth.js';
+import { getSessionEmail, getUserByEmail, verifyJwt } from './_auth.js';
 import { queryDocuments, setDocument, deleteDocument, addDocument } from './alerts/_firebase.js';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -111,6 +111,23 @@ async function migrateFavorites(userEmail: string, playerIds: number[]): Promise
   return { added, skipped };
 }
 
+// ── Helper: Resolve user email from Bearer token or session cookie ─────────
+
+async function resolveUserEmail(req: VercelRequest): Promise<string | null> {
+  // 1. Check for Bearer token in Authorization header (mobile auth)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const payload = await verifyJwt(token);
+    if (payload && payload.email) {
+      return payload.email;
+    }
+  }
+  
+  // 2. Fall back to session cookie (web auth)
+  return await getSessionEmail(req);
+}
+
 // ── Main handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -118,8 +135,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   try {
-    // Authentication check
-    const userEmail = await getSessionEmail(req);
+    // Authentication check - supports both Bearer token (mobile) and session cookie (web)
+    const userEmail = await resolveUserEmail(req);
     if (!userEmail) {
       return res.status(401).json({ error: 'Authentication required' });
     }
