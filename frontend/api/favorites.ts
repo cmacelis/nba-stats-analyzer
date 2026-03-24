@@ -147,32 +147,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Route handling - check for notification subpaths first
+    // Route handling
     const path = req.query._subpath as string | undefined;
     
-    // Debug: log the path for testing
-    console.log(`[favorites] Path: ${path}, Method: ${req.method}`);
-    
+    // SIMPLE NOTIFICATION TEST - Add this first to see if it deploys
     if (path && path.startsWith('notifications/')) {
       const notificationPath = path.slice('notifications/'.length);
-      console.log(`[favorites] Notification path: ${notificationPath}`);
       
-      if (notificationPath === 'register' && req.method === 'POST') {
-        return await handleNotificationRegister(req, res, userEmail);
-      } else if (notificationPath === 'preferences') {
-        if (req.method === 'GET') {
-          return await handleGetNotificationPreferences(req, res, userEmail);
-        } else if (req.method === 'POST') {
-          return await handleUpdateNotificationPreferences(req, res, userEmail);
-        }
-      } else if (notificationPath === 'test' && req.method === 'GET') {
-        // Test endpoint to verify deployment
+      // Simple test endpoint
+      if (notificationPath === 'test' && req.method === 'GET') {
         return res.status(200).json({
           success: true,
-          message: 'Notification test endpoint working',
+          message: 'Notification test endpoint - SIMPLE VERSION',
           timestamp: new Date().toISOString(),
-          version: '1.0.0'
+          deployed: true
         });
+      }
+      
+      // Notification register endpoint
+      if (notificationPath === 'register' && req.method === 'POST') {
+        try {
+          const { device_token, platform = 'ios' } = req.body;
+          
+          if (!device_token) {
+            return res.status(400).json({ error: 'Missing device_token' });
+          }
+          
+          // Simple response for now
+          return res.status(200).json({
+            success: true,
+            message: 'Device token registered (simple)',
+            device_token: device_token.substring(0, 10) + '...',
+            platform,
+            user_email: userEmail
+          });
+        } catch (error) {
+          console.error('Notification register error:', error);
+          return res.status(500).json({ error: 'Failed to register device token' });
+        }
+      }
+      
+      // Notification preferences endpoints
+      if (notificationPath === 'preferences') {
+        if (req.method === 'GET') {
+          // Return default preferences
+          return res.status(200).json({
+            id: userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+            user_email: userEmail,
+            saved_player_alerts: true,
+            daily_top_edge: true,
+            game_day_alerts: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        } else if (req.method === 'POST') {
+          // Update preferences
+          const { saved_player_alerts, daily_top_edge, game_day_alerts } = req.body;
+          return res.status(200).json({
+            success: true,
+            message: 'Preferences updated (simple)',
+            preferences: {
+              saved_player_alerts: saved_player_alerts !== undefined ? saved_player_alerts : true,
+              daily_top_edge: daily_top_edge !== undefined ? daily_top_edge : true,
+              game_day_alerts: game_day_alerts !== undefined ? game_day_alerts : false
+            }
+          });
+        }
       }
     }
     
@@ -299,140 +339,3 @@ async function handleMigrateFavorites(req: VercelRequest, res: VercelResponse, u
   }
 }
 
-// ── Notification Handlers (Added to favorites.ts for consolidated routing) ──
-
-interface DeviceTokenDoc {
-  id: string;
-  user_email: string;
-  device_token: string;
-  platform: 'ios' | 'android';
-  created_at: string;
-  updated_at: string;
-  [key: string]: unknown;
-}
-
-interface AlertPreferencesDoc {
-  id: string;
-  user_email: string;
-  saved_player_alerts: boolean;
-  daily_top_edge: boolean;
-  game_day_alerts: boolean;
-  created_at: string;
-  updated_at: string;
-  [key: string]: unknown;
-}
-
-function generateDeviceTokenId(userEmail: string, deviceToken: string): string {
-  const safeEmail = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
-  const tokenHash = Buffer.from(deviceToken).toString('base64').slice(0, 20).replace(/[^a-zA-Z0-9]/g, '');
-  return `${safeEmail}_${tokenHash}`;
-}
-
-async function handleNotificationRegister(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const { device_token, platform = 'ios' } = req.body;
-    
-    if (!device_token) {
-      return res.status(400).json({ error: 'Missing device_token' });
-    }
-    
-    if (!['ios', 'android'].includes(platform)) {
-      return res.status(400).json({ error: 'Invalid platform' });
-    }
-    
-    // Generate document ID
-    const docId = generateDeviceTokenId(userEmail, device_token);
-    const now = new Date().toISOString();
-    
-    // Create/update device token document
-    const deviceDoc: DeviceTokenDoc = {
-      id: docId,
-      user_email: userEmail,
-      device_token,
-      platform: platform as 'ios' | 'android',
-      created_at: now,
-      updated_at: now,
-    };
-    
-    await setDocument('device_tokens', docId, deviceDoc);
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Device token registered',
-      docId 
-    });
-  } catch (error) {
-    console.error('Device registration error:', error);
-    return res.status(500).json({ error: 'Failed to register device token' });
-  }
-}
-
-async function handleGetNotificationPreferences(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const docId = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    
-    // Try to get existing preferences
-    const existing = await getDocument('alert_preferences', docId);
-    
-    if (existing) {
-      const prefs: AlertPreferencesDoc = {
-        id: existing.id as string,
-        user_email: existing.user_email as string,
-        saved_player_alerts: existing.saved_player_alerts as boolean,
-        daily_top_edge: existing.daily_top_edge as boolean,
-        game_day_alerts: existing.game_day_alerts as boolean,
-        created_at: existing.created_at as string,
-        updated_at: existing.updated_at as string,
-      };
-      return res.status(200).json(prefs);
-    }
-    
-    // Return default preferences if none exist
-    const defaultPrefs: AlertPreferencesDoc = {
-      id: docId,
-      user_email: userEmail,
-      saved_player_alerts: true,
-      daily_top_edge: true,
-      game_day_alerts: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    return res.status(200).json(defaultPrefs);
-  } catch (error) {
-    console.error('Get preferences error:', error);
-    return res.status(500).json({ error: 'Failed to get preferences' });
-  }
-}
-
-async function handleUpdateNotificationPreferences(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const docId = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const { saved_player_alerts, daily_top_edge, game_day_alerts } = req.body;
-    
-    // Get existing or create new
-    const existing = await getDocument('alert_preferences', docId);
-    const now = new Date().toISOString();
-    
-    const prefsDoc: AlertPreferencesDoc = {
-      id: docId,
-      user_email: userEmail,
-      saved_player_alerts: saved_player_alerts !== undefined ? saved_player_alerts : true,
-      daily_top_edge: daily_top_edge !== undefined ? daily_top_edge : true,
-      game_day_alerts: game_day_alerts !== undefined ? game_day_alerts : false,
-      created_at: (existing?.created_at as string) || now,
-      updated_at: now,
-    };
-    
-    await setDocument('alert_preferences', docId, prefsDoc);
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Preferences updated',
-      preferences: prefsDoc
-    });
-  } catch (error) {
-    console.error('Update preferences error:', error);
-    return res.status(500).json({ error: 'Failed to update preferences' });
-  }
-}
