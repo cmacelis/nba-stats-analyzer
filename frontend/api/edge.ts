@@ -294,6 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stat,
       season,
       generated_at: new Date().toISOString(),
+      version_marker: "DEPLOY_TEST_123",
       ...(isDebug && { debug: debugOut }),
     });
   } catch (err) {
