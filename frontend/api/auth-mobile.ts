@@ -213,6 +213,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'GET /api/auth-mobile/notifications/preferences',
         'POST /api/auth-mobile/notifications/preferences',
       ],
+      timestamp: '2026-03-24T18:15:00Z'  // Force cache bust
     });
     
   } catch (error) {
