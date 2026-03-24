@@ -150,8 +150,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Route handling - check for notification subpaths first
     const path = req.query._subpath as string | undefined;
     
+    // Debug: log the path for testing
+    console.log(`[favorites] Path: ${path}, Method: ${req.method}`);
+    
     if (path && path.startsWith('notifications/')) {
       const notificationPath = path.slice('notifications/'.length);
+      console.log(`[favorites] Notification path: ${notificationPath}`);
       
       if (notificationPath === 'register' && req.method === 'POST') {
         return await handleNotificationRegister(req, res, userEmail);
@@ -161,6 +165,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else if (req.method === 'POST') {
           return await handleUpdateNotificationPreferences(req, res, userEmail);
         }
+      } else if (notificationPath === 'test' && req.method === 'GET') {
+        // Test endpoint to verify deployment
+        return res.status(200).json({
+          success: true,
+          message: 'Notification test endpoint working',
+          timestamp: new Date().toISOString(),
+          version: '1.0.0'
+        });
       }
     }
     
