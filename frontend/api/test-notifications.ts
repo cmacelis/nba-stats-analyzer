@@ -6,8 +6,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
   return res.status(200).json({ 
-    message: 'Test notifications endpoint works!',
+    message: 'Test notifications endpoint works - updated!',
     path: req.url,
-    method: req.method
+    method: req.method,
+    timestamp: new Date().toISOString()
   });
 }
