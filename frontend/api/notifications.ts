@@ -52,8 +52,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = req.method || 'GET';
 
   try {
-    // Extract subpath from /api/notifications/{subpath}
-    const subpath = pathname.replace('/api/notifications/', '');
+    // Extract subpath from query parameter (vercel.json rewrite) or path
+    const subpath = req.query._subpath as string || pathname.replace('/api/notifications/', '');
     
     // Route based on subpath
     if (subpath === 'register' && method === 'POST') {
@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // No matching route
-    res.status(404).json({ error: 'Not found', path: pathname });
+    res.status(404).json({ error: 'Not found', path: pathname, subpath });
   } catch (error) {
     console.error('Notifications handler error:', error);
     res.status(500).json({ error: 'Internal server error' });

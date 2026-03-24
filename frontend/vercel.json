@@ -16,6 +16,7 @@
     { "source": "/api/core/nba/players", "destination": "/api/players?league=nba" },
     { "source": "/api/core/nba/players/(.*)", "destination": "/api/players?_subpath=$1&league=nba" },
     { "source": "/api/core/wnba/players", "destination": "/api/players?league=wnba" },
-    { "source": "/api/core/wnba/players/(.*)", "destination": "/api/players?_subpath=$1&league=wnba" }
+    { "source": "/api/core/wnba/players/(.*)", "destination": "/api/players?_subpath=$1&league=wnba" },
+    { "source": "/api/notifications/(.*)", "destination": "/api/notifications?_subpath=$1" }
   ]
 }
