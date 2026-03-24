@@ -7,21 +7,21 @@
 
 ## Overall Record
 
-**4-5-0** (44.4% hit rate) through 2026-03-17.
+**4-7-0** (36.4% hit rate) through 2026-03-22.
 
-**Units: -1.36u** (9u wagered, 3.64u won, ROI: -15.1%)
+**Units: -3.36u** (11u wagered, 3.64u won, ROI: -30.5%)
 
 | Type | W | L | P |
 |------|---|---|---|
-| Pick of the Day | 2 | 1 | 0 |
-| Runner Up | 2 | 2 | 0 |
+| Pick of the Day | 2 | 2 | 0 |
+| Runner Up | 2 | 3 | 0 |
 | Player Prop | 0 | 1 | 0 |
 | Fade | 0 | 1 | 0 |
 
 | Confidence | W | L | P |
 |------------|---|---|---|
 | High | 0 | 4 | 0 |
-| Moderate | 4 | 1 | 0 |
+| Moderate | 4 | 3 | 0 |
 
 | Edge Type | W | L | Notes |
 |-----------|---|---|-------|
@@ -29,10 +29,18 @@
 | Pace/Defense (totals) | 2 | 0 | 100% hit rate — strongest edge type |
 | B2B + Defense (totals) | 2 | 0 | 100% hit rate — B2B fatigue is real and quantifiable |
 | Narrative | 0 | 1 | "Demoralized" fade failed — emotions aren't data |
+| Total (non-B2B) | 0 | 1 | Under 218.5 BKN@SAC blown out +29 pts — cold streaks can snap |
+| B2B + Sharp Money | 0 | 1 | TOR -2 vs PHX: sharp money signal failed; B2B team won by 22 |
 
 ---
 
 ## Patterns & Insights
+
+### Day 4 (2026-03-22): 0-2
+- **Under 218.5 (BKN @ SAC) missed badly.** Total came in at 248 — 29 points over the line. Brooklyn's cold streak snapped in one game: Josh Minott erupted for 22 pts on 6/9 from three. Cold-streak regression risk is real — a team at historical lows for scoring is due to regress to the mean, not go further.
+- **Raptors -2 vs PHX lost by 22.** Suns snapped their 5-game skid emphatically. B2B + sharp money signal both failed. Jalen Green (newly acquired?) scoring 20 was not in the B2B fatigue model. Sharp line movement is not reliable when injury/roster updates haven't fully priced in.
+- **Key lesson: don't pick totals on cold-streak regression.** A team scoring sub-100 for 5 straight is MORE likely to bounce back, not less. The edge was non-existent — it was the opposite of B2B fatigue.
+- **B2B + sharp money ≠ B2B + defense.** The Raptors pick combined two signals neither of which independently worked here. Sharp money is a market signal, not a team-quality signal.
 
 ### Day 3 (2026-03-17): 2-0
 - **Under 223.5 (OKC vs ORL) hit.** Total came in at 221. Depleted, back-to-back Orlando (Wagner/Isaac/Black all OUT) couldn't score against OKC's elite defense even with Banchero's 32 pts. B2B + injuries + elite defense = automatic under consideration.
@@ -55,10 +63,9 @@
 
 ## What's Working
 
-- **B2B + defense totals (unders): 4-0, 100%** — most reliable edge type by far
-- Totals analysis based on pace and defense metrics overall (4-0, 100%)
+- **B2B + defense totals (unders): 4-0, 100%** — most reliable edge type by far; ONLY use when both B2B AND elite defense present
 - Discipline / fewer picks per day (Day 2+3: 3-0 vs Day 1: 1-5)
-- Moderate confidence plays (4-1, 80%) over high confidence consensus (0-4, 0%)
+- Moderate confidence plays (4-3, 57%) — still better than high (0-4, 0%) but losing ground
 
 ---
 
@@ -68,6 +75,8 @@
 - Narrative-driven fades ("team X is demoralized") (0-1, 0%)
 - Road favorite spreads (0-1, 0%)
 - Player props without game-script consideration (0-1, 0%)
+- **Totals based on cold-streak regression** (0-1): sub-100 scoring team = regression risk, NOT guaranteed under
+- **B2B + sharp money combos** (0-1): sharp money without defense/pace backing is insufficient
 
 ---
 
@@ -84,4 +93,7 @@
 
 ---
 
-*Last updated: 2026-03-18*
+9. **Never bet an under based on cold-streak regression** — a team scoring sub-100 for 5 straight is statistically DUE to bounce back. Avoid totals picks where the primary edge is "they've been scoring poorly lately."
+10. **B2B edge requires defense backing, not just rest** — B2B + sharp money is not sufficient. Require B2B + opponent's elite defense (top-5 DRtg) or significant injury impact.
+
+*Last updated: 2026-03-23*

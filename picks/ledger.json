@@ -153,10 +153,10 @@
       "units": 1,
       "reasoning": "Brooklyn has failed to score 100 points in 5 consecutive games — one of the worst offensive stretches in the league. Even at Sacramento's normal pace (~115 pts), Brooklyn's ceiling at ~95-100 puts combined total at ~210-215, well inside 218.5.",
       "sources": "Pickswise (best bet), Dimers simulation model",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "SAC 126 - BKN 122 (total: 248)",
+      "result_notes": "Brooklyn's cold streak ended violently — Josh Minott scored 22 pts on 6/9 from three; combined total of 248 blew past 218.5 by nearly 30 points.",
+      "settled_date": "2026-03-23"
     },
     {
       "date": "2026-03-22",
@@ -170,32 +170,32 @@
       "units": 1,
       "reasoning": "Phoenix on B2B (played 3/21), 5-game losing streak, Brooks OUT, Williams OUT, Allen QUESTIONABLE. Line moved 3.5 pts (Suns -1.5 → Raptors -2) — largest swing on Sunday board, clear sharp money signal. Toronto rested with 20-14 ATS road record.",
       "sources": "Action Network line movement, Pickswise best bet, ESPN injury report (B2B confirmed)",
-      "result": null,
-      "actual_score": null,
-      "result_notes": null,
-      "settled_date": null
+      "result": "L",
+      "actual_score": "PHX 120 - TOR 98",
+      "result_notes": "Sharp money and B2B edge both failed — Suns snapped 5-game skid with dominant 22-point win, never trailing; Booker (25) and Jalen Green (20) torched the Raptors.",
+      "settled_date": "2026-03-23"
     }
   ],
   "record": {
-    "total": { "wins": 4, "losses": 5, "pushes": 0 },
+    "total": { "wins": 4, "losses": 7, "pushes": 0 },
     "by_type": {
-      "pick_of_the_day": { "wins": 2, "losses": 1, "pushes": 0 },
-      "runner_up": { "wins": 2, "losses": 2, "pushes": 0 },
+      "pick_of_the_day": { "wins": 2, "losses": 2, "pushes": 0 },
+      "runner_up": { "wins": 2, "losses": 3, "pushes": 0 },
       "player_prop": { "wins": 0, "losses": 1, "pushes": 0 },
       "fade": { "wins": 0, "losses": 1, "pushes": 0 }
     },
     "by_confidence": {
       "high": { "wins": 0, "losses": 4, "pushes": 0 },
-      "moderate": { "wins": 4, "losses": 1, "pushes": 0 },
+      "moderate": { "wins": 4, "losses": 3, "pushes": 0 },
       "low": { "wins": 0, "losses": 0, "pushes": 0 }
     }
   },
   "units": {
-    "wagered": 9,
+    "wagered": 11,
     "won": 3.64,
-    "lost": 5,
-    "net": -1.36,
-    "roi_pct": -15.1,
+    "lost": 7,
+    "net": -3.36,
+    "roi_pct": -30.5,
     "note": "Assuming 1u per pick. Unders at -110 pay 0.91u each (x4 wins = 3.64u). All losses = -1u each."
   },
   "schema_version": 2,
