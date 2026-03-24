@@ -151,7 +151,17 @@ async function handleGetPreferences(req: VercelRequest, res: VercelResponse) {
     const existing = await getDocument('alert_preferences', docId);
     
     if (existing) {
-      return res.status(200).json(existing);
+      // Cast to AlertPreferencesDoc
+      const prefs: AlertPreferencesDoc = {
+        id: existing.id as string,
+        user_email: existing.user_email as string,
+        saved_player_alerts: existing.saved_player_alerts as boolean,
+        daily_top_edge: existing.daily_top_edge as boolean,
+        game_day_alerts: existing.game_day_alerts as boolean,
+        created_at: existing.created_at as string,
+        updated_at: existing.updated_at as string,
+      };
+      return res.status(200).json(prefs);
     }
     
     // Return default preferences if none exist
@@ -200,7 +210,7 @@ async function handleUpdatePreferences(req: VercelRequest, res: VercelResponse) 
       saved_player_alerts: saved_player_alerts !== undefined ? saved_player_alerts : true,
       daily_top_edge: daily_top_edge !== undefined ? daily_top_edge : true,
       game_day_alerts: game_day_alerts !== undefined ? game_day_alerts : false,
-      created_at: existing?.created_at || now,
+      created_at: (existing?.created_at as string) || now,
       updated_at: now,
     };
     

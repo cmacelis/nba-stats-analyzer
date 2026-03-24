@@ -93,19 +93,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return await picksSettleHandler(req, res);
     }
 
-        // /api/notifications/preferences
-    if (pathname.startsWith('/api/notifications/')) {
-      if (method === 'GET' && pathname.endsWith('/preferences')) {
-        return await handleGetPreferences(req, res);
-      }
-      if (method === 'POST' && pathname.endsWith('/register')) {
-        return await handleRegister(req, res);
-      }
-      if (method === 'POST' && pathname.endsWith('/preferences')) {
-        return await handleUpdatePreferences(req, res);
-      }
-      return res.status(404).json({ error: 'Not found' });
-    }
+    // /api/notifications/* routes are handled by notifications.ts
+    // No match
+    res.status(404).json({ error: 'Not found' });
   } catch (err) {
     console.error('[_router] unhandled error:', err);
     res.status(500).json({ error: 'Internal server error' });
