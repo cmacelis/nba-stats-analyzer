@@ -19,6 +19,7 @@ interface DeviceTokenDoc {
   platform: 'ios' | 'android';
   created_at: string;   // ISO timestamp
   updated_at: string;   // ISO timestamp
+  [key: string]: unknown; // Index signature for Firestore
 }
 
 interface AlertPreferencesDoc {
@@ -29,6 +30,7 @@ interface AlertPreferencesDoc {
   game_day_alerts: boolean;      // Game day reminders
   created_at: string;   // ISO timestamp
   updated_at: string;   // ISO timestamp
+  [key: string]: unknown; // Index signature for Firestore
 }
 
 // ── Helper: Generate document IDs ───────────────────────────────────────────
@@ -78,10 +80,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 async function handleRegister(req: VercelRequest, res: VercelResponse) {
   try {
-    // Verify authentication
-    const session = await verifyJwt(req);
+    // Verify authentication - extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized - no token' });
+    }
+    
+    const token = authHeader.substring(7);
+    const session = await verifyJwt(token);
     if (!session) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized - invalid token' });
     }
     
     const userEmail = session.email;
@@ -124,10 +132,16 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
 
 async function handleGetPreferences(req: VercelRequest, res: VercelResponse) {
   try {
-    // Verify authentication
-    const session = await verifyJwt(req);
+    // Verify authentication - extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized - no token' });
+    }
+    
+    const token = authHeader.substring(7);
+    const session = await verifyJwt(token);
     if (!session) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized - invalid token' });
     }
     
     const userEmail = session.email;
@@ -160,10 +174,16 @@ async function handleGetPreferences(req: VercelRequest, res: VercelResponse) {
 
 async function handleUpdatePreferences(req: VercelRequest, res: VercelResponse) {
   try {
-    // Verify authentication
-    const session = await verifyJwt(req);
+    // Verify authentication - extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized - no token' });
+    }
+    
+    const token = authHeader.substring(7);
+    const session = await verifyJwt(token);
     if (!session) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized - invalid token' });
     }
     
     const userEmail = session.email;
