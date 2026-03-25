@@ -254,6 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user_email: userEmail,
           device_token,
           platform,
+          active: true,
           created_at: now,
           updated_at: now,
         });

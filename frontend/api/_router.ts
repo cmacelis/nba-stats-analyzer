@@ -126,6 +126,7 @@ interface DeviceTokenDoc {
   user_email: string;
   device_token: string;
   platform: 'ios' | 'android';
+  active: boolean;
   created_at: string;
   updated_at: string;
   [key: string]: unknown;
@@ -183,6 +184,7 @@ async function handleNotificationRegister(req: VercelRequest, res: VercelRespons
       user_email: userEmail,
       device_token,
       platform: platform as 'ios' | 'android',
+      active: true,
       created_at: now,
       updated_at: now,
     };
