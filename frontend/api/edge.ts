@@ -206,9 +206,13 @@ export async function computeEdgeFeed(
   const discoveryData: any[] = discoveryResults.flatMap(p => p?.data ?? []);
   const activePlayerIds = [...new Set(discoveryData.map(g => g?.player?.id).filter(Boolean) as number[])];
 
-  // ── Step 3: fetch full season stats for active players ──────────────────
-  // Use player_ids[] + seasons[] to get the full season baseline,
-  // so season_avg reflects the whole season, not just the last 14 days.
+  // ── Step 3: fetch season stats for active players (last 60 days) ──────
+  // BDL ignores sort/direction params and always returns ascending.
+  // Fetching the full season would require too many pages, so we limit to
+  // the last 60 days via start_date for a meaningful baseline window.
+  const sixtyDaysAgo = new Date(today.getTime() - 60 * 86_400_000);
+  const baselineStart = sixtyDaysAgo.toISOString().slice(0, 10);
+
   const playerIdChunks: number[][] = [];
   for (let i = 0; i < activePlayerIds.length; i += CHUNK_SIZE) {
     playerIdChunks.push(activePlayerIds.slice(i, i + CHUNK_SIZE));
@@ -216,10 +220,11 @@ export async function computeEdgeFeed(
 
   const seasonResults = await Promise.all(
     playerIdChunks.flatMap((chunk, ci) =>
-      [1, 2, 3, 4].map(page =>
+      [1, 2, 3, 4, 5].map(page =>
         bdlBatch('/stats', {
           'player_ids[]': chunk,
           'seasons[]':    [season],
+          start_date:     baselineStart,
           per_page:       100,
           page,
         }).catch((err: unknown) => {
