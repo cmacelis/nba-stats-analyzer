@@ -214,7 +214,10 @@ export async function queryDocuments(
       },
     }),
   });
-  if (!res.ok) throw new Error(`Firestore query ${collection} failed: ${res.status}`);
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new Error(`Firestore query ${collection} failed: ${res.status} ${errBody.slice(0, 300)}`);
+  }
 
   const results = await res.json();
   return results
