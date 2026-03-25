@@ -251,8 +251,6 @@ export async function computeEdgeFeed(
 
   // ── Step 4: compute edges ───────────────────────────────────────────────
   const entries: EdgeEntry[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let _firstPlayerDiag: any = null;
   for (const [pid, rawGames] of gameMap) {
     // Sort per-player games date-desc using authoritative gameDateMap
     // (BDL's embedded game.date can be wrong when fetching by game_ids[])
@@ -271,29 +269,16 @@ export async function computeEdgeFeed(
     const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
-    // Use gameDateMap for authoritative date (not the embedded game object)
+    // No daysSince filter needed — the 30-day game window already
+    // guarantees all players here have played recently.
+    // Derive last_game_date from the most recent game in the window.
     const g0GameId = (games[0]?.game as Record<string, unknown>)?.id as number ?? games[0]?.game;
-    const lastGameDate = gameDateMap.get(g0GameId) ?? '';
+    const lastGameDate = gameDateMap.get(g0GameId)
+      ?? (games[0]?.game as Record<string, unknown>)?.date as string
+      ?? '';
     const daysSince = lastGameDate
       ? Math.floor((Date.now() - new Date(lastGameDate).getTime()) / 86_400_000)
-      : 999;
-
-    // Capture diagnostic for first qualifying player (pre-daysSince filter)
-    if (!_firstPlayerDiag) {
-      _firstPlayerDiag = {
-        pid,
-        games_count: games.length,
-        sorted_dates: games.slice(0, 5).map(g => {
-          const gid = (g?.game as Record<string, unknown>)?.id as number ?? g?.game;
-          return gameDateMap.get(gid) ?? 'NO_DATE';
-        }),
-        lastGameDate,
-        daysSince,
-        g0GameId,
-      };
-    }
-
-    if (daysSince > 10) continue;
+      : 0;
 
     const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
     const streakWarning = seasonAvg > 0 && Math.abs(delta / seasonAvg) > 0.30;
@@ -323,8 +308,6 @@ export async function computeEdgeFeed(
 
   if (debugOut) {
     debugOut.final_candidates_before_sort = entries.length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (debugOut as any)._firstPlayer = _firstPlayerDiag;
   }
 
   entries.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
