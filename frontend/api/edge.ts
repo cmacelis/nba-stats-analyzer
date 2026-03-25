@@ -86,6 +86,16 @@ export interface EdgeEntry {
   delta: number;
   last5: number[];
   games_played: number;
+  /** ISO date of the player's most recent qualifying game */
+  last_game_date: string;
+  /** Days since last qualifying game — players >10 days are excluded (likely injured/inactive) */
+  days_since_last_game: number;
+  /**
+   * streak_warning: true when recent_avg deviates >30% from season_avg.
+   * High-delta entries without structural backing (B2B, injury, defense) are likely
+   * hot/cold streaks that revert. Rule 12: confirm structural reason before acting.
+   */
+  streak_warning: boolean;
 }
 
 interface UpstreamError {
@@ -213,17 +223,33 @@ export async function computeEdgeFeed(
     const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
+    // Exclude players who haven't played in 10+ days — they are likely injured or inactive.
+    // The stats array is already sorted date-desc, so games[0] is the most recent.
+    const lastGameDate = (games[0]?.['game'] as Record<string, unknown>)?.['date'] as string ?? '';
+    const daysSince = lastGameDate
+      ? Math.floor((Date.now() - new Date(lastGameDate).getTime()) / 86_400_000)
+      : 999;
+    if (daysSince > 10) continue;
+
+    const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
+    // streak_warning: flag large deviations (>30% of season avg) — likely hot/cold streaks.
+    // Require structural confirmation (B2B, injury, defense mismatch) before acting. Rule 12.
+    const streakWarning = seasonAvg > 0 && Math.abs(delta / seasonAvg) > 0.30;
+
     entries.push({
-      player_id:    p.id,
-      player_name:  `${p.first_name} ${p.last_name}`,
-      team:         p.team?.full_name    ?? '—',
-      team_abbrev:  p.team?.abbreviation ?? '—',
-      photo_url:    null,
-      season_avg:   seasonAvg,
-      recent_avg:   recentAvg,
-      delta:        Math.round((recentAvg - seasonAvg) * 10) / 10,
-      last5:        last5Vals,
-      games_played: games.length,
+      player_id:            p.id,
+      player_name:          `${p.first_name} ${p.last_name}`,
+      team:                 p.team?.full_name    ?? '—',
+      team_abbrev:          p.team?.abbreviation ?? '—',
+      photo_url:            null,
+      season_avg:           seasonAvg,
+      recent_avg:           recentAvg,
+      delta,
+      last5:                last5Vals,
+      games_played:         games.length,
+      last_game_date:       lastGameDate,
+      days_since_last_game: daysSince,
+      streak_warning:       streakWarning,
     });
   }
 
@@ -260,7 +286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const stat    = ((req.query.stat as string) || 'pts') as StatKey;
   const minMin  = parseFloat(req.query.min_minutes as string) || 20;
   const season  = parseInt(req.query.season as string) || BDL_SEASON;
-  const isDebug = req.query.debug === '1';
+  const isDebug = req.query.debug === '1' && process.env.VERCEL_ENV !== 'production';
 
   const debugOut: EdgeDebugInfo | undefined = isDebug ? {
     active_players_count:         0,
@@ -294,7 +320,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stat,
       season,
       generated_at: new Date().toISOString(),
-      version_marker: "DEPLOY_TEST_123",
       ...(isDebug && { debug: debugOut }),
     });
   } catch (err) {

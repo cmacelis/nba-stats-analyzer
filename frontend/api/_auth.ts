@@ -16,7 +16,9 @@ import {
 // ── Config (lazy, read at call time) ─────────────────────────────────────────
 
 function jwtSecret() {
-  return new TextEncoder().encode(process.env.AUTH_JWT_SECRET || 'dev-secret-change-me');
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret) throw new Error('AUTH_JWT_SECRET environment variable is required');
+  return new TextEncoder().encode(secret);
 }
 
 const COOKIE_NAME = 'edge_session';

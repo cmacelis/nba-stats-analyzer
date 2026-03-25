@@ -43,29 +43,48 @@ interface SignInResponse {
   message: string;
 }
 
+// ── Mobile auth key validation ──────────────────────────────────────────────
+
+function validateMobileAuthKey(req: VercelRequest): boolean {
+  const key = req.headers['x-mobile-auth-key'] as string | undefined;
+  const expected = process.env.MOBILE_AUTH_KEY;
+  if (!expected) {
+    console.error('[auth-mobile] MOBILE_AUTH_KEY env var is not set — rejecting all signin requests');
+    return false;
+  }
+  return key === expected;
+}
+
 // ── POST /api/auth-mobile/signin ────────────────────────────────────────────
 
 async function handleSignIn(req: VercelRequest, res: VercelResponse) {
   try {
-    const { email, direct = true } = req.body as SignInRequest;
-    
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Valid email required' 
+    // Require X-Mobile-Auth-Key header to prevent unauthorized token minting
+    if (!validateMobileAuthKey(req)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden — invalid or missing mobile auth key',
       } as SignInResponse);
     }
-    
+
+    const { email, direct = true } = req.body as SignInRequest;
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid email required'
+      } as SignInResponse);
+    }
+
     // Get or create user
     const user = await getOrCreateUser(email);
-    
-    // For mobile development: return token directly
-    // In production, this would send a magic link email
+
+    // Return token directly for mobile app
     const token = await signJwt(email);
-    
+
     // Set session cookie (for web compatibility)
     setSessionCookie(res, token);
-    
+
     return res.json({
       success: true,
       token, // Return token for mobile to store
@@ -74,11 +93,11 @@ async function handleSignIn(req: VercelRequest, res: VercelResponse) {
         vipActive: user.vipActive,
         vipPlan: user.vipPlan,
       },
-      message: direct 
-        ? 'Signed in successfully (development mode)' 
+      message: direct
+        ? 'Signed in successfully'
         : 'Magic link sent to email',
     } as SignInResponse);
-    
+
   } catch (error) {
     console.error('[auth-mobile] Sign in error:', error);
     return res.status(500).json({
