@@ -49,7 +49,7 @@ const PLAYER_TTL = 24 * 60 * 60 * 1000;
 async function getActivePlayers(): Promise<ActivePlayer[]> {
   const now = Date.now();
   if (_playerCache && now - _playerCache.ts < PLAYER_TTL) return _playerCache.data;
-  const raw = await bdlBatch('/players/active', { per_page: 500 });
+  const raw = await bdlBatch('/players/active', { per_page: 100 });
   const data: ActivePlayer[] = raw?.data ?? [];
   _playerCache = { data, ts: Date.now() };
   return data;
@@ -155,30 +155,36 @@ export async function computeEdgeFeed(
   // Instead, compute the season baseline directly from game logs:
   //   season_avg = mean of ALL fetched games for the player
   //   recent_avg = mean of the 5 most recent games
-  // Five pages fetched in parallel (500 games) to cover the expanded player pool.
-  // Games are returned date-desc globally; per-player grouping preserves that order.
+  // Player IDs are chunked into batches of 50 to avoid URL length limits,
+  // then each batch fetches 2 pages (200 games). All batches run in parallel.
   let statsUpstreamErr: UpstreamError | null = null;
 
-  const statsParams = {
-    'player_ids[]': ids,
-    'seasons[]':    [season],
-    per_page:       100,
-    sort:           'date',
-    direction:      'desc',
-  };
+  const CHUNK_SIZE = 50;
+  const idChunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    idChunks.push(ids.slice(i, i + CHUNK_SIZE));
+  }
 
-  const statsPages = await Promise.all(
-    [1, 2, 3, 4, 5].map((page, i) =>
-      bdlBatch('/stats', { ...statsParams, page })
-        .catch((err: unknown) => {
-          if (i === 0) statsUpstreamErr = captureErr(err, '/stats');
+  const chunkResults = await Promise.all(
+    idChunks.flatMap((chunk, ci) =>
+      [1, 2].map(page =>
+        bdlBatch('/stats', {
+          'player_ids[]': chunk,
+          'seasons[]':    [season],
+          per_page:       100,
+          sort:           'date',
+          direction:      'desc',
+          page,
+        }).catch((err: unknown) => {
+          if (ci === 0 && page === 1) statsUpstreamErr = captureErr(err, '/stats');
           return { data: [] };
         })
+      )
     )
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = statsPages.flatMap(p => p?.data ?? []);
+  const statsResData: any[] = chunkResults.flatMap(p => p?.data ?? []);
 
   if (debugOut) {
     debugOut.season_averages_count        = 0; // removed — computed from logs
