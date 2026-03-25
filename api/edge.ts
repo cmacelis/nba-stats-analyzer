@@ -169,6 +169,12 @@ export async function computeEdgeFeed(
   const recentGames: any[] = gamesPages.flatMap(p => p?.data ?? []);
   const gameIds = recentGames.map((g: { id: number }) => g.id);
 
+  // Build a game ID → date lookup from the /games response (authoritative dates)
+  const gameDateMap = new Map<number, string>();
+  for (const g of recentGames) {
+    if (g?.id && g?.date) gameDateMap.set(g.id, g.date as string);
+  }
+
   if (debugOut) {
     debugOut.active_players_count     = gameIds.length;
     debugOut.active_player_ids_sample = gameIds.slice(0, 5);
@@ -236,8 +242,10 @@ export async function computeEdgeFeed(
   const entries: EdgeEntry[] = [];
   for (const [pid, rawGames] of gameMap) {
     const games = rawGames.sort((a, b) => {
-      const da = (a?.game as Record<string, unknown>)?.date as string ?? '';
-      const db = (b?.game as Record<string, unknown>)?.date as string ?? '';
+      const gidA = (a?.game as Record<string, unknown>)?.id as number ?? a?.game;
+      const gidB = (b?.game as Record<string, unknown>)?.id as number ?? b?.game;
+      const da = gameDateMap.get(gidA) ?? '';
+      const db = gameDateMap.get(gidB) ?? '';
       return db.localeCompare(da);
     });
     if (games.length < 3) continue;

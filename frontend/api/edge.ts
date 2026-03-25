@@ -173,6 +173,12 @@ export async function computeEdgeFeed(
   const recentGames: any[] = gamesPages.flatMap(p => p?.data ?? []);
   const gameIds = recentGames.map((g: { id: number }) => g.id);
 
+  // Build a game ID → date lookup from the /games response (authoritative dates)
+  const gameDateMap = new Map<number, string>();
+  for (const g of recentGames) {
+    if (g?.id && g?.date) gameDateMap.set(g.id, g.date as string);
+  }
+
   if (debugOut) {
     debugOut.active_players_count     = gameIds.length;
     debugOut.active_player_ids_sample = gameIds.slice(0, 5);
@@ -248,10 +254,13 @@ export async function computeEdgeFeed(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let _firstPlayerDiag: any = null;
   for (const [pid, rawGames] of gameMap) {
-    // Sort per-player games date-desc (BDL returns ascending)
+    // Sort per-player games date-desc using authoritative gameDateMap
+    // (BDL's embedded game.date can be wrong when fetching by game_ids[])
     const games = rawGames.sort((a, b) => {
-      const da = (a?.game as Record<string, unknown>)?.date as string ?? '';
-      const db = (b?.game as Record<string, unknown>)?.date as string ?? '';
+      const gidA = (a?.game as Record<string, unknown>)?.id as number ?? a?.game;
+      const gidB = (b?.game as Record<string, unknown>)?.id as number ?? b?.game;
+      const da = gameDateMap.get(gidA) ?? '';
+      const db = gameDateMap.get(gidB) ?? '';
       return db.localeCompare(da);
     });
     if (games.length < 3) continue;
@@ -262,7 +271,9 @@ export async function computeEdgeFeed(
     const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
-    const lastGameDate = (games[0]?.['game'] as Record<string, unknown>)?.['date'] as string ?? '';
+    // Use gameDateMap for authoritative date (not the embedded game object)
+    const g0GameId = (games[0]?.game as Record<string, unknown>)?.id as number ?? games[0]?.game;
+    const lastGameDate = gameDateMap.get(g0GameId) ?? '';
     const daysSince = lastGameDate
       ? Math.floor((Date.now() - new Date(lastGameDate).getTime()) / 86_400_000)
       : 999;
@@ -272,11 +283,13 @@ export async function computeEdgeFeed(
       _firstPlayerDiag = {
         pid,
         games_count: games.length,
-        sorted_dates: games.slice(0, 5).map(g => (g?.game as Record<string, unknown>)?.date ?? 'NO_DATE'),
+        sorted_dates: games.slice(0, 5).map(g => {
+          const gid = (g?.game as Record<string, unknown>)?.id as number ?? g?.game;
+          return gameDateMap.get(gid) ?? 'NO_DATE';
+        }),
         lastGameDate,
         daysSince,
-        now: Date.now(),
-        parsed: lastGameDate ? new Date(lastGameDate).getTime() : 'N/A',
+        g0GameId,
       };
     }
 
