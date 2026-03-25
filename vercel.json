@@ -1,9 +1,0 @@
-{
-  "installCommand": "npm ci",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/api/notifications/(.*)", "destination": "/api/notifications?_subpath=$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}

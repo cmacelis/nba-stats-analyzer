@@ -4,6 +4,10 @@ import { nbaPlayerSearchHandler } from './handlers/nba/players.js';
 import { playerStatsHandler } from './_handlers/player-stats.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
+import { gamesHandler } from './_handlers/games.js';
+import { predictHandler } from './_handlers/predict.js';
+import { researchHandler } from './_handlers/research.js';
+import { generateHandler } from './_handlers/generate.js';
 
 /**
  * /api/players — unified handler with _subpath routing for sub-routes.
@@ -54,6 +58,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const statsMatch = effectivePath.match(/^(\d+)\/stats$/);
   if (statsMatch) {
     return playerStatsHandler(req, res, statsMatch[1]);
+  }
+
+  // games - game data
+  if (effectivePath === 'games') {
+    return gamesHandler(req, res);
+  }
+
+  // predict - predictions
+  if (effectivePath === 'predict') {
+    return predictHandler(req, res);
+  }
+
+  // research - research data
+  if (effectivePath === 'research') {
+    return researchHandler(req, res);
+  }
+
+  // research/generate - AI generation
+  if (effectivePath === 'research/generate') {
+    if (req.method === 'POST') {
+      return generateHandler(req, res);
+    }
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // Fallback: treat as search

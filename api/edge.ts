@@ -87,6 +87,14 @@ export interface EdgeEntry {
   delta: number;
   last5: number[];
   games_played: number;
+  /**
+   * streak_warning: true when recent_avg deviates >30% from season_avg with no known
+   * structural reason. High-delta edges without structural backing (B2B, injury, defense)
+   * are likely hot/cold streaks that revert — NOT reliable betting edges.
+   * Rule 12: Only bet structural edges. Regression edges (streak_warning=true) require
+   * explicit structural confirmation before acting on them.
+   */
+  streak_warning: boolean;
 }
 
 interface UpstreamError {
@@ -214,17 +222,25 @@ export async function computeEdgeFeed(
     const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
+    const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
+    // streak_warning: flag large deviations (>30% of season avg) that are likely
+    // hot/cold streaks rather than structural edges. The daily picks agent should
+    // confirm a structural reason (B2B, injury, defense mismatch) before acting on
+    // any entry with streak_warning=true. (Rule 12 in lessons.md)
+    const streakWarning = seasonAvg > 0 && Math.abs(delta / seasonAvg) > 0.30;
+
     entries.push({
-      player_id:    p.id,
-      player_name:  `${p.first_name} ${p.last_name}`,
-      team:         p.team?.full_name    ?? '—',
-      team_abbrev:  p.team?.abbreviation ?? '—',
-      photo_url:    null,
-      season_avg:   seasonAvg,
-      recent_avg:   recentAvg,
-      delta:        Math.round((recentAvg - seasonAvg) * 10) / 10,
-      last5:        last5Vals,
-      games_played: games.length,
+      player_id:      p.id,
+      player_name:    `${p.first_name} ${p.last_name}`,
+      team:           p.team?.full_name    ?? '—',
+      team_abbrev:    p.team?.abbreviation ?? '—',
+      photo_url:      null,
+      season_avg:     seasonAvg,
+      recent_avg:     recentAvg,
+      delta,
+      last5:          last5Vals,
+      games_played:   games.length,
+      streak_warning: streakWarning,
     });
   }
 

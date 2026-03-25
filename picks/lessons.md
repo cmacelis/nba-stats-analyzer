@@ -11,6 +11,19 @@
 
 **Units: -3.36u** (11u wagered, 3.64u won, ROI: -30.5%)
 
+**CLV Tracking** (Closing Line Value — did we beat the market?):
+| Pick | Our Line | Closing Line | CLV | Direction |
+|------|----------|--------------|-----|-----------|
+| U226 OKC@MIN (3/15) | 226 | — | null | Under |
+| U243.5 MEM@CHI (3/16) | 243.5 | — | null | Under |
+| U223.5 OKC vs ORL (3/17) | 223.5 | — | null | Under |
+| U228.5 PHX@MIN (3/17) | 228.5 | — | null | Under |
+| U218.5 BKN@SAC (3/22) | 218.5 | — | null | Under |
+| TOR -2 vs PHX (3/22) | -2 | — | null | Spread |
+
+*CLV = our line − closing line. Positive = we beat the market (good process). Add closing lines at settlement.*
+*Target: avg CLV ≥ 0 = model has true edge. Negative avg CLV = model has no edge regardless of W/L.*
+
 | Type | W | L | P |
 |------|---|---|---|
 | Pick of the Day | 2 | 2 | 0 |
@@ -95,5 +108,9 @@
 
 9. **Never bet an under based on cold-streak regression** — a team scoring sub-100 for 5 straight is statistically DUE to bounce back. Avoid totals picks where the primary edge is "they've been scoring poorly lately."
 10. **B2B edge requires defense backing, not just rest** — B2B + sharp money is not sufficient. Require B2B + opponent's elite defense (top-5 DRtg) or significant injury impact.
+11. **Injury cascade analysis required for every prop pick** — when a starter is out, systematically identify: who gets their minutes? who gets their rebounding territory? who becomes irreplaceable (can't sit even in blowout)? Only take props where the cascade creates a *forced* usage increase, not just a possible one.
+12. **Structural edges only — no regression/streak edges** — every pick must have a structural reason (B2B, injury, pace mismatch, defense rating). Hot/cold streaks always revert; they are NOT an edge. If the primary reason for a pick is "they've been hot/cold lately," reject it.
+13. **Blowout risk check for all props** — before any player prop, assess blowout risk from the spread: spread >10 = HIGH blowout risk. In high-blowout-risk games: (a) only take rebounds/forced-minutes props (happen regardless of score), (b) avoid points/assists for the underdog (usage collapses when down 20+), (c) points/assists for the favorite are OK only if player can't be benched (injury-forced minutes).
+14. **Track CLV at settlement** — record the closing line for every pick. CLV = our line − closing line. Consistent positive CLV = good process even when losing. Add to ledger using `scripts/record-clv.sh`.
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*
