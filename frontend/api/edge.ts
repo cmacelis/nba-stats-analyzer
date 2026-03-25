@@ -295,7 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const stat    = ((req.query.stat as string) || 'pts') as StatKey;
   const minMin  = parseFloat(req.query.min_minutes as string) || 20;
   const season  = parseInt(req.query.season as string) || BDL_SEASON;
-  const isDebug = req.query.debug === '1' && process.env.VERCEL_ENV !== 'production';
+  const isDebug = req.query.debug === '1';
 
   const debugOut: EdgeDebugInfo | undefined = isDebug ? {
     active_players_count:         0,
