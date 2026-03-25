@@ -297,7 +297,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const season  = parseInt(req.query.season as string) || BDL_SEASON;
   const isDebug = req.query.debug === '1';
 
-  const debugOut: EdgeDebugInfo | undefined = isDebug ? {
+  // Always collect diagnostics so we can include them when the result is empty
+  const debugOut: EdgeDebugInfo = {
     active_players_count:         0,
     active_player_ids_sample:     [],
     season_averages_count:        0,
@@ -309,7 +310,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     grouped_players_with_logs:    0,
     final_candidates_before_sort: 0,
     final_returned:               0,
-  } : undefined;
+  };
 
   try {
     const top = await computeEdgeFeed(stat, minMin, season, debugOut);
@@ -339,6 +340,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       generated_at: new Date().toISOString(),
       ...(reason && { reason }),
       ...(isDebug && { debug: debugOut }),
+      // Always include diagnostics when empty to help debug pipeline issues
+      ...(top.length === 0 && { _diag: debugOut }),
     });
   } catch (err) {
     console.error('[edge] error:', (err as Error).message);
