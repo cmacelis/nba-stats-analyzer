@@ -110,7 +110,7 @@ async function handleGetFavorites(req: VercelRequest, res: VercelResponse, userE
   });
 }
 
-// ── Main handler: /api/favorites ────────────────────────────────────────────
+// ── Handler: POST /api/favorites ────────────────────────────────────────────
 
 async function handleAddFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
   try {
@@ -225,15 +225,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const path = req.query._subpath as string | undefined;
 
     // First handle notification requests
-    console.log('DEBUG: Path received:', path);
-    
-    if (path === 'send-saved-player-alerts') {
+    if (path && path.startsWith('notifications/')) {
+      const notificationPath = path.slice('notifications/'.length);
+
+      if (notificationPath === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
           console.log('User:', userEmail);
           
           // Fetch today's edges and eligible users
           const todayEdges = await fetchTodaysEdgeFeed();
+          console.log('EDGE FEED RAW (first 3):', todayEdges.slice(0, 3));
           console.log('Today edges count:', todayEdges.length);
           
           const users = await getUsersWithSavedPlayerAlerts();
@@ -243,26 +245,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           for (const email of users) {
             console.log('Processing user:', email);
-            const favoriteIds = await getUserFavoritePlayerIds(email);
-            console.log('Favorite player IDs:', favoriteIds);
+            const favorites = await getUserFavorites(email);
+            console.log('FAVORITES RAW:', favorites);
             
-            const matchingEdges = todayEdges.filter(edge => favoriteIds.includes(edge.player_id));
+            // Extract player IDs from favorites
+            const favoritePlayerIds = favorites.map(f => f.player_id).filter(id => id > 0);
+            
+            console.log('Normalized favorite player IDs:', favoritePlayerIds);
+            
+            // Match edges with favorites
+            const matchingEdges = todayEdges.filter(edge => {
+              const edgePlayerId = edge.player_id || 0;
+              return favoritePlayerIds.includes(edgePlayerId);
+            });
+            
             console.log('Matching edges:', matchingEdges.length);
             
             const tokens = await getUserDeviceTokens(email);
             console.log('Device tokens:', tokens.length);
             
             for (const edge of matchingEdges) {
-              const alreadySent = await hasNotificationBeenSentToday(email, edge.player_id);
-              console.log(`Check for ${edge.player_name} (${edge.player_id}): already sent = ${alreadySent}`);
+              const playerId = edge.player_id || 0;
+              const playerName = edge.player_name || 'Unknown Player';
+              
+              if (!playerId || playerId === 0) {
+                console.error('INVALID PLAYER ID IN EDGE:', edge);
+                continue; // Skip this edge
+              }
+              
+              const alreadySent = await hasNotificationBeenSentToday(email, playerId);
+              console.log(`Check for ${playerName} (${playerId}): already sent = ${alreadySent}`);
               
               if (!alreadySent) {
                 // Prepare and send push notification
                 const pushPayload = {
                   to: tokens,
                   title: 'Your saved player has a new edge',
-                  body: `${edge.player_name} has a new Edge Detector signal today.`,
-                  data: { type: 'saved_player_edge', playerId: edge.player_id, screen: 'PlayerDetail' }
+                  body: `${playerName} has a new Edge Detector signal today.`,
+                  data: { type: 'saved_player_edge', playerId: playerId, screen: 'PlayerDetail' }
                 };
 
                 try {
@@ -277,7 +297,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   if (result.data?.status === 'error') {
                     console.error('Expo push error:', result.data.message);
                   } else {
-                    await markNotificationSent(email, edge.player_id);
+                    await markNotificationSent(email, playerId);
                     totalNotificationsSent++;
                     console.log('Notification sent and logged for:', edge.player_name);
                   }
