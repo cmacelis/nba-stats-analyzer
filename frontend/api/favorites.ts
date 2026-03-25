@@ -92,7 +92,7 @@ async function resolveUserEmail(req: VercelRequest): Promise<string | null> {
     const token = authHeader.slice(7);
     try {
       const payload = await verifyJwt(token);
-      return payload.email || null;
+      return payload?.email || null;
     } catch {
       // Token invalid, fall through to session
     }

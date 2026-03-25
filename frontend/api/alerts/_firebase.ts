@@ -220,3 +220,140 @@ export async function queryDocuments(
     .filter((r: { document?: unknown }) => r.document)
     .map((r: { document: { name: string; fields: Record<string, FsValue> } }) => docToObj(r.document));
 }
+
+export async function getUserDeviceTokens(userEmail: string): Promise<string[]> {
+  try {
+    const tokens = await queryDocuments('device_tokens', [
+      { field: 'user_email', op: '==', value: userEmail },
+      { field: 'active', op: '==', value: true }
+    ]);
+
+    return tokens
+      .map((doc: any) => doc.device_token)
+      .filter((token: string | undefined): token is string => !!token);
+  } catch (error) {
+    console.error(`Error getting device tokens for ${userEmail}:`, error);
+    return [];
+  }
+}
+
+export async function fetchTodaysEdgeFeed(): Promise<any[]> {
+  const response = await fetch('https://nba-stats-analyzer-chuers-projects.vercel.app/api/edge');
+  if (!response.ok) throw new Error('Failed to fetch today’s edge feed');
+  const edgeData = await response.json();
+  return edgeData.edges || [];
+}
+
+export async function getUserFavoritePlayerIds(userEmail: string): Promise<number[]> {
+  try {
+    const favorites = await queryDocuments('favorites', [
+      { field: 'user_email', op: '==', value: userEmail }
+    ]);
+
+    return favorites
+      .map((doc: any) => doc.player_id)
+      .filter((id: number | undefined): id is number => typeof id === 'number');
+  } catch (error) {
+    console.error(`Error getting favorites for ${userEmail}:`, error);
+    return [];
+  }
+}
+
+export async function getUsersWithSavedPlayerAlerts(): Promise<string[]> {
+  try {
+    const preferences = await queryDocuments('alert_preferences', [
+      { field: 'saved_player_alerts', op: '==', value: true }
+    ]);
+
+    return preferences
+      .map((doc: any) => doc.user_email)
+      .filter((email: string | undefined): email is string => !!email);
+  } catch (error) {
+    console.error('Error getting users with saved player alerts:', error);
+    return [];
+  }
+}
+
+// ── Notification Log Helpers ──────────────────────────────────────────────────
+
+/**
+ * Build dedupe key for saved_player_edge notifications
+ * Format: saved_player_edge:{user_email}:{player_id}:{YYYY-MM-DD}
+ */
+export function buildNotificationDedupeKey(
+  userEmail: string,
+  playerId: number,
+  notificationType: string = 'saved_player_edge'
+): string {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  return `${notificationType}:${userEmail}:${playerId}:${today}`;
+}
+
+/**
+ * Check if a notification has already been sent today
+ * Returns true if notification exists in notification_send_log collection
+ */
+export async function hasNotificationBeenSentToday(
+  userEmail: string,
+  playerId: number,
+  notificationType: string = 'saved_player_edge'
+): Promise<boolean> {
+  const dedupeKey = buildNotificationDedupeKey(userEmail, playerId, notificationType);
+  const docId = dedupeKey.replace(/[^a-zA-Z0-9]/g, '_');
+  
+  try {
+    const existing = await getDocument('notification_send_log', docId);
+    return existing !== null;
+  } catch (error) {
+    // If there's an error, assume not sent to avoid missing notifications
+    console.error('Error checking notification send log:', error);
+    return false;
+  }
+}
+
+/**
+ * Create a notification log entry (mark notification as sent)
+ * Schema fields: user_email, player_id, notification_type, sent_at, dedupe_key, status, device_token (optional), error (optional)
+ */
+export async function createNotificationLogEntry(
+  userEmail: string,
+  playerId: number,
+  options?: {
+    notificationType?: string;
+    deviceToken?: string;
+    status?: string;
+    error?: string;
+  }
+): Promise<void> {
+  const notificationType = options?.notificationType || 'saved_player_edge';
+  const dedupeKey = buildNotificationDedupeKey(userEmail, playerId, notificationType);
+  const docId = dedupeKey.replace(/[^a-zA-Z0-9]/g, '_');
+  
+  const logData = {
+    user_email: userEmail,
+    player_id: playerId,
+    notification_type: notificationType,
+    sent_at: new Date().toISOString(),
+    dedupe_key: dedupeKey,
+    status: options?.status || 'sent',
+    ...(options?.deviceToken && { device_token: options.deviceToken }),
+    ...(options?.error && { error: options.error })
+  };
+  
+  await setDocument('notification_send_log', docId, logData);
+}
+
+/**
+ * Mark notification as sent (alias for createNotificationLogEntry with default status)
+ */
+export async function markNotificationSent(
+  userEmail: string,
+  playerId: number,
+  deviceToken?: string
+): Promise<void> {
+  return createNotificationLogEntry(userEmail, playerId, {
+    deviceToken,
+    status: 'sent'
+  });
+}
+
