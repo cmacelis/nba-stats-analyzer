@@ -48,7 +48,7 @@ const PLAYER_TTL = 24 * 60 * 60 * 1000;
 async function getActivePlayers(): Promise<ActivePlayer[]> {
   const now = Date.now();
   if (_playerCache && now - _playerCache.ts < PLAYER_TTL) return _playerCache.data;
-  const raw = await bdlBatch('/players/active', { per_page: 30 });
+  const raw = await bdlBatch('/players/active', { per_page: 500 });
   const data: ActivePlayer[] = raw?.data ?? [];
   _playerCache = { data, ts: Date.now() };
   return data;
@@ -156,7 +156,7 @@ export async function computeEdgeFeed(
   // Instead, compute the season baseline directly from game logs:
   //   season_avg = mean of ALL fetched games for the player
   //   recent_avg = mean of the 5 most recent games
-  // Two pages fetched in parallel (200 games = ~6-7 per player for 30 players).
+  // Five pages fetched in parallel (500 games) to cover the expanded player pool.
   // Games are returned date-desc globally; per-player grouping preserves that order.
   let statsUpstreamErr: UpstreamError | null = null;
 
@@ -168,15 +168,18 @@ export async function computeEdgeFeed(
     direction:      'desc',
   };
 
-  const [res1, res2] = await Promise.all([
-    bdlBatch('/stats', { ...statsParams, page: 1 })
-      .catch((err: unknown) => { statsUpstreamErr = captureErr(err, '/stats'); return { data: [] }; }),
-    bdlBatch('/stats', { ...statsParams, page: 2 })
-      .catch(() => ({ data: [] })), // page 2 optional; page 1 error is the critical one
-  ]);
+  const statsPages = await Promise.all(
+    [1, 2, 3, 4, 5].map((page, i) =>
+      bdlBatch('/stats', { ...statsParams, page })
+        .catch((err: unknown) => {
+          if (i === 0) statsUpstreamErr = captureErr(err, '/stats');
+          return { data: [] };
+        })
+    )
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = [...(res1?.data ?? []), ...(res2?.data ?? [])];
+  const statsResData: any[] = statsPages.flatMap(p => p?.data ?? []);
 
   if (debugOut) {
     debugOut.season_averages_count        = 0; // removed — computed from logs
@@ -315,15 +318,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     );
 
+    // Determine empty reason for the frontend
+    let reason: string | null = null;
+    if (top.length === 0) {
+      if (season < BDL_SEASON)  reason = 'past_season';
+      else if (minMin > 35)     reason = 'filter_too_restrictive';
+      else                      reason = 'no_qualifying_players';
+    }
+
     res.json({
       data: top,
       stat,
       season,
       generated_at: new Date().toISOString(),
+      ...(reason && { reason }),
       ...(isDebug && { debug: debugOut }),
     });
   } catch (err) {
     console.error('[edge] error:', (err as Error).message);
-    res.status(500).json({ error: 'Failed to generate edge feed' });
+    res.status(500).json({ error: 'Failed to generate edge feed', reason: 'upstream_error' });
   }
 }
