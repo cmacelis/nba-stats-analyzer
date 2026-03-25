@@ -315,12 +315,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
           console.log('User:', userEmail);
           
-          // Fetch today's edges and eligible users
+          // Fetch today's edges
           const todayEdges = await fetchTodaysEdgeFeed();
           console.log('EDGE FEED RAW (first 3):', todayEdges.slice(0, 3));
           console.log('Today edges count:', todayEdges.length);
           
-          const users = await getUsersWithSavedPlayerAlerts();
+          // DEBUG: Test with current user only
+          console.log('DEBUG: Using current user instead of getUsersWithSavedPlayerAlerts()');
+          const users = [userEmail]; // Use current user instead of querying all users
           console.log('Users with alerts enabled:', users);
           
           let totalNotificationsSent = 0;
