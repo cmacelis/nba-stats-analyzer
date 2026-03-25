@@ -220,7 +220,11 @@ export async function computeEdgeFeed(
 
   const entries: EdgeEntry[] = [];
   for (const p of players) {
-    const games = gameMap.get(p.id) ?? [];
+    const games = (gameMap.get(p.id) ?? []).sort((a, b) => {
+      const da = (a?.game as Record<string, unknown>)?.date as string ?? '';
+      const db = (b?.game as Record<string, unknown>)?.date as string ?? '';
+      return db.localeCompare(da); // date desc — most recent first
+    });
     if (games.length < 3) continue;
 
     // season_avg = mean of ALL fetched games (season-to-date baseline from logs)
