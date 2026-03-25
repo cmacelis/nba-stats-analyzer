@@ -173,17 +173,17 @@ export async function computeEdgeFeed(
     debugOut.active_player_ids_sample = gameIds.slice(0, 5);
   }
 
-  // ── Step 2: fetch stats for those games ─────────────────────────────────
+  // ── Step 2: discover unique player IDs from recent game stats ─────────
   let statsUpstreamErr: UpstreamError | null = gamesUpstreamErr;
 
   const CHUNK_SIZE = 50;
-  const idChunks: number[][] = [];
+  const gameIdChunks: number[][] = [];
   for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
-    idChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
+    gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
   }
 
-  const chunkResults = await Promise.all(
-    idChunks.flatMap((chunk, ci) =>
+  const discoveryResults = await Promise.all(
+    gameIdChunks.flatMap((chunk, ci) =>
       [1, 2, 3].map(page =>
         bdlBatch('/stats', {
           'game_ids[]':  chunk,
@@ -198,7 +198,33 @@ export async function computeEdgeFeed(
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = chunkResults.flatMap(p => p?.data ?? []);
+  const discoveryData: any[] = discoveryResults.flatMap(p => p?.data ?? []);
+  const activePlayerIds = [...new Set(discoveryData.map(g => g?.player?.id).filter(Boolean) as number[])];
+
+  // ── Step 3: fetch full season stats for active players ──────────────────
+  const playerIdChunks: number[][] = [];
+  for (let i = 0; i < activePlayerIds.length; i += CHUNK_SIZE) {
+    playerIdChunks.push(activePlayerIds.slice(i, i + CHUNK_SIZE));
+  }
+
+  const seasonResults = await Promise.all(
+    playerIdChunks.flatMap((chunk, ci) =>
+      [1, 2, 3, 4].map(page =>
+        bdlBatch('/stats', {
+          'player_ids[]': chunk,
+          'seasons[]':    [season],
+          per_page:       100,
+          page,
+        }).catch((err: unknown) => {
+          if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
+          return { data: [] };
+        })
+      )
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const statsResData: any[] = seasonResults.flatMap(p => p?.data ?? []);
 
   if (debugOut) {
     debugOut.season_averages_count        = 0;
