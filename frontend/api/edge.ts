@@ -237,13 +237,7 @@ export async function computeEdgeFeed(
         player_id:      samplePid,
         games:          sampleGames.length,
         minutes_values: sampleGames.slice(0, 5).map(g => Math.round(parseMins(g.min) * 10) / 10),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sample_game_keys: g0 ? Object.keys(g0) : [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sample_game_date: (g0 as any)?.game?.date ?? (g0 as any)?.date ?? 'NO_DATE_FOUND',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sample_game_obj: g0?.game ?? 'NO_GAME_OBJ',
-      } as any;
+      };
     } else {
       debugOut.stats_logs_count_sample_player = null;
     }
