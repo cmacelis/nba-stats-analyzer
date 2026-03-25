@@ -154,40 +154,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path && path.startsWith('notifications/')) {
       const notificationPath = path.slice('notifications/'.length);
       
-      // Simple test endpoint
-      if (notificationPath === 'test' && req.method === 'GET') {
-        return res.status(200).json({
-          success: true,
-          message: 'Notification test endpoint - SIMPLE VERSION',
-          timestamp: new Date().toISOString(),
-          deployed: true
-        });
-      }
-      
-      // Notification register endpoint
-      if (notificationPath === 'register' && req.method === 'POST') {
-        try {
-          const { device_token, platform = 'ios' } = req.body;
-          
-          if (!device_token) {
-            return res.status(400).json({ error: 'Missing device_token' });
-          }
-          
-          // Simple response for now
+      // Handle notification routes with method dispatch
+      if (notificationPath === 'test') {
+        if (req.method === 'GET') {
           return res.status(200).json({
             success: true,
-            message: 'Device token registered (simple)',
-            device_token: device_token.substring(0, 10) + '...',
-            platform,
-            user_email: userEmail
+            message: 'Notification test endpoint - SIMPLE VERSION',
+            timestamp: new Date().toISOString(),
+            deployed: true
           });
-        } catch (error) {
-          console.error('Notification register error:', error);
-          return res.status(500).json({ error: 'Failed to register device token' });
         }
+        return res.status(405).json({ error: 'Method not allowed' });
       }
       
-      // Notification preferences endpoints
+      if (notificationPath === 'register') {
+        if (req.method === 'POST') {
+          try {
+            const { device_token, platform = 'ios' } = req.body;
+            
+            if (!device_token) {
+              return res.status(400).json({ error: 'Missing device_token' });
+            }
+            
+            // Simple response for now
+            return res.status(200).json({
+              success: true,
+              message: 'Device token registered (simple)',
+              device_token: device_token.substring(0, 10) + '...',
+              platform,
+              user_email: userEmail
+            });
+          } catch (error) {
+            console.error('Notification register error:', error);
+            return res.status(500).json({ error: 'Failed to register device token' });
+          }
+        }
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
       if (notificationPath === 'preferences') {
         if (req.method === 'GET') {
           // Return default preferences
@@ -213,6 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           });
         }
+        return res.status(405).json({ error: 'Method not allowed' });
       }
     }
     
