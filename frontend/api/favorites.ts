@@ -110,7 +110,7 @@ async function handleGetFavorites(req: VercelRequest, res: VercelResponse, userE
   });
 }
 
-// ── Handler: POST /api/favorites ────────────────────────────────────────────
+// ── Main handler: /api/favorites ────────────────────────────────────────────
 
 async function handleAddFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
   try {
