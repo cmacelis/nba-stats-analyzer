@@ -324,6 +324,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const users = await getUsersWithSavedPlayerAlerts();
           console.log('Users with alerts enabled:', users);
           
+          // TEMPORARY DEBUG RETURN - REMOVE AFTER VERIFICATION
+          return res.status(200).json({
+            success: true,
+            users_with_saved_player_alerts: users,
+            users_count: users.length,
+            debug_note: 'Temporary debug return to verify getUsersWithSavedPlayerAlerts()'
+          });
+          
           let totalNotificationsSent = 0;
           
           for (const email of users) {
