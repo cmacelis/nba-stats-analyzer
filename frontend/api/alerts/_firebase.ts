@@ -245,7 +245,7 @@ export async function fetchTodaysEdgeFeed(): Promise<any[]> {
   const response = await fetch('https://nba-stats-analyzer-chuers-projects.vercel.app/api/edge');
   if (!response.ok) throw new Error('Failed to fetch today’s edge feed');
   const edgeData = await response.json();
-  return edgeData.edges || [];
+  return edgeData.data || [];
 }
 
 export async function getUserFavoritePlayerIds(userEmail: string): Promise<number[]> {
