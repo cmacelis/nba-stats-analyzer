@@ -228,8 +228,8 @@ export async function queryDocuments(
 export async function getUserDeviceTokens(userEmail: string): Promise<string[]> {
   try {
     const tokens = await queryDocuments('device_tokens', [
-      { field: 'user_email', op: '==', value: userEmail },
-      { field: 'active', op: '==', value: true }
+      { field: 'user_email', op: 'EQUAL', value: userEmail },
+      { field: 'active', op: 'EQUAL', value: true }
     ]);
 
     return tokens
@@ -251,7 +251,7 @@ export async function fetchTodaysEdgeFeed(): Promise<any[]> {
 export async function getUserFavoritePlayerIds(userEmail: string): Promise<number[]> {
   try {
     const favorites = await queryDocuments('favorites', [
-      { field: 'user_email', op: '==', value: userEmail }
+      { field: 'user_email', op: 'EQUAL', value: userEmail }
     ]);
 
     return favorites
@@ -266,7 +266,7 @@ export async function getUserFavoritePlayerIds(userEmail: string): Promise<numbe
 export async function getUsersWithSavedPlayerAlerts(): Promise<string[]> {
   try {
     const preferences = await queryDocuments('alert_preferences', [
-      { field: 'saved_player_alerts', op: '==', value: true }
+      { field: 'saved_player_alerts', op: 'EQUAL', value: true }
     ]);
 
     return preferences

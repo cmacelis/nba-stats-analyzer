@@ -49,7 +49,7 @@ function generateFavoriteId(userEmail: string, playerId: number): string {
 
 async function getUserFavorites(userEmail: string): Promise<FavoriteDoc[]> {
   const docs = await queryDocuments('favorites', [
-    { field: 'user_email', op: '==', value: userEmail }
+    { field: 'user_email', op: 'EQUAL', value: userEmail }
   ]);
   // Cast each document to FavoriteDoc
   return docs.map(doc => ({
@@ -420,6 +420,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (error) {
     console.error('[favorites] Error:', error);
-    return res.status(500).json({ error: 'Internal server error', detail: String(error) });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
