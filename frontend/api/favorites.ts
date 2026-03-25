@@ -50,7 +50,14 @@ async function getUserFavorites(userEmail: string): Promise<FavoriteDoc[]> {
   const docs = await queryDocuments('favorites', [
     { field: 'user_email', op: '==', value: userEmail }
   ]);
-  return docs as FavoriteDoc[];
+  // Cast each document to FavoriteDoc
+  return docs.map(doc => ({
+    id: doc.id as string,
+    user_email: doc.user_email as string,
+    player_id: doc.player_id as number,
+    created_at: doc.created_at as string,
+    source: doc.source as 'mobile' | 'web' | 'migration'
+  }));
 }
 
 // ── Helper: Add favorite ────────────────────────────────────────────────────
@@ -84,7 +91,7 @@ async function resolveUserEmail(req: VercelRequest): Promise<string | null> {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
-      const payload = verifyJwt(token);
+      const payload = await verifyJwt(token);
       return payload.email || null;
     } catch {
       // Token invalid, fall through to session
@@ -228,6 +235,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path && path.startsWith('notifications/')) {
       const notificationPath = path.slice('notifications/'.length);
 
+      // ── Register device token ──────────────────────────────────────
+      if (notificationPath === 'register' && req.method === 'POST') {
+        const { device_token, platform = 'ios' } = req.body || {};
+        if (!device_token) {
+          return res.status(400).json({ error: 'Missing device_token' });
+        }
+        if (!['ios', 'android'].includes(platform)) {
+          return res.status(400).json({ error: 'Invalid platform' });
+        }
+        const safeEmail = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const tokenHash = Buffer.from(device_token).toString('base64').slice(0, 20).replace(/[^a-zA-Z0-9]/g, '');
+        const docId = `${safeEmail}_${tokenHash}`;
+        const now = new Date().toISOString();
+        await setDocument('device_tokens', docId, {
+          id: docId,
+          user_email: userEmail,
+          device_token,
+          platform,
+          created_at: now,
+          updated_at: now,
+        });
+        return res.status(200).json({ success: true, message: 'Device token registered', docId });
+      }
+
+      // ── Notification preferences ───────────────────────────────────
+      if (notificationPath === 'preferences') {
+        const safeEmail = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+        if (req.method === 'GET') {
+          const existing = await getDocument('alert_preferences', safeEmail);
+          if (existing) {
+            return res.status(200).json({
+              id: existing.id,
+              user_email: existing.user_email,
+              saved_player_alerts: existing.saved_player_alerts,
+              daily_top_edge: existing.daily_top_edge,
+              game_day_alerts: existing.game_day_alerts,
+              created_at: existing.created_at,
+              updated_at: existing.updated_at,
+            });
+          }
+          // Return defaults
+          const now = new Date().toISOString();
+          return res.status(200).json({
+            id: safeEmail,
+            user_email: userEmail,
+            saved_player_alerts: true,
+            daily_top_edge: true,
+            game_day_alerts: false,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+
+        if (req.method === 'POST') {
+          const { saved_player_alerts, daily_top_edge, game_day_alerts } = req.body || {};
+          const existing = await getDocument('alert_preferences', safeEmail);
+          const now = new Date().toISOString();
+          const prefsDoc = {
+            id: safeEmail,
+            user_email: userEmail,
+            saved_player_alerts: saved_player_alerts !== undefined ? saved_player_alerts : true,
+            daily_top_edge: daily_top_edge !== undefined ? daily_top_edge : true,
+            game_day_alerts: game_day_alerts !== undefined ? game_day_alerts : false,
+            created_at: (existing?.created_at as string) || now,
+            updated_at: now,
+          };
+          await setDocument('alert_preferences', safeEmail, prefsDoc);
+          return res.status(200).json({ success: true, message: 'Preferences updated', preferences: prefsDoc });
+        }
+
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
       if (notificationPath === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
@@ -327,7 +408,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleGetFavorites(req, res, userEmail);
       case 'POST':
         // Check if it's a migration request
-        const path = req.query._subpath as string | undefined;
         if (path === 'migrate') {
           return await handleMigrateFavorites(req, res, userEmail);
         }
