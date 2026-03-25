@@ -144,21 +144,22 @@ export async function computeEdgeFeed(
   }
 
   // ── Step 1: fetch recent games to discover active player IDs ────────────
-  const today    = new Date();
-  const twoWeeksAgo = new Date(today.getTime() - 14 * 86_400_000);
-  const startDate = twoWeeksAgo.toISOString().slice(0, 10);
-  const endDate   = today.toISOString().slice(0, 10);
+  // ── Step 1: fetch recent games (last 30 days) ───────────────────────────
+  const today       = new Date();
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 86_400_000);
+  const startDate   = thirtyDaysAgo.toISOString().slice(0, 10);
+  const endDate     = today.toISOString().slice(0, 10);
 
-  let gamesUpstreamErr: UpstreamError | null = null;
+  let statsUpstreamErr: UpstreamError | null = null;
   const gamesPages = await Promise.all(
-    [1, 2, 3].map((page, i) =>
+    [1, 2, 3, 4, 5].map((page, i) =>
       bdlBatch('/games', {
         'start_date': startDate,
         'end_date':   endDate,
         per_page:     100,
         page,
       }).catch((err: unknown) => {
-        if (i === 0) gamesUpstreamErr = captureErr(err, '/games');
+        if (i === 0) statsUpstreamErr = captureErr(err, '/games');
         return { data: [] };
       })
     )
@@ -173,16 +174,14 @@ export async function computeEdgeFeed(
     debugOut.active_player_ids_sample = gameIds.slice(0, 5);
   }
 
-  // ── Step 2: discover unique player IDs from recent game stats ─────────
-  let statsUpstreamErr: UpstreamError | null = gamesUpstreamErr;
-
+  // ── Step 2: fetch stats for those games ─────────────────────────────────
   const CHUNK_SIZE = 50;
   const gameIdChunks: number[][] = [];
   for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
     gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
   }
 
-  const discoveryResults = await Promise.all(
+  const statsResults = await Promise.all(
     gameIdChunks.flatMap((chunk, ci) =>
       [1, 2, 3].map(page =>
         bdlBatch('/stats', {
@@ -198,37 +197,7 @@ export async function computeEdgeFeed(
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const discoveryData: any[] = discoveryResults.flatMap(p => p?.data ?? []);
-  const activePlayerIds = [...new Set(discoveryData.map(g => g?.player?.id).filter(Boolean) as number[])];
-
-  // ── Step 3: fetch season stats for active players (last 60 days) ──────
-  const sixtyDaysAgo = new Date(today.getTime() - 60 * 86_400_000);
-  const baselineStart = sixtyDaysAgo.toISOString().slice(0, 10);
-
-  const playerIdChunks: number[][] = [];
-  for (let i = 0; i < activePlayerIds.length; i += CHUNK_SIZE) {
-    playerIdChunks.push(activePlayerIds.slice(i, i + CHUNK_SIZE));
-  }
-
-  const seasonResults = await Promise.all(
-    playerIdChunks.flatMap((chunk, ci) =>
-      [1, 2, 3, 4, 5].map(page =>
-        bdlBatch('/stats', {
-          'player_ids[]': chunk,
-          'seasons[]':    [season],
-          start_date:     baselineStart,
-          per_page:       100,
-          page,
-        }).catch((err: unknown) => {
-          if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
-          return { data: [] };
-        })
-      )
-    )
-  );
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = seasonResults.flatMap(p => p?.data ?? []);
+  const statsResData: any[] = statsResults.flatMap(p => p?.data ?? []);
 
   if (debugOut) {
     debugOut.season_averages_count        = 0;
