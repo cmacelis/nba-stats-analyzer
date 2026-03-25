@@ -245,6 +245,8 @@ export async function computeEdgeFeed(
 
   // ── Step 4: compute edges ───────────────────────────────────────────────
   const entries: EdgeEntry[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let _firstPlayerDiag: any = null;
   for (const [pid, rawGames] of gameMap) {
     // Sort per-player games date-desc (BDL returns ascending)
     const games = rawGames.sort((a, b) => {
@@ -264,6 +266,20 @@ export async function computeEdgeFeed(
     const daysSince = lastGameDate
       ? Math.floor((Date.now() - new Date(lastGameDate).getTime()) / 86_400_000)
       : 999;
+
+    // Capture diagnostic for first qualifying player (pre-daysSince filter)
+    if (!_firstPlayerDiag) {
+      _firstPlayerDiag = {
+        pid,
+        games_count: games.length,
+        sorted_dates: games.slice(0, 5).map(g => (g?.game as Record<string, unknown>)?.date ?? 'NO_DATE'),
+        lastGameDate,
+        daysSince,
+        now: Date.now(),
+        parsed: lastGameDate ? new Date(lastGameDate).getTime() : 'N/A',
+      };
+    }
+
     if (daysSince > 10) continue;
 
     const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
@@ -294,6 +310,8 @@ export async function computeEdgeFeed(
 
   if (debugOut) {
     debugOut.final_candidates_before_sort = entries.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (debugOut as any)._firstPlayer = _firstPlayerDiag;
   }
 
   entries.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
