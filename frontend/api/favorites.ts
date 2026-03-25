@@ -34,6 +34,7 @@ interface FavoriteDoc {
   player_id: number;    // NBA player ID
   created_at: string;   // ISO timestamp
   source?: 'mobile' | 'web' | 'migration'; // How this favorite was added
+  [key: string]: unknown; // Index signature for Firestore compatibility
 }
 
 // ── Helper: Generate document ID ────────────────────────────────────────────
