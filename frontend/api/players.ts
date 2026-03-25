@@ -5,7 +5,7 @@ import { playerStatsHandler } from './_handlers/player-stats.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
 import { gamesHandler } from './_handlers/games.js';
-import { predictHandler } from './_handlers/predict.js';
+import predictHandler from './_handlers/predict.js';
 import { researchHandler } from './_handlers/research.js';
 import { generateHandler } from './_handlers/generate.js';
 
@@ -71,13 +71,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // research - research data
-  if (effectivePath === 'research') {
-    return researchHandler(req, res);
+  if (effectivePath.startsWith('research/')) {
+    const playerName = effectivePath.replace('research/', '');
+    return researchHandler(req, res, playerName);
   }
 
   // research/generate - AI generation
   if (effectivePath === 'research/generate') {
-    if (req.method === 'POST') {
+    const method = req.method as string;
+    if (method === 'POST') {
       return generateHandler(req, res);
     }
     return res.status(405).json({ error: 'Method not allowed' });
