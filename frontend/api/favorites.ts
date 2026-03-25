@@ -327,6 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           let totalNotificationsSent = 0;
           
           for (const email of users) {
+            console.log('=== DEBUG LOGS START ===');
             console.log('Processing user:', email);
             const favorites = await getUserFavorites(email);
             console.log('FAVORITES RAW:', favorites);
@@ -342,10 +343,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               return favoritePlayerIds.includes(edgePlayerId);
             });
             
-            console.log('Matching edges:', matchingEdges.length);
+            console.log('matchingEdges.length:', matchingEdges.length);
+            console.log('matchingEdges:', matchingEdges);
             
             const tokens = await getUserDeviceTokens(email);
-            console.log('Device tokens:', tokens.length);
+            console.log('tokens.length:', tokens.length);
+            console.log('tokens:', tokens);
             
             for (const edge of matchingEdges) {
               const playerId = edge.player_id || 0;
@@ -356,8 +359,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 continue; // Skip this edge
               }
               
+              const dedupeKey = `${email}_${playerId}_${new Date().toISOString().split('T')[0]}`;
+              console.log('dedupe key:', dedupeKey);
               const alreadySent = await hasNotificationBeenSentToday(email, playerId);
               console.log(`Check for ${playerName} (${playerId}): already sent = ${alreadySent}`);
+              console.log('alreadySent result:', alreadySent);
               
               if (!alreadySent) {
                 // Prepare and send push notification
