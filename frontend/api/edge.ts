@@ -249,7 +249,7 @@ export async function computeEdgeFeed(
     const daysSince = lastGameDate
       ? Math.floor((Date.now() - new Date(lastGameDate).getTime()) / 86_400_000)
       : 999;
-    if (daysSince > 10) continue;
+    if (daysSince > 60) continue; // temporarily relaxed from 10 to diagnose BDL data lag
 
     const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
     // streak_warning: flag large deviations (>30% of season avg) — likely hot/cold streaks.
