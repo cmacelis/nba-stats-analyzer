@@ -17,6 +17,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
 import { getSessionEmail, getUserByEmail, verifyJwt } from './_auth.js';
 import { queryDocuments, setDocument, deleteDocument, addDocument, getDocument } from './alerts/_firebase.js';
+import { 
+  fetchTodaysEdgeFeed, 
+  getUsersWithSavedPlayerAlerts, 
+  getUserFavoritePlayerIds, 
+  getUserDeviceTokens,
+  hasNotificationBeenSentToday,
+  markNotificationSent
+} from './alerts/_firebase.js';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,54 +48,118 @@ function generateFavoriteId(userEmail: string, playerId: number): string {
 
 async function getUserFavorites(userEmail: string): Promise<FavoriteDoc[]> {
   const docs = await queryDocuments('favorites', [
-    { field: 'user_email', op: 'EQUAL', value: userEmail }
+    { field: 'user_email', op: '==', value: userEmail }
   ]);
-  
-  return docs.map(doc => ({
-    id: doc.id as string,
-    user_email: doc.user_email as string,
-    player_id: doc.player_id as number,
-    created_at: doc.created_at as string,
-    source: doc.source as 'mobile' | 'web' | 'migration' | undefined,
-  }));
+  return docs as FavoriteDoc[];
 }
 
 // ── Helper: Add favorite ────────────────────────────────────────────────────
 
-async function addFavorite(userEmail: string, playerId: number, source: FavoriteDoc['source'] = 'mobile'): Promise<FavoriteDoc> {
-  const docId = generateFavoriteId(userEmail, playerId);
-  const now = new Date().toISOString();
-  
-  const favoriteData = {
+async function addFavorite(userEmail: string, playerId: number, source: 'mobile' | 'web' | 'migration' = 'mobile'): Promise<FavoriteDoc> {
+  const id = generateFavoriteId(userEmail, playerId);
+  const favorite: FavoriteDoc = {
+    id,
     user_email: userEmail,
     player_id: playerId,
-    created_at: now,
-    source,
+    created_at: new Date().toISOString(),
+    source
   };
   
-  await setDocument('favorites', docId, favoriteData);
-  
-  return {
-    id: docId,
-    ...favoriteData,
-  };
+  await setDocument('favorites', id, favorite);
+  return favorite;
 }
 
 // ── Helper: Remove favorite ─────────────────────────────────────────────────
 
-async function removeFavorite(userEmail: string, playerId: number): Promise<boolean> {
-  const docId = generateFavoriteId(userEmail, playerId);
+async function removeFavorite(userEmail: string, playerId: number): Promise<void> {
+  const id = generateFavoriteId(userEmail, playerId);
+  await deleteDocument('favorites', id);
+}
+
+// ── Helper: Resolve user email from request ─────────────────────────────────
+
+async function resolveUserEmail(req: VercelRequest): Promise<string | null> {
+  // Try Bearer token first (mobile app)
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    try {
+      const payload = verifyJwt(token);
+      return payload.email || null;
+    } catch {
+      // Token invalid, fall through to session
+    }
+  }
   
+  // Fall back to session cookie (web)
+  return getSessionEmail(req);
+}
+
+// ── Handler: GET /api/favorites ─────────────────────────────────────────────
+
+async function handleGetFavorites(req: VercelRequest, res: VercelResponse, userEmail: string) {
+  const favorites = await getUserFavorites(userEmail);
+  return res.json({
+    success: true,
+    favorites: favorites.map(f => ({
+      player_id: f.player_id,
+      created_at: f.created_at,
+      source: f.source
+    })),
+    count: favorites.length
+  });
+}
+
+// ── Handler: POST /api/favorites ────────────────────────────────────────────
+
+async function handleAddFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
   try {
-    await deleteDocument('favorites', docId);
-    return true;
+    const { player_id } = req.body || {};
+    
+    if (!player_id || typeof player_id !== 'number') {
+      return res.status(400).json({ error: 'Valid player_id required' });
+    }
+    
+    const favorite = await addFavorite(userEmail, player_id, 'mobile');
+    
+    return res.json({
+      success: true,
+      favorite: {
+        player_id: favorite.player_id,
+        created_at: favorite.created_at
+      },
+      message: 'Favorite added successfully'
+    });
   } catch (error) {
-    console.error(`[favorites] Error removing favorite:`, error);
-    return false;
+    console.error('[favorites] Add error:', error);
+    return res.status(500).json({ error: 'Failed to add favorite' });
   }
 }
 
-// ── Helper: Batch migrate favorites ─────────────────────────────────────────
+// ── Handler: DELETE /api/favorites/:player_id ───────────────────────────────
+
+async function handleRemoveFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
+  try {
+    const { player_id } = req.query;
+    const playerId = parseInt(player_id as string, 10);
+    
+    if (isNaN(playerId)) {
+      return res.status(400).json({ error: 'Valid player_id required' });
+    }
+    
+    await removeFavorite(userEmail, playerId);
+    
+    return res.json({
+      success: true,
+      message: 'Favorite removed successfully'
+    });
+  } catch (error) {
+    console.error('[favorites] Remove error:', error);
+    return res.status(500).json({ error: 'Failed to remove favorite' });
+  }
+}
+
+// ── Handler: POST /api/favorites/migrate ────────────────────────────────────
 
 async function migrateFavorites(userEmail: string, playerIds: number[]): Promise<{ added: number; skipped: number }> {
   let added = 0;
@@ -111,122 +183,132 @@ async function migrateFavorites(userEmail: string, playerIds: number[]): Promise
   return { added, skipped };
 }
 
-// ── Helper: Resolve user email from Bearer token or session cookie ─────────
-
-async function resolveUserEmail(req: VercelRequest): Promise<string | null> {
-  // 1. Check for Bearer token in Authorization header (mobile auth)
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = await verifyJwt(token);
-    if (payload && payload.email) {
-      return payload.email;
+async function handleMigrateFavorites(req: VercelRequest, res: VercelResponse, userEmail: string) {
+  try {
+    const { player_ids } = req.body || {};
+    
+    if (!Array.isArray(player_ids) || player_ids.length === 0) {
+      return res.status(400).json({ error: 'player_ids array required' });
     }
+    
+    const { added, skipped } = await migrateFavorites(userEmail, player_ids);
+    
+    return res.json({
+      success: true,
+      added,
+      skipped,
+      message: `Migration complete: ${added} added, ${skipped} skipped (already favorites)`
+    });
+  } catch (error) {
+    console.error('[favorites] Migration error:', error);
+    return res.status(500).json({ error: 'Migration failed' });
   }
-  
-  // 2. Fall back to session cookie (web auth)
-  return await getSessionEmail(req);
 }
 
 // ── Main handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set up CORS
   if (applyCors(req, res)) return;
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
+
   try {
-    // Authentication check - supports both Bearer token (mobile) and session cookie (web)
+    // Authentication check
     const userEmail = await resolveUserEmail(req);
-    if (!userEmail) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    
+    if (!userEmail) return res.status(401).json({ error: 'Authentication required' });
+
     // Verify user exists
     const user = await getUserByEmail(userEmail);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
     // Route handling
     const path = req.query._subpath as string | undefined;
-    
-    // SIMPLE NOTIFICATION TEST - Add this first to see if it deploys
+
+    // First handle notification requests
     if (path && path.startsWith('notifications/')) {
       const notificationPath = path.slice('notifications/'.length);
-      
-      // Handle notification routes with method dispatch
-      if (notificationPath === 'test') {
-        if (req.method === 'GET') {
-          return res.status(200).json({
-            success: true,
-            message: 'Notification test endpoint - SIMPLE VERSION',
-            timestamp: new Date().toISOString(),
-            deployed: true
-          });
-        }
-        return res.status(405).json({ error: 'Method not allowed' });
-      }
-      
-      if (notificationPath === 'register') {
+
+      if (notificationPath === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
-          try {
-            const { device_token, platform = 'ios' } = req.body;
+          console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
+          console.log('User:', userEmail);
+          
+          // Fetch today's edges and eligible users
+          const todayEdges = await fetchTodaysEdgeFeed();
+          console.log('Today edges count:', todayEdges.length);
+          
+          const users = await getUsersWithSavedPlayerAlerts();
+          console.log('Users with alerts enabled:', users);
+          
+          let totalNotificationsSent = 0;
+          
+          for (const email of users) {
+            console.log('Processing user:', email);
+            const favoriteIds = await getUserFavoritePlayerIds(email);
+            console.log('Favorite player IDs:', favoriteIds);
             
-            if (!device_token) {
-              return res.status(400).json({ error: 'Missing device_token' });
+            const matchingEdges = todayEdges.filter(edge => favoriteIds.includes(edge.player_id));
+            console.log('Matching edges:', matchingEdges.length);
+            
+            const tokens = await getUserDeviceTokens(email);
+            console.log('Device tokens:', tokens.length);
+            
+            for (const edge of matchingEdges) {
+              const alreadySent = await hasNotificationBeenSentToday(email, edge.player_id);
+              console.log(`Check for ${edge.player_name} (${edge.player_id}): already sent = ${alreadySent}`);
+              
+              if (!alreadySent) {
+                // Prepare and send push notification
+                const pushPayload = {
+                  to: tokens,
+                  title: 'Your saved player has a new edge',
+                  body: `${edge.player_name} has a new Edge Detector signal today.`,
+                  data: { type: 'saved_player_edge', playerId: edge.player_id, screen: 'PlayerDetail' }
+                };
+
+                try {
+                  console.log('Sending push notification for:', edge.player_name);
+                  const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.EXPO_ACCESS_TOKEN}` },
+                    body: JSON.stringify(pushPayload)
+                  });
+                  const result = await expoResponse.json();
+
+                  if (result.data?.status === 'error') {
+                    console.error('Expo push error:', result.data.message);
+                  } else {
+                    await markNotificationSent(email, edge.player_id);
+                    totalNotificationsSent++;
+                    console.log('Notification sent and logged for:', edge.player_name);
+                  }
+                } catch (error) {
+                  console.error('Push notification sending error:', error);
+                }
+              }
             }
-            
-            // Simple response for now
-            return res.status(200).json({
-              success: true,
-              message: 'Device token registered (simple)',
-              device_token: device_token.substring(0, 10) + '...',
-              platform,
-              user_email: userEmail
-            });
-          } catch (error) {
-            console.error('Notification register error:', error);
-            return res.status(500).json({ error: 'Failed to register device token' });
           }
-        }
-        return res.status(405).json({ error: 'Method not allowed' });
-      }
-      
-      if (notificationPath === 'preferences') {
-        if (req.method === 'GET') {
-          // Return default preferences
-          return res.status(200).json({
-            id: userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-            user_email: userEmail,
-            saved_player_alerts: true,
-            daily_top_edge: true,
-            game_day_alerts: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        } else if (req.method === 'POST') {
-          // Update preferences
-          const { saved_player_alerts, daily_top_edge, game_day_alerts } = req.body;
-          return res.status(200).json({
-            success: true,
-            message: 'Preferences updated (simple)',
-            preferences: {
-              saved_player_alerts: saved_player_alerts !== undefined ? saved_player_alerts : true,
-              daily_top_edge: daily_top_edge !== undefined ? daily_top_edge : true,
-              game_day_alerts: game_day_alerts !== undefined ? game_day_alerts : false
-            }
+          
+          console.log('=== ALERTS COMPLETE ===');
+          console.log('Total notifications sent:', totalNotificationsSent);
+          
+          return res.status(200).json({ 
+            success: true, 
+            message: `Alerts sent successfully. ${totalNotificationsSent} notifications delivered.`,
+            notifications_sent: totalNotificationsSent
           });
         }
         return res.status(405).json({ error: 'Method not allowed' });
       }
     }
-    
-    // Regular favorites routing
+
+    // Proceed with existing favorite routes
     switch (req.method) {
       case 'GET':
         return await handleGetFavorites(req, res, userEmail);
       case 'POST':
-        // Check if this is a migration request
+        // Check if it's a migration request
+        const path = req.query._subpath as string | undefined;
         if (path === 'migrate') {
           return await handleMigrateFavorites(req, res, userEmail);
         }
@@ -241,106 +323,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
-
-// ── GET /api/favorites ──────────────────────────────────────────────────────
-
-async function handleGetFavorites(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const favorites = await getUserFavorites(userEmail);
-    
-    return res.json({
-      success: true,
-      favorites: favorites.map(f => ({
-        player_id: f.player_id,
-        created_at: f.created_at,
-        source: f.source,
-      })),
-      count: favorites.length,
-    });
-  } catch (error) {
-    console.error('[favorites] GET error:', error);
-    return res.status(500).json({ error: 'Failed to fetch favorites' });
-  }
-}
-
-// ── POST /api/favorites ─────────────────────────────────────────────────────
-
-async function handleAddFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const { player_id } = req.body || {};
-    
-    if (!player_id || typeof player_id !== 'number') {
-      return res.status(400).json({ error: 'Valid player_id required' });
-    }
-    
-    const favorite = await addFavorite(userEmail, player_id, 'mobile');
-    
-    return res.json({
-      success: true,
-      favorite: {
-        player_id: favorite.player_id,
-        created_at: favorite.created_at,
-      },
-      message: 'Favorite added successfully',
-    });
-  } catch (error) {
-    console.error('[favorites] POST error:', error);
-    return res.status(500).json({ error: 'Failed to add favorite' });
-  }
-}
-
-// ── DELETE /api/favorites/:player_id ────────────────────────────────────────
-
-async function handleRemoveFavorite(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const playerId = parseInt(req.query.player_id as string, 10);
-    
-    if (isNaN(playerId)) {
-      return res.status(400).json({ error: 'Valid player_id required' });
-    }
-    
-    const success = await removeFavorite(userEmail, playerId);
-    
-    if (success) {
-      return res.json({
-        success: true,
-        message: 'Favorite removed successfully',
-      });
-    } else {
-      return res.status(404).json({ error: 'Favorite not found' });
-    }
-  } catch (error) {
-    console.error('[favorites] DELETE error:', error);
-    return res.status(500).json({ error: 'Failed to remove favorite' });
-  }
-}
-
-// ── POST /api/favorites/migrate ─────────────────────────────────────────────
-
-async function handleMigrateFavorites(req: VercelRequest, res: VercelResponse, userEmail: string) {
-  try {
-    const { player_ids } = req.body || {};
-    
-    if (!Array.isArray(player_ids) || player_ids.length === 0) {
-      return res.status(400).json({ error: 'Valid player_ids array required' });
-    }
-    
-    // Validate all player IDs are numbers
-    const validPlayerIds = player_ids.filter(id => typeof id === 'number');
-    if (validPlayerIds.length === 0) {
-      return res.status(400).json({ error: 'No valid player IDs provided' });
-    }
-    
-    const result = await migrateFavorites(userEmail, validPlayerIds);
-    
-    return res.json({
-      success: true,
-      migrated: result,
-      message: `Migrated ${result.added} favorites (${result.skipped} already existed)`,
-    });
-  } catch (error) {
-    console.error('[favorites] MIGRATE error:', error);
-    return res.status(500).json({ error: 'Failed to migrate favorites' });
-  }
-}
-
