@@ -225,14 +225,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const path = req.query._subpath as string | undefined;
 
     // First handle notification requests
-    if (path && path.startsWith('notifications/')) {
-      const notificationPath = path.slice('notifications/'.length);
-      
-      console.log('DEBUG: Notification path received:', notificationPath);
-      console.log('DEBUG: Request method:', req.method);
-      console.log('DEBUG: Full query:', req.query);
+    console.log('DEBUG: Path received:', path);
+    console.log('DEBUG: Request method:', req.method);
+    console.log('DEBUG: Full query:', req.query);
 
-      if (notificationPath === 'send-saved-player-alerts') {
+    if (path === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
           console.log('User:', userEmail);
