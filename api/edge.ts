@@ -131,14 +131,6 @@ export async function computeEdgeFeed(
   season: number,
   debugOut?: EdgeDebugInfo,
 ): Promise<EdgeEntry[]> {
-  const players = await getActivePlayers();
-  const ids     = players.map(p => p.id);
-
-  if (debugOut) {
-    debugOut.active_players_count      = players.length;
-    debugOut.active_player_ids_sample  = ids.slice(0, 5);
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function captureErr(err: any, path: string): UpstreamError {
     const resp   = err?.response;
@@ -151,32 +143,54 @@ export async function computeEdgeFeed(
     return { status, message: err?.message ?? String(err), url: `${BDL_BASE}${path}`, body_preview: bodyStr };
   }
 
-  // Season averages endpoint only accepts a single player_id — not batch-compatible.
-  // Instead, compute the season baseline directly from game logs:
-  //   season_avg = mean of ALL fetched games for the player
-  //   recent_avg = mean of the 5 most recent games
-  // Player IDs are chunked into batches of 50 to avoid URL length limits,
-  // then each batch fetches 2 pages (200 games). All batches run in parallel.
-  let statsUpstreamErr: UpstreamError | null = null;
+  // ── Step 1: fetch recent games to discover active player IDs ────────────
+  const today    = new Date();
+  const twoWeeksAgo = new Date(today.getTime() - 14 * 86_400_000);
+  const startDate = twoWeeksAgo.toISOString().slice(0, 10);
+  const endDate   = today.toISOString().slice(0, 10);
+
+  let gamesUpstreamErr: UpstreamError | null = null;
+  const gamesPages = await Promise.all(
+    [1, 2, 3].map((page, i) =>
+      bdlBatch('/games', {
+        'start_date': startDate,
+        'end_date':   endDate,
+        per_page:     100,
+        page,
+      }).catch((err: unknown) => {
+        if (i === 0) gamesUpstreamErr = captureErr(err, '/games');
+        return { data: [] };
+      })
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recentGames: any[] = gamesPages.flatMap(p => p?.data ?? []);
+  const gameIds = recentGames.map((g: { id: number }) => g.id);
+
+  if (debugOut) {
+    debugOut.active_players_count     = gameIds.length;
+    debugOut.active_player_ids_sample = gameIds.slice(0, 5);
+  }
+
+  // ── Step 2: fetch stats for those games ─────────────────────────────────
+  let statsUpstreamErr: UpstreamError | null = gamesUpstreamErr;
 
   const CHUNK_SIZE = 50;
   const idChunks: number[][] = [];
-  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-    idChunks.push(ids.slice(i, i + CHUNK_SIZE));
+  for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
+    idChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
   }
 
   const chunkResults = await Promise.all(
     idChunks.flatMap((chunk, ci) =>
-      [1, 2].map(page =>
+      [1, 2, 3].map(page =>
         bdlBatch('/stats', {
-          'player_ids[]': chunk,
-          'seasons[]':    [season],
-          per_page:       100,
-          sort:           'date',
-          direction:      'desc',
+          'game_ids[]':  chunk,
+          per_page:      100,
           page,
         }).catch((err: unknown) => {
-          if (ci === 0 && page === 1) statsUpstreamErr = captureErr(err, '/stats');
+          if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
           return { data: [] };
         })
       )
@@ -187,13 +201,14 @@ export async function computeEdgeFeed(
   const statsResData: any[] = chunkResults.flatMap(p => p?.data ?? []);
 
   if (debugOut) {
-    debugOut.season_averages_count        = 0; // removed — computed from logs
+    debugOut.season_averages_count        = 0;
     debugOut.season_averages_empty_reason = null;
     debugOut.season_averages_error        = null;
     debugOut.stats_logs_count_total       = statsResData.length;
     debugOut.stats_error                  = statsUpstreamErr;
   }
 
+  // ── Step 3: group by player, filter by minutes ──────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameMap = new Map<number, any[]>();
   for (const g of statsResData) {
@@ -205,11 +220,11 @@ export async function computeEdgeFeed(
 
   if (debugOut) {
     debugOut.grouped_players_with_logs = [...gameMap.values()].filter(gs => gs.length >= 3).length;
-    const sampleEntry = players.find(p => gameMap.has(p.id));
-    if (sampleEntry) {
-      const sampleGames = gameMap.get(sampleEntry.id)!;
+    const samplePid = [...gameMap.keys()][0];
+    if (samplePid) {
+      const sampleGames = gameMap.get(samplePid)!;
       debugOut.stats_logs_count_sample_player = {
-        player_id:      sampleEntry.id,
+        player_id:      samplePid,
         games:          sampleGames.length,
         minutes_values: sampleGames.slice(0, 5).map(g => Math.round(parseMins(g.min) * 10) / 10),
       };
@@ -218,35 +233,35 @@ export async function computeEdgeFeed(
     }
   }
 
+  // ── Step 4: compute edges ───────────────────────────────────────────────
   const entries: EdgeEntry[] = [];
-  for (const p of players) {
-    const games = (gameMap.get(p.id) ?? []).sort((a, b) => {
+  for (const [pid, rawGames] of gameMap) {
+    const games = rawGames.sort((a, b) => {
       const da = (a?.game as Record<string, unknown>)?.date as string ?? '';
       const db = (b?.game as Record<string, unknown>)?.date as string ?? '';
-      return db.localeCompare(da); // date desc — most recent first
+      return db.localeCompare(da);
     });
     if (games.length < 3) continue;
 
-    // season_avg = mean of ALL fetched games (season-to-date baseline from logs)
     const allVals   = games.map(g => gameVal(g, stat));
     const seasonAvg = Math.round((allVals.reduce((a, b) => a + b, 0) / allVals.length) * 10) / 10;
 
-    // recent_avg = mean of 5 most recent games (array is date-desc)
     const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
     const recentAvg = Math.round((last5Vals.reduce((a, b) => a + b, 0) / last5Vals.length) * 10) / 10;
 
     const delta = Math.round((recentAvg - seasonAvg) * 10) / 10;
-    // streak_warning: flag large deviations (>30% of season avg) that are likely
-    // hot/cold streaks rather than structural edges. The daily picks agent should
-    // confirm a structural reason (B2B, injury, defense mismatch) before acting on
-    // any entry with streak_warning=true. (Rule 12 in lessons.md)
     const streakWarning = seasonAvg > 0 && Math.abs(delta / seasonAvg) > 0.30;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const playerObj = games[0]?.player as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const teamObj   = games[0]?.team as any;
+
     entries.push({
-      player_id:      p.id,
-      player_name:    `${p.first_name} ${p.last_name}`,
-      team:           p.team?.full_name    ?? '—',
-      team_abbrev:    p.team?.abbreviation ?? '—',
+      player_id:      pid,
+      player_name:    playerObj ? `${playerObj.first_name} ${playerObj.last_name}` : `Player ${pid}`,
+      team:           teamObj?.full_name    ?? '—',
+      team_abbrev:    teamObj?.abbreviation ?? '—',
       photo_url:      null,
       season_avg:     seasonAvg,
       recent_avg:     recentAvg,
