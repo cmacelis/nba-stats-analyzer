@@ -190,18 +190,19 @@ export async function queryDocuments(
   collection: string,
   filters: Array<{ field: string; op: string; value: unknown }>
 ): Promise<Array<Record<string, unknown>>> {
-  const compositeFilter = {
-    compositeFilter: {
-      op: 'AND',
-      filters: filters.map(f => ({
-        fieldFilter: {
-          field: { fieldPath: f.field },
-          op: f.op,
-          value: toFsValue(f.value),
-        },
-      })),
+  const fieldFilters = filters.map(f => ({
+    fieldFilter: {
+      field: { fieldPath: f.field },
+      op: f.op,
+      value: toFsValue(f.value),
     },
-  };
+  }));
+
+  // Firestore REST API: single filter uses fieldFilter directly,
+  // multiple filters require compositeFilter with AND
+  const where = fieldFilters.length === 1
+    ? fieldFilters[0]
+    : { compositeFilter: { op: 'AND', filters: fieldFilters } };
 
   const res = await fetch(`${BASE}:runQuery?key=${API_KEY}`, {
     method: 'POST',
@@ -209,7 +210,7 @@ export async function queryDocuments(
     body: JSON.stringify({
       structuredQuery: {
         from: [{ collectionId: collection }],
-        where: compositeFilter,
+        where,
       },
     }),
   });
