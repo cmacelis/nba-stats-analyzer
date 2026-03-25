@@ -226,9 +226,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // First handle notification requests
     console.log('DEBUG: Path received:', path);
-    console.log('DEBUG: Request method:', req.method);
-    console.log('DEBUG: Full query:', req.query);
-
+    
     if (path === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
