@@ -16,14 +16,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
 import { getSessionEmail, getUserByEmail, verifyJwt } from './_auth.js';
-import { queryDocuments, setDocument, deleteDocument, addDocument, getDocument } from './alerts/_firebase.js';
 import { 
-  fetchTodaysEdgeFeed, 
-  getUsersWithSavedPlayerAlerts, 
-  getUserFavoritePlayerIds, 
+  queryDocuments, 
+  setDocument, 
+  deleteDocument, 
+  addDocument, 
+  getDocument,
+  fetchTodaysEdgeFeed,
+  getUsersWithSavedPlayerAlerts,
+  getUserFavoritePlayerIds,
   getUserDeviceTokens,
   hasNotificationBeenSentToday,
-  markNotificationSent
+  markNotificationSent,
+  isUserVip,
+  getEligibleFavoritePlayerIds,
+  canReceiveAlertType
 } from './alerts/_firebase.js';
 
 // Helper to detect test/development device tokens

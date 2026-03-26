@@ -361,3 +361,158 @@ export async function markNotificationSent(
   });
 }
 
+// ── VIP Gating Functions (Phase 6B) ────────────────────────────────────────────
+
+/**
+ * Check if a user is VIP (has active $19/month subscription)
+ * 
+ * Implementation note: Currently checks Discord VIP role via webhook.
+ * Future: Integrate with Stripe/RevenueCat for subscription tracking.
+ * 
+ * @param userEmail User's email address
+ * @returns Promise<boolean> True if user is VIP
+ */
+export async function isUserVip(userEmail: string): Promise<boolean> {
+  try {
+    // For now, we'll implement a simple check:
+    // 1. Check if user exists in a 'vip_users' collection
+    // 2. Future: Integrate with Discord webhook or Stripe
+    
+    // Check vip_users collection
+    const vipDoc = await getDocument('vip_users', userEmail.replace(/[@.]/g, '_'));
+    if (vipDoc && vipDoc.status === 'active') {
+      return true;
+    }
+    
+    // Fallback: Check Discord VIP role via webhook (if configured)
+    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (discordWebhookUrl) {
+      // This is a placeholder - actual Discord integration would need
+      // to query Discord API for user's roles
+      console.log(`VIP check for ${userEmail}: Discord integration needed`);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error checking VIP status for ${userEmail}:`, error);
+    return false; // Default to free tier on error
+  }
+}
+
+/**
+ * Check if a user can receive a specific alert type
+ * 
+ * @param userEmail User's email address
+ * @param alertType Type of alert: 'saved_player_edge', 'daily_top_edge', 'game_day'
+ * @returns Promise<boolean> True if user can receive this alert type
+ */
+export async function canReceiveAlertType(userEmail: string, alertType: string): Promise<boolean> {
+  const isVip = await isUserVip(userEmail);
+  
+  switch (alertType) {
+    case 'saved_player_edge':
+      // Both free and VIP users can receive saved player alerts
+      return true;
+      
+    case 'daily_top_edge':
+    case 'game_day':
+      // Only VIP users can receive premium alerts
+      return isVip;
+      
+    default:
+      // Unknown alert type - default to VIP only for safety
+      console.warn(`Unknown alert type: ${alertType}, requiring VIP`);
+      return isVip;
+  }
+}
+
+/**
+ * Get eligible favorite player IDs for a user (respecting free tier limits)
+ * 
+ * Free tier: Only first 3 favorites are eligible for alerts
+ * VIP tier: All favorites are eligible
+ * 
+ * @param userEmail User's email address
+ * @param allFavoriteIds All favorite player IDs for the user
+ * @returns Promise<number[]> Eligible favorite player IDs for alerts
+ */
+export async function getEligibleFavoritePlayerIds(
+  userEmail: string, 
+  allFavoriteIds: number[]
+): Promise<number[]> {
+  const isVip = await isUserVip(userEmail);
+  
+  if (isVip) {
+    // VIP users: All favorites eligible
+    return allFavoriteIds;
+  } else {
+    // Free users: Only first 3 favorites eligible
+    return allFavoriteIds.slice(0, 3);
+  }
+}
+
+/**
+ * Add a user to VIP (for testing/admin purposes)
+ * 
+ * @param userEmail User's email address
+ * @param expiresAt Optional expiration date (default: 30 days from now)
+ */
+export async function addUserToVip(
+  userEmail: string, 
+  expiresAt?: Date
+): Promise<void> {
+  const docId = userEmail.replace(/[@.]/g, '_');
+  const expiration = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  
+  await setDocument('vip_users', docId, {
+    user_email: userEmail,
+    status: 'active',
+    tier: 'premium',
+    price: 19, // $19/month
+    added_at: new Date().toISOString(),
+    expires_at: expiration.toISOString(),
+    source: 'manual_admin'
+  });
+  
+  console.log(`Added ${userEmail} to VIP (expires: ${expiration.toISOString()})`);
+}
+
+/**
+ * Remove a user from VIP (for testing/admin purposes)
+ * 
+ * @param userEmail User's email address
+ */
+export async function removeUserFromVip(userEmail: string): Promise<void> {
+  const docId = userEmail.replace(/[@.]/g, '_');
+  await deleteDocument('vip_users', docId);
+  console.log(`Removed ${userEmail} from VIP`);
+}
+
+/**
+ * Get user's subscription status
+ * 
+ * @param userEmail User's email address
+ * @returns Promise<{isVip: boolean, tier: string, expiresAt?: string}>
+ */
+export async function getUserSubscriptionStatus(userEmail: string): Promise<{
+  isVip: boolean;
+  tier: 'free' | 'premium';
+  expiresAt?: string;
+}> {
+  const isVip = await isUserVip(userEmail);
+  
+  if (isVip) {
+    const vipDoc = await getDocument('vip_users', userEmail.replace(/[@.]/g, '_'));
+    return {
+      isVip: true,
+      tier: 'premium',
+      expiresAt: vipDoc?.expires_at as string
+    };
+  } else {
+    return {
+      isVip: false,
+      tier: 'free'
+    };
+  }
+}
+

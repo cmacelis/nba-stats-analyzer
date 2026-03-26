@@ -17,7 +17,10 @@ import {
   getUserFavoritePlayerIds, 
   getUserDeviceTokens,
   hasNotificationBeenSentToday,
-  markNotificationSent
+  markNotificationSent,
+  isUserVip,
+  getEligibleFavoritePlayerIds,
+  canReceiveAlertType
 } from './alerts/_firebase.js';
 
 // Helper to detect test/development device tokens
@@ -82,12 +85,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`Processing user: ${email}`);
       
       // Get user's favorite player IDs
-      const favoritePlayerIds = await getUserFavoritePlayerIds(email);
-      debugData.favorite_player_ids = [...debugData.favorite_player_ids, ...favoritePlayerIds];
+      const allFavoritePlayerIds = await getUserFavoritePlayerIds(email);
+      debugData.favorite_player_ids = [...debugData.favorite_player_ids, ...allFavoritePlayerIds];
       
-      // Match edges with favorites
+      // Get eligible favorite player IDs (respecting free tier limits)
+      const eligibleFavoritePlayerIds = await getEligibleFavoritePlayerIds(email, allFavoritePlayerIds);
+      
+      // Check if user can receive saved player alerts
+      const canReceiveSavedPlayerAlerts = await canReceiveAlertType(email, 'saved_player_edge');
+      if (!canReceiveSavedPlayerAlerts) {
+        console.log(`  Skipping user ${email} - cannot receive saved player alerts`);
+        continue;
+      }
+      
+      // Match edges with ELIGIBLE favorites only
       const matchingEdges = todayEdges.filter(edge => 
-        favoritePlayerIds.includes(edge.player_id)
+        eligibleFavoritePlayerIds.includes(edge.player_id)
       );
       
       debugData.matching_edges_count += matchingEdges.length;
@@ -100,6 +113,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const testTokens = tokens.filter(token => isTestDeviceToken(token));
       const realTokens = tokens.filter(token => !isTestDeviceToken(token));
       console.log(`  Real tokens: ${realTokens.length}, Test tokens: ${testTokens.length}`);
+      
+      // Check VIP status
+      const isVip = await isUserVip(email);
+      console.log(`  VIP status: ${isVip ? '✅ Premium' : '🆓 Free'}`);
+      console.log(`  Eligible favorites: ${eligibleFavoritePlayerIds.length}/${allFavoritePlayerIds.length}`);
       
       debugData.tokens_count += tokens.length;
       
@@ -120,15 +138,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (tokens.length === 0) {
           console.log(`  Skipping ${playerName} - no device tokens`);
           continue;
-        }
-        
-        // Check VIP status (placeholder - implement subscription check)
-        // For now, all users get saved player alerts (free tier)
-        const isVip = false; // TODO: Implement subscription check
-        
-        if (!isVip) {
-          console.log(`  User ${email} is free tier - sending saved player alert`);
-          // Free tier: Only saved player alerts (which this is)
         }
         
         // Prepare and send push notification

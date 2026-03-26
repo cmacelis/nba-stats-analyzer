@@ -30,14 +30,15 @@ Defines which alert types are available to free vs VIP users, preserving test-to
 
 ### Free Tier Users
 - Access to saved player alerts only
+- **Limit:** Only first 3 saved players eligible for alerts
 - No daily top edge alerts
 - No game day alerts
-- Can save unlimited players
+- Can save unlimited players (but only first 3 get alerts)
 - Dedupe protection works normally
 
-### VIP Tier Users
+### VIP Tier Users ($19/month)
 - Access to all alert types
-- Saved player alerts
+- Saved player alerts (unlimited favorites)
 - Daily top edge alerts  
 - Game day alerts
 - Priority support
