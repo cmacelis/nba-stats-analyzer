@@ -1,7 +1,6 @@
 {
   "rewrites": [
     { "source": "/api/players/(.*)", "destination": "/api/players?_subpath=$1" },
-
     { "source": "/api/auth-mobile/(.*)", "destination": "/api/auth-mobile?_subpath=$1" },
     { "source": "/api/favorites/(.*)", "destination": "/api/favorites?_subpath=$1" },
     { "source": "/api/nba/players", "destination": "/api/players?league=nba" },
@@ -22,8 +21,7 @@
   "crons": [
     {
       "path": "/api/cron-saved-player-alerts",
-      "schedule": "0 14 * * *",  // 10:00 AM EDT / 14:00 UTC daily
-      "timezone": "America/New_York"
+      "schedule": "0 14 * * *"
     }
   ]
 }
