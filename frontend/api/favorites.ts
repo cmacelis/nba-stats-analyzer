@@ -26,6 +26,25 @@ import {
   markNotificationSent
 } from './alerts/_firebase.js';
 
+// Helper to detect test/development device tokens
+function isTestDeviceToken(token: string): boolean {
+  if (!token) return false;
+  
+  // Common test token patterns
+  const testPatterns = [
+    /^ExpoPushToken\[TestDevice/i,  // Expo test tokens
+    /test_token/i,                   // Generic test tokens
+    /fake_token/i,                   // Fake tokens
+    /^test$/i,                       // Literal "test"
+    /^fake$/i,                       // Literal "fake"
+    /demo_token/i,                   // Demo tokens
+    /mock_token/i,                   // Mock tokens
+    /dummy_token/i                   // Dummy tokens
+  ];
+  
+  return testPatterns.some(pattern => pattern.test(token));
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 interface FavoriteDoc {
@@ -325,6 +344,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('Users with alerts enabled:', users);
           
           let totalNotificationsSent = 0;
+          let testNotificationsSent = 0;
           let debugData = {
             users_count: users.length,
             users: users,
@@ -334,7 +354,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             matching_edge_ids: [] as number[],
             tokens_count: 0,
             already_sent_count: 0,
-            notifications_sent: 0
+            notifications_sent: 0,
+            test_notifications_sent: 0
           };
           
           for (const email of users) {
@@ -367,6 +388,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const tokens = await getUserDeviceTokens(email);
             console.log('tokens.length:', tokens.length);
             console.log('tokens:', tokens);
+            
+            // Analyze tokens
+            const testTokens = tokens.filter(token => isTestDeviceToken(token));
+            const realTokens = tokens.filter(token => !isTestDeviceToken(token));
+            console.log(`Token analysis: ${realTokens.length} real, ${testTokens.length} test`);
             
             // Update debug data
             debugData.tokens_count = tokens.length;
@@ -411,25 +437,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                   if (result.data?.status === 'error') {
                     console.error('Expo push error:', result.data.message);
+                    console.log('❌ Failed send for:', edge.player_name);
                   } else {
-                    await markNotificationSent(email, playerId);
-                    totalNotificationsSent++;
-                    console.log('Notification sent and logged for:', edge.player_name);
+                    // Check if any token is a test token
+                    const hasTestToken = tokens.some(token => isTestDeviceToken(token));
+                    
+                    if (hasTestToken) {
+                      // Test token - don't create dedupe record
+                      console.log(`🧪 Test send for ${edge.player_name} (test token detected, no dedupe)`);
+                      testNotificationsSent++;
+                      debugData.test_notifications_sent = testNotificationsSent;
+                    } else {
+                      // Real token - create dedupe record
+                      await markNotificationSent(email, playerId);
+                      totalNotificationsSent++;
+                      console.log(`✅ Real notification sent and logged for: ${edge.player_name}`);
+                    }
                   }
                 } catch (error) {
                   console.error('Push notification sending error:', error);
+                  console.log('❌ Failed send for:', edge.player_name);
                 }
               }
             }
           }
           
           console.log('=== ALERTS COMPLETE ===');
-          console.log('Total notifications sent:', totalNotificationsSent);
+          console.log(`Real notifications sent: ${totalNotificationsSent}`);
+          console.log(`Test notifications sent: ${testNotificationsSent}`);
+          console.log(`Total attempts: ${totalNotificationsSent + testNotificationsSent}`);
           
           return res.status(200).json({ 
             success: true, 
-            message: `Alerts sent successfully. ${totalNotificationsSent} notifications delivered.`,
+            message: `Alerts processed. ${totalNotificationsSent} real + ${testNotificationsSent} test notifications sent.`,
             notifications_sent: totalNotificationsSent,
+            test_notifications_sent: testNotificationsSent,
             ...debugData
           });
         }
