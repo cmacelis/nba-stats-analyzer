@@ -357,6 +357,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             users: users,
             today_edges_count: todayEdges.length,
             favorite_player_ids: [] as number[],
+            eligible_favorite_player_ids: [] as number[], // Added for VIP gating verification
             matching_edges_count: 0,
             matching_edge_ids: [] as number[],
             tokens_count: 0,
@@ -372,17 +373,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log('FAVORITES RAW:', favorites);
             
             // Extract player IDs from favorites
-            const favoritePlayerIds = favorites.map(f => f.player_id).filter(id => id > 0);
+            const allFavoritePlayerIds = favorites.map(f => f.player_id).filter(id => id > 0);
             
-            console.log('Normalized favorite player IDs:', favoritePlayerIds);
+            console.log('Normalized favorite player IDs:', allFavoritePlayerIds);
+            
+            // Get eligible favorite player IDs (respecting free tier limits)
+            const eligibleFavoritePlayerIds = await getEligibleFavoritePlayerIds(email, allFavoritePlayerIds);
+            
+            // Check if user can receive saved player alerts
+            const canReceiveSavedPlayerAlerts = await canReceiveAlertType(email, 'saved_player_edge');
+            if (!canReceiveSavedPlayerAlerts) {
+              console.log(`  Skipping user ${email} - cannot receive saved player alerts`);
+              continue;
+            }
+            
+            // Check VIP status
+            const isVip = await isUserVip(email);
+            console.log(`  VIP status: ${isVip ? '✅ Premium' : '🆓 Free'}`);
+            console.log(`  Eligible favorites: ${eligibleFavoritePlayerIds.length}/${allFavoritePlayerIds.length}`);
             
             // Update debug data
-            debugData.favorite_player_ids = favoritePlayerIds;
+            debugData.favorite_player_ids = allFavoritePlayerIds;
+            debugData.eligible_favorite_player_ids = eligibleFavoritePlayerIds;
             
-            // Match edges with favorites
+            // Match edges with ELIGIBLE favorites only
             const matchingEdges = todayEdges.filter(edge => {
               const edgePlayerId = edge.player_id || 0;
-              return favoritePlayerIds.includes(edgePlayerId);
+              return eligibleFavoritePlayerIds.includes(edgePlayerId);
             });
             
             console.log('matchingEdges.length:', matchingEdges.length);
