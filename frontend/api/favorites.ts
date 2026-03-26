@@ -325,6 +325,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('Users with alerts enabled:', users);
           
           let totalNotificationsSent = 0;
+          let debugData = {
+            users_count: users.length,
+            users: users,
+            today_edges_count: todayEdges.length,
+            favorite_player_ids: [] as number[],
+            matching_edges_count: 0,
+            matching_edge_ids: [] as number[],
+            tokens_count: 0,
+            already_sent_count: 0,
+            notifications_sent: 0
+          };
           
           for (const email of users) {
             console.log('=== DEBUG LOGS START ===');
@@ -337,6 +348,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             console.log('Normalized favorite player IDs:', favoritePlayerIds);
             
+            // Update debug data
+            debugData.favorite_player_ids = favoritePlayerIds;
+            
             // Match edges with favorites
             const matchingEdges = todayEdges.filter(edge => {
               const edgePlayerId = edge.player_id || 0;
@@ -346,9 +360,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log('matchingEdges.length:', matchingEdges.length);
             console.log('matchingEdges:', matchingEdges);
             
+            // Update debug data
+            debugData.matching_edges_count = matchingEdges.length;
+            debugData.matching_edge_ids = matchingEdges.map(edge => edge.player_id);
+            
             const tokens = await getUserDeviceTokens(email);
             console.log('tokens.length:', tokens.length);
             console.log('tokens:', tokens);
+            
+            // Update debug data
+            debugData.tokens_count = tokens.length;
             
             for (const edge of matchingEdges) {
               const playerId = edge.player_id || 0;
@@ -364,6 +385,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const alreadySent = await hasNotificationBeenSentToday(email, playerId);
               console.log(`Check for ${playerName} (${playerId}): already sent = ${alreadySent}`);
               console.log('alreadySent result:', alreadySent);
+              
+              // Update debug data
+              if (alreadySent) {
+                debugData.already_sent_count++;
+              }
               
               if (!alreadySent) {
                 // Prepare and send push notification
@@ -403,7 +429,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(200).json({ 
             success: true, 
             message: `Alerts sent successfully. ${totalNotificationsSent} notifications delivered.`,
-            notifications_sent: totalNotificationsSent
+            notifications_sent: totalNotificationsSent,
+            ...debugData
           });
         }
         return res.status(405).json({ error: 'Method not allowed' });
