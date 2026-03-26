@@ -18,5 +18,12 @@
     { "source": "/api/core/wnba/players", "destination": "/api/players?league=wnba" },
     { "source": "/api/core/wnba/players/(.*)", "destination": "/api/players?_subpath=$1&league=wnba" },
     { "source": "/api/notifications/(.*)", "destination": "/api/favorites?_subpath=notifications/$1" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-saved-player-alerts",
+      "schedule": "0 14 * * *",  // 10:00 AM EDT / 14:00 UTC daily
+      "timezone": "America/New_York"
+    }
   ]
 }
