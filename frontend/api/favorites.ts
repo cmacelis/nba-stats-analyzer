@@ -337,6 +337,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'Method not allowed' });
       }
 
+      // ── Temporary debug endpoint for VIP gating verification ──────────────
+      if (notificationPath === 'debug-vip-gating') {
+        if (req.method === 'POST') {
+          // Security: Only allow in development or with debug secret
+          const debugSecret = process.env.DEBUG_SECRET || 'development';
+          const providedSecret = req.headers['x-debug-secret'] as string | undefined;
+          
+          if (debugSecret !== 'development' && providedSecret !== debugSecret) {
+            return res.status(403).json({ 
+              error: 'Debug endpoint requires valid x-debug-secret header',
+              hint: 'Set DEBUG_SECRET env var or use "development" mode'
+            });
+          }
+          
+          const { user_email } = req.body || {};
+          if (!user_email || !user_email.includes('@')) {
+            return res.status(400).json({ error: 'Valid user_email required' });
+          }
+          
+          console.log('=== VIP GATING DEBUG ENDPOINT ===');
+          console.log('Testing user:', user_email);
+          
+          // Get user favorites
+          const favorites = await getUserFavorites(user_email);
+          const allFavoritePlayerIds = favorites.map(f => f.player_id).filter(id => id > 0);
+          
+          // Check VIP status
+          const isVip = await isUserVip(user_email);
+          
+          // Get eligible favorites
+          const eligibleFavoritePlayerIds = await getEligibleFavoritePlayerIds(user_email, allFavoritePlayerIds);
+          
+          // Check alert type permissions
+          const canReceiveSavedPlayerAlerts = await canReceiveAlertType(user_email, 'saved_player_edge');
+          const canReceiveDailyTopEdge = await canReceiveAlertType(user_email, 'daily_top_edge');
+          const canReceiveGameDay = await canReceiveAlertType(user_email, 'game_day');
+          
+          return res.status(200).json({
+            success: true,
+            user_email,
+            vip_status: isVip ? 'active' : 'free',
+            total_favorites: allFavoritePlayerIds.length,
+            favorite_player_ids: allFavoritePlayerIds,
+            eligible_favorite_player_ids: eligibleFavoritePlayerIds,
+            eligible_count: eligibleFavoritePlayerIds.length,
+            alert_type_permissions: {
+              saved_player_edge: canReceiveSavedPlayerAlerts,
+              daily_top_edge: canReceiveDailyTopEdge,
+              game_day: canReceiveGameDay
+            },
+            note: 'Temporary debug endpoint - remove after verification'
+          });
+        }
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
       if (notificationPath === 'send-saved-player-alerts') {
         if (req.method === 'POST') {
           console.log('=== SAVED PLAYER ALERTS TRIGGERED ===');
