@@ -109,6 +109,8 @@ interface UpstreamError {
 export interface EdgeDebugInfo {
   active_players_count: number;
   active_player_ids_sample: number[];
+  empty_game_window_skip?: boolean;
+  stats_fetch_params?: { game_ids_count: number; season: number; chunk_count: number };
   season_averages_count: number;
   season_averages_empty_reason: 'empty' | 'error' | null;
   season_averages_error: UpstreamError | null;
@@ -183,29 +185,39 @@ export async function computeEdgeFeed(
   }
 
   // ── Step 2: fetch stats for those games ─────────────────────────────────
-  const CHUNK_SIZE = 50;
-  const gameIdChunks: number[][] = [];
-  for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
-    gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
+  // If no games found in the window, skip stats fetch entirely to avoid
+  // receiving artificial/test data from BDL API with empty game_ids[]
+  if (debugOut) {
+    debugOut.empty_game_window_skip = gameIds.length === 0;
   }
 
-  const statsResults = await Promise.all(
-    gameIdChunks.flatMap((chunk, ci) =>
-      [1, 2, 3].map(page =>
-        bdlBatch('/stats', {
-          'game_ids[]':  chunk,
-          per_page:      100,
-          page,
-        }).catch((err: unknown) => {
-          if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
-          return { data: [] };
-        })
-      )
-    )
-  );
+  let statsResData: any[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const statsResData: any[] = statsResults.flatMap(p => p?.data ?? []);
+  if (gameIds.length > 0) {
+    const CHUNK_SIZE = 50;
+    const gameIdChunks: number[][] = [];
+    for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
+      gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
+    }
+
+    const statsResults = await Promise.all(
+      gameIdChunks.flatMap((chunk, ci) =>
+        [1, 2, 3].map(page =>
+          bdlBatch('/stats', {
+            'game_ids[]':  chunk,
+            'seasons[]':   season,  // Ensure season-scoped query
+            per_page:      100,
+            page,
+          }).catch((err: unknown) => {
+            if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
+            return { data: [] };
+          })
+        )
+      )
+    );
+
+    statsResData = statsResults.flatMap(p => p?.data ?? []);
+  }
 
   if (debugOut) {
     debugOut.season_averages_count        = 0;
@@ -213,6 +225,13 @@ export async function computeEdgeFeed(
     debugOut.season_averages_error        = null;
     debugOut.stats_logs_count_total       = statsResData.length;
     debugOut.stats_error                  = statsUpstreamErr;
+    if (gameIds.length > 0) {
+      debugOut.stats_fetch_params = {
+        game_ids_count: gameIds.length,
+        season,
+        chunk_count: Math.ceil(gameIds.length / 50)
+      };
+    }
   }
 
   // ── Step 3: group by player, filter by minutes ──────────────────────────
