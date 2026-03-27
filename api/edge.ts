@@ -9,6 +9,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import { applyCors, BDL_BASE, buildNbaPhotoUrl, findNbaPersonId, BDL_SEASON } from './_lib.js';
 import { AdapterFactory } from './_adapters/AdapterFactory.js';
+import { getFreshnessStatus, type FreshnessStatus } from './_lib/freshness-check.js';
+import { getCacheTTL } from './_config/edge.js';
 
 const BDL_KEY = process.env.BALL_DONT_LIE_API_KEY;
 
@@ -302,6 +304,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const minMin  = parseFloat(req.query.min_minutes as string) || 20;
   const season  = parseInt(req.query.season as string) || BDL_SEASON;
   const isDebug = req.query.debug === '1';
+  
+  // Get today's date for freshness check (edges are typically for current/recent data)
+  const today = new Date().toISOString().slice(0, 10);
 
   const debugOut: EdgeDebugInfo | undefined = isDebug ? {
     active_players_count:         0,
@@ -318,6 +323,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } : undefined;
 
   try {
+    // Check data freshness (non-blocking, fail-open)
+    let freshnessStatus: FreshnessStatus = 'unknown';
+    try {
+      freshnessStatus = await getFreshnessStatus(today);
+    } catch (freshnessError) {
+      console.warn(`[edge] Freshness check failed: ${freshnessError}`);
+      // Fail-open: proceed with unknown status
+    }
+
     // Debug mode uses computeEdgeFeed directly to capture pipeline diagnostics.
     // Production path goes through the adapter (zero behaviour change — NBAAdapter calls computeEdgeFeed internally).
     const top = isDebug
@@ -342,14 +356,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       else                      reason = 'no_qualifying_players';
     }
 
+    // Calculate cache TTL based on edge count and freshness
+    const cacheTTL = getCacheTTL(top.length, freshnessStatus);
+    const generatedAt = new Date().toISOString();
+
     res.json({
       data: top,
       stat,
       season,
-      generated_at: new Date().toISOString(),
+      generated_at: generatedAt,
+      freshness: freshnessStatus,
+      cache_ttl: cacheTTL,
       ...(reason && { reason }),
       ...(isDebug && { debug: debugOut }),
     });
+
+    // Log cache decision for monitoring
+    console.log(`[edge] Generated ${top.length} edges, freshness: ${freshnessStatus}, cache TTL: ${cacheTTL}s`);
   } catch (err) {
     console.error('[edge] error:', (err as Error).message);
     res.status(500).json({ error: 'Failed to generate edge feed', reason: 'upstream_error' });
