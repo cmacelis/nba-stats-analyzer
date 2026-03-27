@@ -4,6 +4,7 @@ import { nbaPlayerSearchHandler } from './handlers/nba/players.js';
 import { playerStatsHandler } from './_handlers/player-stats.js';
 import { playerPhotoHandler } from './_handlers/player-photo.js';
 import { compareHandler } from './_handlers/compare.js';
+import { researchHandler } from './_handlers/research.js';
 
 /**
  * /api/players — unified handler with _subpath routing for sub-routes.
@@ -16,6 +17,7 @@ import { compareHandler } from './_handlers/compare.js';
  *   GET /api/players?_subpath=<id>/stats&season=2025        → season averages
  *   GET /api/players?_subpath=photo&name=<name>             → player headshot
  *   GET /api/players?_subpath=compare/<id1>/<id2>&season=   → comparison
+ *   GET /api/players?_subpath=research/<playerName>&prop=   → research report
  *
  * League parameter support:
  * - league=nba (default): Returns NBA players via BallDontLie API
@@ -54,6 +56,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const statsMatch = effectivePath.match(/^(\d+)\/stats$/);
   if (statsMatch) {
     return playerStatsHandler(req, res, statsMatch[1]);
+  }
+
+  // research/:playerName
+  const researchMatch = effectivePath.match(/^research\/(.+)$/);
+  if (researchMatch) {
+    return researchHandler(req, res, researchMatch[1]);
   }
 
   // Fallback: treat as search
