@@ -98,6 +98,12 @@ export interface EdgeEntry {
    * hot/cold streaks that revert. Rule 12: confirm structural reason before acting.
    */
   streak_warning: boolean;
+  /**
+   * confidence: 0-100 score reflecting data quality and reliability.
+   * Based on sample size, variance, consistency, and recent data strength.
+   * Higher values indicate more reliable edges.
+   */
+  confidence: number;
 }
 
 interface UpstreamError {
@@ -119,6 +125,74 @@ export interface EdgeDebugInfo {
   grouped_players_with_logs: number;
   final_candidates_before_sort: number;
   final_returned: number;
+}
+
+// ── confidence calculation ───────────────────────────────────────────────────
+
+/**
+ * Calculate confidence score (0-100) based on data quality metrics.
+ * Factors:
+ * 1. Sample size (games played) - more games = higher confidence
+ * 2. Variance (stability) - lower variance = higher confidence  
+ * 3. Consistency (hit rate) - more consistent performance = higher confidence
+ * 4. Recent data strength - stronger recent performance = higher confidence
+ */
+function calculateConfidence(
+  allValues: number[],
+  last5Values: number[],
+  seasonAvg: number,
+  recentAvg: number,
+  gamesPlayed: number
+): number {
+  if (gamesPlayed < 3 || allValues.length < 3) {
+    return 0; // Insufficient data
+  }
+
+  // 1. Sample size factor (0-30 points)
+  // Max at 15+ games, min at 3 games
+  const sampleSizeFactor = Math.min(30, Math.max(0, (gamesPlayed - 3) * 2.5));
+  
+  // 2. Variance factor (0-30 points)
+  // Calculate coefficient of variation (CV) = std dev / mean
+  const mean = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
+  const variance = allValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allValues.length;
+  const stdDev = Math.sqrt(variance);
+  const cv = mean > 0 ? stdDev / mean : 1;
+  // Lower CV = higher confidence (inverse relationship)
+  const varianceFactor = cv > 0 ? Math.min(30, 30 * (1 - Math.min(1, cv))) : 30;
+  
+  // 3. Consistency factor (0-20 points)
+  // Check how many games are within 20% of season average
+  const withinThreshold = allValues.filter(val => 
+    Math.abs(val - seasonAvg) / (seasonAvg || 1) <= 0.2
+  ).length;
+  const consistencyRate = withinThreshold / allValues.length;
+  const consistencyFactor = consistencyRate * 20;
+  
+  // 4. Recent data strength factor (0-20 points)
+  // Compare recent performance to season average
+  // Strong, consistent recent data gets higher score
+  const recentStability = last5Values.length >= 3 ? 
+    (1 - Math.abs(recentAvg - seasonAvg) / (seasonAvg || 1)) * 20 : 0;
+  const recentStrengthFactor = Math.max(0, Math.min(20, recentStability));
+  
+  // Calculate total confidence
+  let confidence = sampleSizeFactor + varianceFactor + consistencyFactor + recentStrengthFactor;
+  
+  // Apply penalties for extreme cases
+  if (gamesPlayed < 5) confidence *= 0.7; // Small sample penalty
+  if (cv > 0.5) confidence *= 0.8; // High variance penalty
+  if (consistencyRate < 0.5) confidence *= 0.9; // Low consistency penalty
+  
+  // Ensure 0-100 range
+  confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+  
+  // Debug logging for extreme cases
+  if (confidence < 30 || confidence > 90) {
+    console.log(`[edge-confidence] ${confidence}% - games:${gamesPlayed}, cv:${cv.toFixed(2)}, consistency:${(consistencyRate*100).toFixed(0)}%`);
+  }
+  
+  return confidence;
 }
 
 // ── core computation (exported for reuse by alerts endpoint) ──────────────────
@@ -317,6 +391,15 @@ export async function computeEdgeFeed(
       continue; // Skip this player entirely
     }
 
+    // Calculate confidence score based on data quality
+    const confidence = calculateConfidence(
+      allVals,
+      last5Vals,
+      seasonAvg,
+      recentAvg,
+      games.length
+    );
+
     entries.push({
       player_id:            pid,
       player_name:          playerName,
@@ -331,6 +414,7 @@ export async function computeEdgeFeed(
       last_game_date:       lastGameDate,
       days_since_last_game: daysSince,
       streak_warning:       streakWarning,
+      confidence,
     });
   }
 
