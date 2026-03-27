@@ -270,7 +270,6 @@ export async function computeEdgeFeed(
   }
 
   let statsResData: any[] = [];
-  let statsUpstreamErr: UpstreamError | null = null;
 
   if (gameIds.length > 0) {
     const CHUNK_SIZE = 50;
