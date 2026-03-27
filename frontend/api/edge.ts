@@ -285,9 +285,41 @@ export async function computeEdgeFeed(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const teamObj   = games[0]?.team as any;
 
+    // Stat Completeness Guard - Validate before adding to edge pool
+    // 1. season_avg exists and is a valid number
+    // 2. recent_avg exists and is a valid number  
+    // 3. games_played >= 5
+    // 4. last5 exists and has at least 3 numeric entries
+    const playerName = playerObj ? `${playerObj.first_name} ${playerObj.last_name}` : `Player ${pid}`;
+    
+    // Check 1 & 2: valid numbers (not NaN, not null, finite)
+    const isSeasonAvgValid = !isNaN(seasonAvg) && isFinite(seasonAvg) && seasonAvg !== null;
+    const isRecentAvgValid = !isNaN(recentAvg) && isFinite(recentAvg) && recentAvg !== null;
+    
+    // Check 3: minimum games played
+    const hasEnoughGames = games.length >= 5;
+    
+    // Check 4: last5 array has at least 3 numeric entries
+    const last5ValidCount = last5Vals.filter(v => !isNaN(v) && isFinite(v)).length;
+    const hasValidLast5 = last5ValidCount >= 3;
+    
+    if (!isSeasonAvgValid || !isRecentAvgValid || !hasEnoughGames || !hasValidLast5) {
+      console.log(`[edge] Skipping ${playerName} - invalid stat data`, {
+        pid,
+        seasonAvgValid: isSeasonAvgValid,
+        recentAvgValid: isRecentAvgValid,
+        gamesCount: games.length,
+        last5ValidCount,
+        seasonAvg,
+        recentAvg,
+        last5Vals
+      });
+      continue; // Skip this player entirely
+    }
+
     entries.push({
       player_id:            pid,
-      player_name:          playerObj ? `${playerObj.first_name} ${playerObj.last_name}` : `Player ${pid}`,
+      player_name:          playerName,
       team:                 teamObj?.full_name    ?? '—',
       team_abbrev:          teamObj?.abbreviation ?? '—',
       photo_url:            null,
