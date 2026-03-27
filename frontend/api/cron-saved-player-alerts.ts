@@ -11,6 +11,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors } from './_lib.js';
+import { getFreshnessStatus } from './_lib/freshness-check.js';
 import { 
   fetchTodaysEdgeFeed, 
   getUsersWithSavedPlayerAlerts, 
@@ -61,6 +62,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('Time:', new Date().toISOString());
   
   try {
+    // Check data freshness before proceeding
+    const today = new Date().toISOString().slice(0, 10);
+    let freshnessStatus: 'complete' | 'incomplete' | 'unknown' = 'unknown';
+    
+    try {
+      freshnessStatus = await getFreshnessStatus(today);
+      console.log(`[cron] Freshness check result: ${freshnessStatus}`);
+    } catch (freshnessError) {
+      console.warn(`[cron] Freshness check failed: ${freshnessError}`);
+      // Fail-open: proceed with unknown status
+    }
+    
+    // Gate based on freshness
+    if (freshnessStatus === 'incomplete') {
+      console.log(`[cron] Skipping alert generation - data incomplete (freshness: ${freshnessStatus})`);
+      return res.json({
+        success: true,
+        skipped: true,
+        reason: 'data_incomplete',
+        freshness: freshnessStatus,
+        timestamp: new Date().toISOString(),
+        message: 'Skipped alert generation due to incomplete game data'
+      });
+    }
+    
+    console.log(`[cron] Proceeding with alert generation (freshness: ${freshnessStatus})`);
+    
     // Fetch today's edges and eligible users
     const todayEdges = await fetchTodaysEdgeFeed();
     const users = await getUsersWithSavedPlayerAlerts();
