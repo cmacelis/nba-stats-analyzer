@@ -345,7 +345,7 @@ export async function computeEdgeFeed(
         total_chunks: gameIdChunks.length,
         total_queries: gameIdChunks.length * 1, // chunks × pages
         max_rows_possible: gameIdChunks.length * 1 * 100, // queries × per_page
-        notes: "Testing BDL API pagination hypothesis: smaller chunks + single page"
+        notes: "EXPERIMENT: Testing BDL API pagination hypothesis - smaller chunks (10) + single page only"
       };
     }
   }
