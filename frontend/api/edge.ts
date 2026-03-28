@@ -283,7 +283,7 @@ export async function computeEdgeFeed(
         [1, 2, 3].map(page =>
           bdlBatch('/stats', {
             'game_ids[]':  chunk,
-            'seasons[]':   season,  // Ensure season-scoped query
+            // seasons[] removed to fix season mismatch bug (2026-03-27)
             per_page:      100,
             page,
           }).catch((err: unknown) => {
@@ -306,8 +306,9 @@ export async function computeEdgeFeed(
     if (gameIds.length > 0) {
       debugOut.stats_fetch_params = {
         game_ids_count: gameIds.length,
-        season,
-        chunk_count: Math.ceil(gameIds.length / 50)
+        // season filter removed (game_ids-only query)
+        chunk_count: Math.ceil(gameIds.length / 50),
+        game_window_size: gameIds.length
       };
     }
   }
