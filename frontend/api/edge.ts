@@ -356,12 +356,12 @@ export async function computeEdgeFeed(
 
   let statsResData: any[] = [];
 
-  // EXPERIMENT v2: Smaller chunks (4 games) + paginate each chunk until exhausted.
-  // Each NBA game has ~26 player stat rows. With 4 games per chunk and per_page=100,
-  // page 1 returns ~100 rows but misses the remaining ~4 rows. Paginating ensures
-  // we capture all players for each game in the chunk.
-  const CHUNK_SIZE = 4;
-  const MAX_PAGES_PER_CHUNK = 10; // safety cap
+  // EXPERIMENT v3: CHUNK_SIZE=25, pages 1-3 per chunk, all in parallel.
+  // 25 games × ~26 players = ~650 rows per chunk → needs ~7 pages at per_page=100.
+  // We fetch 3 pages per chunk to capture most data while staying within Vercel 10s timeout.
+  // 500 games / 25 = 20 chunks × 3 pages = 60 parallel requests (fast).
+  const CHUNK_SIZE = 25;
+  const PAGES_PER_CHUNK = 3;
   let totalPagesFetched = 0;
 
   if (gameIds.length > 0) {
@@ -370,46 +370,26 @@ export async function computeEdgeFeed(
       gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
     }
 
-    // Fetch all pages for each chunk (stop when a page returns < per_page rows)
-    const allRawRows: any[] = [];
-
-    // Process chunks in parallel batches of 10 to avoid overwhelming BDL API
-    const PARALLEL_BATCH = 10;
-    for (let batchStart = 0; batchStart < gameIdChunks.length; batchStart += PARALLEL_BATCH) {
-      const chunkBatch = gameIdChunks.slice(batchStart, batchStart + PARALLEL_BATCH);
-
-      const batchResults = await Promise.all(
-        chunkBatch.map(async (chunk, ci) => {
-          const chunkRows: any[] = [];
-          for (let page = 1; page <= MAX_PAGES_PER_CHUNK; page++) {
-            try {
-              const res = await bdlBatch('/stats', {
-                'game_ids[]': chunk,
-                per_page:     100,
-                page,
-              });
-              const rows = res?.data ?? [];
-              chunkRows.push(...rows);
-              totalPagesFetched++;
-              // Stop if this page returned fewer than per_page — no more data
-              if (rows.length < 100) break;
-            } catch (err: unknown) {
-              if (batchStart + ci === 0 && page === 1 && !statsUpstreamErr) {
-                statsUpstreamErr = captureErr(err, '/stats');
-              }
-              break; // stop paginating this chunk on error
+    // Fire all chunk×page requests in parallel
+    const statsResults = await Promise.all(
+      gameIdChunks.flatMap((chunk, ci) =>
+        Array.from({ length: PAGES_PER_CHUNK }, (_, pi) => pi + 1).map(page => {
+          totalPagesFetched++;
+          return bdlBatch('/stats', {
+            'game_ids[]': chunk,
+            per_page:     100,
+            page,
+          }).catch((err: unknown) => {
+            if (ci === 0 && page === 1 && !statsUpstreamErr) {
+              statsUpstreamErr = captureErr(err, '/stats');
             }
-          }
-          return chunkRows;
+            return { data: [] };
+          });
         })
-      );
+      )
+    );
 
-      for (const rows of batchResults) {
-        allRawRows.push(...rows);
-      }
-    }
-
-    const rawStatsResData = allRawRows;
+    const rawStatsResData = statsResults.flatMap(p => p?.data ?? []);
 
     // ── Deduplication: remove duplicate (player_id, game_id) rows ─────────────
     // This fixes the flat last5 issue caused by BDL API returning duplicate stats rows
@@ -452,13 +432,13 @@ export async function computeEdgeFeed(
 
       debugAny.experiment_info = {
         chunk_size: CHUNK_SIZE,
-        max_pages_per_chunk: MAX_PAGES_PER_CHUNK,
+        pages_per_chunk: PAGES_PER_CHUNK,
         total_chunks: gameIdChunks.length,
         pages_fetched_total: totalPagesFetched,
         average_rows_per_game: gameIds.length > 0
           ? Math.round((statsResData.length / gameIds.length) * 10) / 10
           : 0,
-        notes: "EXPERIMENT v2: chunk_size=4, paginate each chunk until exhausted"
+        notes: "EXPERIMENT v3: chunk_size=25, 3 pages per chunk, all parallel"
       };
     }
   }
