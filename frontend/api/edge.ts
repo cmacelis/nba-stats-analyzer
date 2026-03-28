@@ -271,9 +271,10 @@ export async function computeEdgeFeed(
 
   let statsResData: any[] = [];
 
+  // EXPERIMENT: Test smaller chunks + single page to overcome BDL API pagination limits
+  const CHUNK_SIZE = 10; // Reduced from 50 to test pagination hypothesis
+  
   if (gameIds.length > 0) {
-    // EXPERIMENT: Test smaller chunks + single page to overcome BDL API pagination limits
-    const CHUNK_SIZE = 10; // Reduced from 50 to test pagination hypothesis
     const gameIdChunks: number[][] = [];
     for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
       gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
