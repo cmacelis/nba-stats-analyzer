@@ -120,6 +120,22 @@ export interface EdgeDebugInfo {
   grouped_players_with_logs: number;
   final_candidates_before_sort: number;
   final_returned: number;
+  raw_row_analysis?: {
+    target_player_id: number;
+    target_player_name: string;
+    raw_game_ids: number[];
+    raw_stat_rows: Array<{
+      game_id: number;
+      player_id: number;
+      pts: number;
+      min: string;
+    }>;
+    unique_by_player_game: boolean;
+    duplicate_rows_exist: boolean;
+    distinct_game_ids_have_identical_values: boolean;
+    allVals_before_slicing: number[];
+    last5Vals_after_slicing: number[];
+  };
 }
 
 // ── core computation (exported for reuse by alerts endpoint) ──────────────────
@@ -257,6 +273,70 @@ export async function computeEdgeFeed(
     } else {
       debugOut.stats_logs_count_sample_player = null;
     }
+
+    // Raw row analysis for Andrew Nembhard (player_id: 38017507)
+    const targetPlayerId = 38017507;
+    const targetGames = gameMap.get(targetPlayerId);
+    if (targetGames && targetGames.length > 0) {
+      // Extract raw stat rows
+      const rawStatRows = targetGames.map(g => ({
+        game_id: g?.game?.id ?? g?.game_id ?? 0,
+        player_id: g?.player?.id ?? g?.player_id ?? 0,
+        pts: g?.pts ?? 0,
+        min: g?.min ?? '0:00'
+      }));
+
+      // Check uniqueness
+      const uniqueKeys = new Set(rawStatRows.map(r => `${r.player_id}-${r.game_id}`));
+      const uniqueByPlayerGame = uniqueKeys.size === rawStatRows.length;
+      
+      // Check for duplicate rows (same game_id, player_id, pts, min)
+      const rowStrings = rawStatRows.map(r => `${r.game_id}-${r.player_id}-${r.pts}-${r.min}`);
+      const duplicateRowsExist = new Set(rowStrings).size !== rowStrings.length;
+      
+      // Check if distinct game_ids have identical values
+      const gameIdToPts = new Map<number, number>();
+      let distinctGameIdsHaveIdenticalValues = false;
+      if (uniqueByPlayerGame) {
+        for (const row of rawStatRows) {
+          if (gameIdToPts.has(row.game_id)) {
+            if (gameIdToPts.get(row.game_id) !== row.pts) {
+              distinctGameIdsHaveIdenticalValues = false;
+              break;
+            }
+          } else {
+            gameIdToPts.set(row.game_id, row.pts);
+          }
+        }
+        // If we got here without breaking, all game_ids have same pts
+        if (gameIdToPts.size > 1) {
+          const firstPts = gameIdToPts.values().next().value;
+          distinctGameIdsHaveIdenticalValues = Array.from(gameIdToPts.values()).every(pts => pts === firstPts);
+        } else {
+          distinctGameIdsHaveIdenticalValues = false;
+        }
+      }
+
+      // Calculate allVals and last5Vals
+      const allVals = targetGames.map(g => gameVal(g, stat));
+      const last5Vals = allVals.slice(0, 5).map(v => Math.round(v * 10) / 10);
+
+      // Get player name
+      const playerObj = targetGames[0]?.player;
+      const playerName = playerObj ? `${playerObj.first_name} ${playerObj.last_name}` : `Player ${targetPlayerId}`;
+
+      debugOut.raw_row_analysis = {
+        target_player_id: targetPlayerId,
+        target_player_name: playerName,
+        raw_game_ids: Array.from(new Set(rawStatRows.map(r => r.game_id))),
+        raw_stat_rows: rawStatRows,
+        unique_by_player_game: uniqueByPlayerGame,
+        duplicate_rows_exist: duplicateRowsExist,
+        distinct_game_ids_have_identical_values: distinctGameIdsHaveIdenticalValues,
+        allVals_before_slicing: allVals,
+        last5Vals_after_slicing: last5Vals
+      };
+    }
   }
 
   // ── Step 4: compute edges ───────────────────────────────────────────────
@@ -339,6 +419,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     grouped_players_with_logs:    0,
     final_candidates_before_sort: 0,
     final_returned:               0,
+    raw_row_analysis:             undefined,
   } : undefined;
 
   try {
