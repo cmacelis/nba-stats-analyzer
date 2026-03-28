@@ -272,7 +272,8 @@ export async function computeEdgeFeed(
   let statsResData: any[] = [];
 
   if (gameIds.length > 0) {
-    const CHUNK_SIZE = 50;
+    // EXPERIMENT: Test smaller chunks + single page to overcome BDL API pagination limits
+    const CHUNK_SIZE = 10; // Reduced from 50 to test pagination hypothesis
     const gameIdChunks: number[][] = [];
     for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
       gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
@@ -280,7 +281,8 @@ export async function computeEdgeFeed(
 
     const statsResults = await Promise.all(
       gameIdChunks.flatMap((chunk, ci) =>
-        [1, 2, 3].map(page =>
+        // EXPERIMENT: Fetch only page 1 (pages 2+ may return duplicate/empty data)
+        [1].map(page =>
           bdlBatch('/stats', {
             'game_ids[]':  chunk,
             // seasons[] removed to fix season mismatch bug (2026-03-27)
@@ -335,6 +337,16 @@ export async function computeEdgeFeed(
     if (debugOut) {
       const debugAny = debugOut as any;
       debugAny.dedupe_info = dedupeInfo;
+      
+      // EXPERIMENT: Add chunking experiment info
+      debugAny.experiment_info = {
+        chunk_size: CHUNK_SIZE,
+        pages_per_chunk: 1, // Only page 1 for this experiment
+        total_chunks: gameIdChunks.length,
+        total_queries: gameIdChunks.length * 1, // chunks × pages
+        max_rows_possible: gameIdChunks.length * 1 * 100, // queries × per_page
+        notes: "Testing BDL API pagination hypothesis: smaller chunks + single page"
+      };
     }
   }
 
@@ -350,7 +362,8 @@ export async function computeEdgeFeed(
       debugAny.stats_fetch_params = {
         game_ids_count: gameIds.length,
         // season filter removed (game_ids-only query)
-        chunk_count: Math.ceil(gameIds.length / 50),
+        chunk_count: Math.ceil(gameIds.length / CHUNK_SIZE),
+        chunk_size: CHUNK_SIZE,
         game_window_size: gameIds.length
       };
       
