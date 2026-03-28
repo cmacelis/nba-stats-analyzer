@@ -331,8 +331,11 @@ export async function computeEdgeFeed(
       unique_player_game_pairs: seenKeys.size
     };
     
-    // Store for debug output
-    (globalThis as any)._lastDedupeInfo = dedupeInfo;
+    // Store dedupe info in debugOut if provided
+    if (debugOut) {
+      const debugAny = debugOut as any;
+      debugAny.dedupe_info = dedupeInfo;
+    }
   }
 
   if (debugOut) {
@@ -351,12 +354,7 @@ export async function computeEdgeFeed(
         game_window_size: gameIds.length
       };
       
-      // Add deduplication debug info
-      if (statsResData.length > 0 && (globalThis as any)._lastDedupeInfo) {
-        debugAny.dedupe_info = (globalThis as any)._lastDedupeInfo;
-        // Clean up after reading
-        delete (globalThis as any)._lastDedupeInfo;
-      }
+      // dedupe_info is already added in the deduplication section above
     }
   }
 
