@@ -104,6 +104,12 @@ export interface EdgeEntry {
    * Higher values indicate more reliable edges.
    */
   confidence: number;
+  confidence_tier: ConfidenceTier;
+  edge_score?: number;
+  edge_tier?: EdgeTier;
+  play_score?: number;
+  play_tier?: PlayTier;
+  direction?: 'over' | 'under';
 }
 
 interface UpstreamError {
@@ -129,72 +135,151 @@ export interface EdgeDebugInfo {
   final_returned: number;
 }
 
-// ── confidence calculation ───────────────────────────────────────────────────
+// ── confidence v2 ────────────────────────────────────────────────────────────
+// Confidence = "how much should we trust this edge signal?"
+// 4 independent factors, each 0-25, summed to 0-100.
 
 /**
- * Calculate confidence score (0-100) based on data quality metrics.
- * Factors:
- * 1. Sample size (games played) - more games = higher confidence
- * 2. Variance (stability) - lower variance = higher confidence  
- * 3. Consistency (hit rate) - more consistent performance = higher confidence
- * 4. Recent data strength - stronger recent performance = higher confidence
+ * Sample score (0-25): more games = more trustworthy signal.
+ * Linear interpolation: 3→5, 5→10, 10→20, 15+→25.
  */
-function calculateConfidence(
+function sampleScore(gamesPlayed: number): number {
+  if (gamesPlayed <= 3) return 5;
+  if (gamesPlayed >= 15) return 25;
+  // Linear from (3,5) to (15,25)
+  return Math.round(5 + ((gamesPlayed - 3) / 12) * 20);
+}
+
+/**
+ * Consistency score (0-25): low CV in the RECENT window means the trend is real.
+ * We measure recent games only — overall CV is irrelevant to signal trust.
+ */
+function consistencyScore(last5Values: number[]): number {
+  if (last5Values.length < 2) return 0;
+  const mean = last5Values.reduce((a, b) => a + b, 0) / last5Values.length;
+  if (mean <= 0) return 0;
+  const variance = last5Values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / last5Values.length;
+  const cv = Math.sqrt(variance) / mean;
+  // CV < 0.15 → 25, CV > 0.5 → 0, linear between
+  if (cv <= 0.15) return 25;
+  if (cv >= 0.5) return 0;
+  return Math.round(25 * (1 - (cv - 0.15) / 0.35));
+}
+
+/**
+ * Recency score (0-25): how much recent data exists + directional alignment.
+ * 5 recent games → 20, 3 → 10, < 3 → 0.
+ * Bonus +5 if last 3 values trend in same direction as the overall delta.
+ */
+function recencyScore(last5Values: number[], allValues: number[]): number {
+  const n = last5Values.length;
+  if (n < 3) return 0;
+
+  // Base: scale by recent game count
+  const base = n >= 5 ? 20 : n >= 4 ? 15 : 10;
+
+  // Directional bonus: do the last 3 games reinforce the delta direction?
+  const overallMean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+  const recentMean = last5Values.reduce((a, b) => a + b, 0) / last5Values.length;
+  const deltaDir = recentMean - overallMean; // positive = trending up
+
+  // Check if last 3 games (most recent first) trend in same direction
+  const last3 = last5Values.slice(0, 3);
+  const trendDir = last3[0] - last3[2]; // newest minus oldest
+  const directionalBonus = (deltaDir > 0 && trendDir > 0) || (deltaDir < 0 && trendDir < 0) ? 5 : 0;
+
+  return Math.min(25, base + directionalBonus);
+}
+
+/**
+ * Data quality score (0-25): is the baseline data solid enough to trust the delta?
+ * - Valid seasonAvg (> 0, finite): +10
+ * - Enough games (≥5: +5, ≥10: +10)
+ * - Low overall CV (< 0.3): +5
+ */
+function dataQualityScore(seasonAvg: number, gamesPlayed: number, allValues: number[]): number {
+  let score = 0;
+
+  // Valid baseline
+  if (seasonAvg > 0 && isFinite(seasonAvg)) score += 10;
+
+  // Sample depth
+  if (gamesPlayed >= 10) score += 10;
+  else if (gamesPlayed >= 5) score += 5;
+
+  // Overall stability (low CV = stable baseline makes delta meaningful)
+  if (allValues.length >= 3) {
+    const mean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+    if (mean > 0) {
+      const variance = allValues.reduce((sum, v) => sum + (v - mean) ** 2, 0) / allValues.length;
+      const cv = Math.sqrt(variance) / mean;
+      if (cv < 0.3) score += 5;
+    }
+  }
+
+  return Math.min(25, score);
+}
+
+export type ConfidenceTier = 'high' | 'medium' | 'low';
+
+/**
+ * Confidence v2: measures trust in the edge signal, not player stability.
+ * Returns confidence (0-100) and a discrete tier.
+ * Safe fallback: 0 / 'low' if insufficient data.
+ */
+function computeConfidenceV2(
   allValues: number[],
   last5Values: number[],
   seasonAvg: number,
-  recentAvg: number,
-  gamesPlayed: number
-): number {
+  _recentAvg: number,
+  gamesPlayed: number,
+): { confidence: number; confidence_tier: ConfidenceTier } {
   if (gamesPlayed < 3 || allValues.length < 3) {
-    return 0; // Insufficient data
+    return { confidence: 0, confidence_tier: 'low' };
   }
 
-  // 1. Sample size factor (0-30 points)
-  // Max at 15+ games, min at 3 games
-  const sampleSizeFactor = Math.min(30, Math.max(0, (gamesPlayed - 3) * 2.5));
-  
-  // 2. Variance factor (0-30 points)
-  // Calculate coefficient of variation (CV) = std dev / mean
-  const mean = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
-  const variance = allValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allValues.length;
-  const stdDev = Math.sqrt(variance);
-  const cv = mean > 0 ? stdDev / mean : 1;
-  // Lower CV = higher confidence (inverse relationship)
-  const varianceFactor = cv > 0 ? Math.min(30, 30 * (1 - Math.min(1, cv))) : 30;
-  
-  // 3. Consistency factor (0-20 points)
-  // Check how many games are within 20% of season average
-  const withinThreshold = allValues.filter(val => 
-    Math.abs(val - seasonAvg) / (seasonAvg || 1) <= 0.2
-  ).length;
-  const consistencyRate = withinThreshold / allValues.length;
-  const consistencyFactor = consistencyRate * 20;
-  
-  // 4. Recent data strength factor (0-20 points)
-  // Compare recent performance to season average
-  // Strong, consistent recent data gets higher score
-  const recentStability = last5Values.length >= 3 ? 
-    (1 - Math.abs(recentAvg - seasonAvg) / (seasonAvg || 1)) * 20 : 0;
-  const recentStrengthFactor = Math.max(0, Math.min(20, recentStability));
-  
-  // Calculate total confidence
-  let confidence = sampleSizeFactor + varianceFactor + consistencyFactor + recentStrengthFactor;
-  
-  // Apply penalties for extreme cases
-  if (gamesPlayed < 5) confidence *= 0.7; // Small sample penalty
-  if (cv > 0.5) confidence *= 0.8; // High variance penalty
-  if (consistencyRate < 0.5) confidence *= 0.9; // Low consistency penalty
-  
-  // Ensure 0-100 range
-  confidence = Math.max(0, Math.min(100, Math.round(confidence)));
-  
-  // Debug logging for extreme cases
-  if (confidence < 30 || confidence > 90) {
-    console.log(`[edge-confidence] ${confidence}% - games:${gamesPlayed}, cv:${cv.toFixed(2)}, consistency:${(consistencyRate*100).toFixed(0)}%`);
-  }
-  
-  return confidence;
+  const s = sampleScore(gamesPlayed);
+  const c = consistencyScore(last5Values);
+  const r = recencyScore(last5Values, allValues);
+  const q = dataQualityScore(seasonAvg, gamesPlayed, allValues);
+
+  const raw = s + c + r + q;
+  const confidence = Math.max(0, Math.min(100, Math.round(raw)));
+
+  const confidence_tier: ConfidenceTier =
+    confidence >= 70 ? 'high' :
+    confidence >= 40 ? 'medium' :
+    'low';
+
+  return { confidence, confidence_tier };
+}
+
+// ── edge strength / play score (additive, does not modify existing logic) ────
+
+export type EdgeTier = 'elite' | 'strong' | 'moderate' | 'weak';
+export type PlayTier = 'A' | 'B' | 'C' | 'D';
+
+function getEdgeStrength(delta: number): { edge_score: number; edge_tier: EdgeTier } {
+  const absDelta = Math.abs(delta);
+  if (absDelta >= 8) return { edge_score: 90, edge_tier: 'elite' };
+  if (absDelta >= 5) return { edge_score: 75, edge_tier: 'strong' };
+  if (absDelta >= 3) return { edge_score: 60, edge_tier: 'moderate' };
+  return { edge_score: 40, edge_tier: 'weak' };
+}
+
+function calculatePlayScore(edgeScore: number, confidence: number): number {
+  return Math.round(edgeScore * 0.6 + confidence * 0.4);
+}
+
+function getPlayTier(score: number): PlayTier {
+  if (score >= 80) return 'A';
+  if (score >= 65) return 'B';
+  if (score >= 50) return 'C';
+  return 'D';
+}
+
+function getDirection(delta: number): 'over' | 'under' {
+  return delta >= 0 ? 'over' : 'under';
 }
 
 // ── core computation (exported for reuse by alerts endpoint) ──────────────────
@@ -271,60 +356,86 @@ export async function computeEdgeFeed(
 
   let statsResData: any[] = [];
 
-  // EXPERIMENT: Test smaller chunks + single page to overcome BDL API pagination limits
-  const CHUNK_SIZE = 10; // Reduced from 50 to test pagination hypothesis
-  
+  // EXPERIMENT v2: Smaller chunks (4 games) + paginate each chunk until exhausted.
+  // Each NBA game has ~26 player stat rows. With 4 games per chunk and per_page=100,
+  // page 1 returns ~100 rows but misses the remaining ~4 rows. Paginating ensures
+  // we capture all players for each game in the chunk.
+  const CHUNK_SIZE = 4;
+  const MAX_PAGES_PER_CHUNK = 10; // safety cap
+  let totalPagesFetched = 0;
+
   if (gameIds.length > 0) {
     const gameIdChunks: number[][] = [];
     for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
       gameIdChunks.push(gameIds.slice(i, i + CHUNK_SIZE));
     }
 
-    const statsResults = await Promise.all(
-      gameIdChunks.flatMap((chunk, ci) =>
-        // EXPERIMENT: Fetch only page 1 (pages 2+ may return duplicate/empty data)
-        [1].map(page =>
-          bdlBatch('/stats', {
-            'game_ids[]':  chunk,
-            // seasons[] removed to fix season mismatch bug (2026-03-27)
-            per_page:      100,
-            page,
-          }).catch((err: unknown) => {
-            if (ci === 0 && page === 1 && !statsUpstreamErr) statsUpstreamErr = captureErr(err, '/stats');
-            return { data: [] };
-          })
-        )
-      )
-    );
+    // Fetch all pages for each chunk (stop when a page returns < per_page rows)
+    const allRawRows: any[] = [];
 
-    const rawStatsResData = statsResults.flatMap(p => p?.data ?? []);
-    
+    // Process chunks in parallel batches of 10 to avoid overwhelming BDL API
+    const PARALLEL_BATCH = 10;
+    for (let batchStart = 0; batchStart < gameIdChunks.length; batchStart += PARALLEL_BATCH) {
+      const chunkBatch = gameIdChunks.slice(batchStart, batchStart + PARALLEL_BATCH);
+
+      const batchResults = await Promise.all(
+        chunkBatch.map(async (chunk, ci) => {
+          const chunkRows: any[] = [];
+          for (let page = 1; page <= MAX_PAGES_PER_CHUNK; page++) {
+            try {
+              const res = await bdlBatch('/stats', {
+                'game_ids[]': chunk,
+                per_page:     100,
+                page,
+              });
+              const rows = res?.data ?? [];
+              chunkRows.push(...rows);
+              totalPagesFetched++;
+              // Stop if this page returned fewer than per_page — no more data
+              if (rows.length < 100) break;
+            } catch (err: unknown) {
+              if (batchStart + ci === 0 && page === 1 && !statsUpstreamErr) {
+                statsUpstreamErr = captureErr(err, '/stats');
+              }
+              break; // stop paginating this chunk on error
+            }
+          }
+          return chunkRows;
+        })
+      );
+
+      for (const rows of batchResults) {
+        allRawRows.push(...rows);
+      }
+    }
+
+    const rawStatsResData = allRawRows;
+
     // ── Deduplication: remove duplicate (player_id, game_id) rows ─────────────
     // This fixes the flat last5 issue caused by BDL API returning duplicate stats rows
     const seenKeys = new Set<string>();
     const dedupedStatsResData: any[] = [];
     let rowsWithoutIds = 0;
-    
+
     for (const row of rawStatsResData) {
       const playerId: number = row?.player?.id ?? row?.player_id;
       const gameId: number = (row?.game as Record<string, unknown>)?.id as number ?? row?.game;
-      
+
       if (!playerId || !gameId) {
-        // Keep rows without proper IDs (should be rare)
         dedupedStatsResData.push(row);
         rowsWithoutIds++;
         continue;
       }
-      
+
       const key = `${playerId}:${gameId}`;
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
         dedupedStatsResData.push(row);
       }
     }
-    
+
     statsResData = dedupedStatsResData;
-    
+
     // Store dedupe info for debug output
     const dedupeInfo = {
       before_dedupe: rawStatsResData.length,
@@ -333,20 +444,21 @@ export async function computeEdgeFeed(
       rows_without_ids: rowsWithoutIds,
       unique_player_game_pairs: seenKeys.size
     };
-    
+
     // Store dedupe info in debugOut if provided
     if (debugOut) {
       const debugAny = debugOut as any;
       debugAny.dedupe_info = dedupeInfo;
-      
-      // EXPERIMENT: Add chunking experiment info
+
       debugAny.experiment_info = {
         chunk_size: CHUNK_SIZE,
-        pages_per_chunk: 1, // Only page 1 for this experiment
+        max_pages_per_chunk: MAX_PAGES_PER_CHUNK,
         total_chunks: gameIdChunks.length,
-        total_queries: gameIdChunks.length * 1, // chunks × pages
-        max_rows_possible: gameIdChunks.length * 1 * 100, // queries × per_page
-        notes: "EXPERIMENT: Testing BDL API pagination hypothesis - smaller chunks (10) + single page only"
+        pages_fetched_total: totalPagesFetched,
+        average_rows_per_game: gameIds.length > 0
+          ? Math.round((statsResData.length / gameIds.length) * 10) / 10
+          : 0,
+        notes: "EXPERIMENT v2: chunk_size=4, paginate each chunk until exhausted"
       };
     }
   }
@@ -561,14 +673,20 @@ export async function computeEdgeFeed(
       continue; // Skip this player entirely
     }
 
-    // Calculate confidence score based on data quality
-    const confidence = calculateConfidence(
+    // Calculate confidence score (v2: trust in edge signal)
+    const { confidence, confidence_tier } = computeConfidenceV2(
       allVals,
       last5Vals,
       seasonAvg,
       recentAvg,
-      games.length
+      games.length,
     );
+
+    // Edge strength + play score (additive — does not modify existing logic)
+    const { edge_score, edge_tier } = getEdgeStrength(delta);
+    const play_score = calculatePlayScore(edge_score, confidence);
+    const play_tier = getPlayTier(play_score);
+    const direction = getDirection(delta);
 
     entries.push({
       player_id:            pid,
@@ -585,14 +703,33 @@ export async function computeEdgeFeed(
       days_since_last_game: daysSince,
       streak_warning:       streakWarning,
       confidence,
+      confidence_tier,
+      edge_score,
+      edge_tier,
+      play_score,
+      play_tier,
+      direction,
     });
   }
 
   if (debugOut) {
     debugOut.final_candidates_before_sort = entries.length;
+    const debugAny = debugOut as any;
+    // Experiment v2 metrics: data depth
+    const allGameCounts = [...gameMap.values()].map(gs => gs.length);
+    debugAny.max_games_any_player = allGameCounts.length > 0 ? Math.max(...allGameCounts) : 0;
+    debugAny.count_players_with_nonzero_delta = entries.filter(e => e.delta !== 0).length;
+    debugAny.count_players_with_zero_delta = entries.filter(e => e.delta === 0).length;
   }
 
-  entries.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  // Sort by best playable signal: play_score → confidence → |delta|
+  entries.sort((a, b) => {
+    const ps = (b.play_score ?? 0) - (a.play_score ?? 0);
+    if (ps !== 0) return ps;
+    const cf = (b.confidence ?? 0) - (a.confidence ?? 0);
+    if (cf !== 0) return cf;
+    return Math.abs(b.delta) - Math.abs(a.delta);
+  });
   const result = entries.slice(0, 20);
 
   if (debugOut) {
