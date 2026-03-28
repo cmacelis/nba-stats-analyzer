@@ -294,7 +294,45 @@ export async function computeEdgeFeed(
       )
     );
 
-    statsResData = statsResults.flatMap(p => p?.data ?? []);
+    const rawStatsResData = statsResults.flatMap(p => p?.data ?? []);
+    
+    // ── Deduplication: remove duplicate (player_id, game_id) rows ─────────────
+    // This fixes the flat last5 issue caused by BDL API returning duplicate stats rows
+    const seenKeys = new Set<string>();
+    const dedupedStatsResData: any[] = [];
+    let rowsWithoutIds = 0;
+    
+    for (const row of rawStatsResData) {
+      const playerId: number = row?.player?.id ?? row?.player_id;
+      const gameId: number = (row?.game as Record<string, unknown>)?.id as number ?? row?.game;
+      
+      if (!playerId || !gameId) {
+        // Keep rows without proper IDs (should be rare)
+        dedupedStatsResData.push(row);
+        rowsWithoutIds++;
+        continue;
+      }
+      
+      const key = `${playerId}:${gameId}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        dedupedStatsResData.push(row);
+      }
+    }
+    
+    statsResData = dedupedStatsResData;
+    
+    // Store dedupe info for debug output
+    const dedupeInfo = {
+      before_dedupe: rawStatsResData.length,
+      after_dedupe: statsResData.length,
+      duplicates_removed: rawStatsResData.length - statsResData.length,
+      rows_without_ids: rowsWithoutIds,
+      unique_player_game_pairs: seenKeys.size
+    };
+    
+    // Store for debug output
+    (globalThis as any)._lastDedupeInfo = dedupeInfo;
   }
 
   if (debugOut) {
@@ -304,12 +342,21 @@ export async function computeEdgeFeed(
     debugOut.stats_logs_count_total       = statsResData.length;
     debugOut.stats_error                  = statsUpstreamErr;
     if (gameIds.length > 0) {
-      debugOut.stats_fetch_params = {
+      // Use type assertion to add game_window_size
+      const debugAny = debugOut as any;
+      debugAny.stats_fetch_params = {
         game_ids_count: gameIds.length,
         // season filter removed (game_ids-only query)
         chunk_count: Math.ceil(gameIds.length / 50),
         game_window_size: gameIds.length
       };
+      
+      // Add deduplication debug info
+      if (statsResData.length > 0 && (globalThis as any)._lastDedupeInfo) {
+        debugAny.dedupe_info = (globalThis as any)._lastDedupeInfo;
+        // Clean up after reading
+        delete (globalThis as any)._lastDedupeInfo;
+      }
     }
   }
 
@@ -336,6 +383,97 @@ export async function computeEdgeFeed(
       };
     } else {
       debugOut.stats_logs_count_sample_player = null;
+    }
+
+    // DEBUG: Add raw row analysis for Andrew Nembhard (player_id: 38017507)
+    // Using type assertion to bypass TypeScript checking
+    const debugAny = debugOut as any;
+    const nembhardId = 38017507;
+    
+    // Always include nembhard_debug, even if just to say not found
+    if (gameMap.has(nembhardId)) {
+      const nembhardGames = gameMap.get(nembhardId)!;
+      
+      // Collect raw game IDs for this player's window
+      const nembhardGameIds: number[] = [];
+      const seenGameIds = new Set<number>();
+      nembhardGames.forEach(g => {
+        const gid = (g?.game as Record<string, unknown>)?.id as number ?? g?.game;
+        if (gid && !seenGameIds.has(gid)) {
+          seenGameIds.add(gid);
+          nembhardGameIds.push(gid);
+        }
+      });
+      
+      // Analyze raw stat rows
+      const rawRows = nembhardGames.slice(0, 10).map((g, idx) => ({
+        row_index: idx,
+        game_id: (g?.game as Record<string, unknown>)?.id as number ?? g?.game,
+        game_date: gameDateMap.get((g?.game as Record<string, unknown>)?.id as number ?? g?.game) || 'unknown',
+        player_id: g?.player?.id ?? g?.player_id,
+        pts: g?.pts || 0,
+        min: g?.min || '0:00',
+        team: g?.team?.abbreviation || g?.team || 'unknown',
+        opponent: g?.opponent?.abbreviation || g?.opponent || 'unknown'
+      }));
+      
+      // Check for duplicates
+      const uniqueByGameId = new Set(rawRows.map(r => r.game_id)).size;
+      const totalRows = rawRows.length;
+      
+      // Build value arrays
+      const allValsDebug = nembhardGames.map(g => gameVal(g, stat));
+      const last5ValsDebug = allValsDebug.slice(0, 5).map(v => Math.round(v * 10) / 10);
+      
+      debugAny.nembhard_debug = {
+        player_id: nembhardId,
+        total_games_in_window: nembhardGames.length,
+        unique_game_ids_count: uniqueByGameId,
+        duplicate_analysis: {
+          has_duplicate_game_ids: uniqueByGameId < totalRows,
+          duplicate_count: totalRows - uniqueByGameId,
+          duplicate_percentage: Math.round((1 - (uniqueByGameId / totalRows)) * 100)
+        },
+        raw_rows_sample: rawRows,
+        value_arrays: {
+          allVals_first10: allValsDebug.slice(0, 10),
+          last5Vals: last5ValsDebug,
+          all_identical: last5ValsDebug.length > 0 && last5ValsDebug.every(v => v === last5ValsDebug[0])
+        },
+        game_ids_in_window: nembhardGameIds.slice(0, 20)
+      };
+      
+      // CRITICAL: Add console.log for Vercel logs - this doesn't change API structure
+      console.log('🔍 NEMBHARD DEBUG - player_id:', nembhardId);
+      console.log('🔍 NEMBHARD DEBUG - total_games_in_window:', nembhardGames.length);
+      console.log('🔍 NEMBHARD DEBUG - raw_rows_sample (first 3):', rawRows.slice(0, 3));
+      console.log('🔍 NEMBHARD DEBUG - allVals_first10:', allValsDebug.slice(0, 10));
+      console.log('🔍 NEMBHARD DEBUG - last5Vals:', last5ValsDebug);
+      console.log('🔍 NEMBHARD DEBUG - game_ids_in_window (first 10):', nembhardGameIds.slice(0, 10));
+      console.log('🔍 NEMBHARD DEBUG - duplicate_analysis:', {
+        has_duplicate_game_ids: uniqueByGameId < totalRows,
+        duplicate_count: totalRows - uniqueByGameId,
+        duplicate_percentage: Math.round((1 - (uniqueByGameId / totalRows)) * 100)
+      });
+    } else {
+      // Nembhard not found in gameMap - include debug info about why
+      debugAny.nembhard_debug = {
+        player_id: nembhardId,
+        found_in_gameMap: false,
+        gameMap_size: gameMap.size,
+        gameMap_keys_sample: Array.from(gameMap.keys()).slice(0, 5),
+        possible_reasons: [
+          "Not in active players list",
+          "Filtered out by minutes (min_minutes=20)",
+          "Not in stats results",
+          "In different player_id format"
+        ]
+      };
+      
+      // Log to console
+      console.log('🔍 NEMBHARD DEBUG - NOT FOUND in gameMap');
+      console.log('🔍 NEMBHARD DEBUG - gameMap_size:', gameMap.size);
+      console.log('🔍 NEMBHARD DEBUG - gameMap_keys_sample:', Array.from(gameMap.keys()).slice(0, 5));
     }
   }
 
