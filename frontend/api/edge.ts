@@ -356,11 +356,11 @@ export async function computeEdgeFeed(
 
   let statsResData: any[] = [];
 
-  // EXPERIMENT v3: CHUNK_SIZE=25, pages 1-3 per chunk, all in parallel.
-  // 25 games × ~26 players = ~650 rows per chunk → needs ~7 pages at per_page=100.
-  // We fetch 3 pages per chunk to capture most data while staying within Vercel 10s timeout.
-  // 500 games / 25 = 20 chunks × 3 pages = 60 parallel requests (fast).
-  const CHUNK_SIZE = 25;
+  // EXPERIMENT v4: CHUNK_SIZE=5, pages 1-3 per chunk, all in parallel.
+  // 5 games × ~26 players = ~130 rows per chunk → pages 1-2 cover most data.
+  // 500 games / 5 = 100 chunks × 3 pages = 300 parallel requests.
+  // BDL API handles parallel well; Vercel timeout is the constraint.
+  const CHUNK_SIZE = 5;
   const PAGES_PER_CHUNK = 3;
   let totalPagesFetched = 0;
 
@@ -438,7 +438,7 @@ export async function computeEdgeFeed(
         average_rows_per_game: gameIds.length > 0
           ? Math.round((statsResData.length / gameIds.length) * 10) / 10
           : 0,
-        notes: "EXPERIMENT v3: chunk_size=25, 3 pages per chunk, all parallel"
+        notes: "EXPERIMENT v4: chunk_size=5, 3 pages per chunk, all parallel"
       };
     }
   }
